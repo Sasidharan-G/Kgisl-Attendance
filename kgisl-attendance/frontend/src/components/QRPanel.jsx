@@ -34,7 +34,15 @@ export default function QRPanel({ qr, sessionMeta }) {
         <span className="corner corner-br" />
         <div className="relative h-64 w-64 overflow-hidden rounded-2xl bg-white p-3">
           {qr?.qrImageDataUrl ? (
-            <img src={qr.qrImageDataUrl} alt="Attendance QR" className="h-full w-full object-contain" />
+            <>
+              <img src={qr.qrImageDataUrl} alt="Attendance QR" className="h-full w-full object-contain" />
+              {/* Center Logo Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-white p-1.5 rounded-xl shadow-lg border border-slate-100 flex items-center justify-center">
+                  <img src="/qr-center-logo.jpg" alt="Center Logo" className="h-12 w-12 object-contain" />
+                </div>
+              </div>
+            </>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
               Waiting for session…

@@ -59,6 +59,9 @@ function refreshAccessToken(refreshToken) {
 }
 
 // ---- Auth ----
+export const registerFaculty = (payload) =>
+  api.post('/auth/faculty/register', payload).then((r) => r.data);
+
 export const loginFaculty = (email, password) =>
   api.post('/auth/faculty/login', { email, password }).then((r) => r.data);
 
@@ -78,6 +81,7 @@ export const startSession = (payload) => api.post('/sessions', payload).then((r)
 export const endSession = (sessionId) => api.post(`/sessions/${sessionId}/end`).then((r) => r.data);
 export const getSessionStats = (sessionId) => api.get(`/sessions/${sessionId}/stats`).then((r) => r.data);
 export const getSessionPublicInfo = (sessionId) => api.get(`/sessions/${sessionId}/public`).then((r) => r.data);
+export const markManualAttendance = (sessionId, rollNo) => api.post(`/sessions/${sessionId}/manual-attendance`, { rollNo }).then((r) => r.data);
 
 // ---- Scan ----
 export const submitScan = (payload) => api.post('/scan', payload).then((r) => r.data);
@@ -88,3 +92,5 @@ export const createFaculty = (payload) => api.post('/faculty', payload).then((r)
 export const listStudents = () => api.get('/students').then((r) => r.data.data);
 export const listHistory = () => api.get('/history').then((r) => r.data.data);
 
+// ---- AI Agent ----
+export const sendAgentMessage = (message) => api.post('/agent/chat', { message }).then((r) => r.data);

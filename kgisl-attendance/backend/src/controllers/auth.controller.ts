@@ -10,9 +10,40 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const registerFacultySchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
 const refreshSchema = z.object({
   refreshToken: z.string().min(10),
 });
+
+import { prisma } from '../config/prisma';
+import bcrypt from 'bcryptjs';
+
+export async function registerFacultyHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { name, email, password } = registerFacultySchema.parse(req.body);
+    
+    const existing = await prisma.faculty.findUnique({ where: { email } });
+    if (existing) {
+      res.status(400).json({ success: false, message: 'Faculty with this email already exists' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const newFaculty = await prisma.faculty.create({
+      data: { name, email, passwordHash },
+    });
+
+    const result = await loginFaculty(email, password, requestContext(req));
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
 
 export async function facultyLoginHandler(req: Request, res: Response, next: NextFunction) {
   try {

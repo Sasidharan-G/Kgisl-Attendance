@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { GraduationCap, Mail, KeyRound, ArrowLeft } from 'lucide-react';
+import { GraduationCap, User, KeyRound, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { loginStudent } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import Loader from '../components/Loader.jsx';
 
 export default function StudentLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSuccessLoading, setIsSuccessLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -19,7 +22,11 @@ export default function StudentLogin() {
     try {
       const { token, refreshToken, user } = await loginStudent(email, password);
       login(token, refreshToken, user);
-      navigate('/student/scan');
+      setIsSuccessLoading(true);
+      setTimeout(() => {
+        setIsSuccessLoading(false);
+        navigate('/student/scan');
+      }, 2000);
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -28,64 +35,114 @@ export default function StudentLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300">
-          <ArrowLeft size={14} /> Back
-        </Link>
+    <div className="w-full flex flex-col items-center justify-center p-4">
+      <style>{`
+        .custom-input {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          color: #0f172a;
+          border-radius: 1rem;
+          transition: all 0.3s ease;
+        }
+        .custom-input:focus {
+          outline: none;
+          background: #ffffff;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        .custom-input::placeholder {
+          color: transparent;
+        }
+        .custom-label {
+          position: absolute;
+          top: 50%;
+          left: 44px;
+          transition: all ease 0.3s;
+          transform: translate(0%, -50%);
+          font-size: 0.875rem;
+          user-select: none;
+          pointer-events: none;
+          color: #64748b;
+        }
+        .custom-input:focus ~ .custom-label,
+        .custom-input:not(:placeholder-shown) ~ .custom-label {
+          transform: translate(-150%, -50%);
+          opacity: 0;
+        }
+      `}</style>
+      
+      <div className="relative w-full max-w-sm px-2">
+        
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center mb-4">
+            <GraduationCap size={28} className="text-black" strokeWidth={2.5} />
+          </div>
+          <h2 className="text-2xl font-bold text-black tracking-wide">Student Portal</h2>
+          <p className="text-xs text-black/70 font-medium mb-8">Sign in to mark your attendance</p>
 
-        <div className="mt-8 flex h-12 w-12 items-center justify-center rounded-xl bg-signal-red/10 border border-signal-red/25">
-          <GraduationCap size={22} className="text-signal-red" />
-        </div>
-        <h1 className="mt-6 font-display text-2xl font-semibold text-white">Student Portal</h1>
-        <p className="mt-1 text-sm text-slate-400">Sign in to scan and mark your attendance.</p>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <div>
-            <label className="text-xs font-medium text-slate-400">Email</label>
-            <div className="mt-1.5 relative">
-              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <form onSubmit={handleSubmit} className="w-full space-y-5">
+            <div className="relative overflow-hidden rounded-[1rem]">
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="surender.m@students.kgisl-iim.ac.in"
-                className="w-full rounded-lg border border-ink-border bg-ink-850 py-2.5 pl-10 pr-3 text-sm text-slate-100 outline-none focus:border-signal-red/60 focus:ring-1 focus:ring-signal-red/40"
+                placeholder=" "
+                className="w-full py-3.5 pl-11 pr-4 custom-input text-sm font-medium"
               />
+              <User size={18} className="absolute left-4 top-[15px] text-slate-400 pointer-events-none" strokeWidth={2.5} />
+              <label className="custom-label">Username / Email</label>
             </div>
-          </div>
 
-          <div>
-            <label className="text-xs font-medium text-slate-400">Password</label>
-            <div className="mt-1.5 relative">
-              <KeyRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="relative overflow-hidden rounded-[1rem]">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-lg border border-ink-border bg-ink-850 py-2.5 pl-10 pr-3 text-sm text-slate-100 outline-none focus:border-signal-red/60 focus:ring-1 focus:ring-signal-red/40"
+                placeholder=" "
+                className="w-full py-3.5 pl-11 pr-11 custom-input text-sm font-medium"
               />
+              <KeyRound size={18} className="absolute left-4 top-[15px] text-slate-400 pointer-events-none" strokeWidth={2.5} />
+              <label className="custom-label">Password</label>
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-[15px] text-slate-400 hover:text-slate-600 transition-colors z-10"
+              >
+                {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+              </button>
             </div>
-          </div>
 
-          {error && (
-            <p className="rounded-lg border border-signal-red/30 bg-signal-red/10 px-3 py-2 text-xs text-red-300">
-              {error}
-            </p>
-          )}
+            <div className="flex items-center justify-between text-xs px-1">
+              <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-500 hover:text-slate-800 transition-colors">
+                <input type="checkbox" className="w-3.5 h-3.5 accent-signal-blue rounded-sm border-slate-300" />
+                Remember me
+              </label>
+              <a href="#" className="font-medium text-signal-blue hover:text-blue-700 underline-offset-2 hover:underline transition-all">
+                Forgot Password?
+              </a>
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-signal-red py-2.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-60"
-          >
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
-        </form>
+            {error && (
+              <div className="w-full bg-red-500/20 border border-red-500/50 rounded-lg p-2 text-center text-xs font-semibold text-red-200">
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="w-full py-3.5 font-bold tracking-wider uppercase text-sm bg-signal-blue hover:bg-blue-600 text-white rounded-[1rem] transition-all shadow-md hover:shadow-lg hover:-translate-y-[1px] active:translate-y-0 flex items-center justify-center gap-2 mt-4">
+              {loading ? 'Logging in...' : 'Sign In'}
+              {!loading && <ArrowRight size={16} strokeWidth={2.5} />}
+            </button>
+          </form>
+        </div>
       </div>
+      
+      {isSuccessLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
+          <Loader />
+        </div>
+      )}
     </div>
   );
 }

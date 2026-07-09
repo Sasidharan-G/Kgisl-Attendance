@@ -78,3 +78,10 @@ export function broadcastAttendanceMarked(
 export function broadcastSessionEnded(sessionId: string) {
   io?.to(sessionRoom(sessionId)).emit('session_ended', { sessionId });
 }
+
+export function broadcastGeofenceViolation(
+  sessionId: string,
+  data: { studentId: string; studentName: string; studentRoll: string; scanTime: string; distance: number }
+) {
+  io?.to(sessionRoom(sessionId)).emit('geofence_violation', data);
+}

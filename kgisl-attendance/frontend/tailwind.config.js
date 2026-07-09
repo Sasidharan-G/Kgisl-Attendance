@@ -5,13 +5,13 @@ export default {
     extend: {
       colors: {
         ink: {
-          950: '#080b13',
-          900: '#0c101c',
-          850: '#101526',
-          800: '#141a2e',
-          700: '#1b2238',
-          600: '#252d47',
-          border: '#232a42',
+          950: '#272465', // Main Background (Deep Indigo)
+          900: '#1E1B4B', // Sidebar / Header (Midnight Indigo)
+          850: '#302D68', // Cards (Muted Indigo)
+          800: '#302D68', // Cards (Muted Indigo)
+          700: '#484575', // Border / Lighter Cards
+          600: '#625CA8', // Primary Button approx
+          border: '#484575', // Border (Muted Lavender Grey)
         },
         signal: {
           red: '#e0293f',
@@ -19,6 +19,19 @@ export default {
           green: '#2fd97a',
           amber: '#f2b544',
           blue: '#3d8bff',
+        },
+        theme: {
+          bg: '#272465',
+          sidebar: '#1E1B4B',
+          card: '#302D68',
+          btn: '#625CA8',
+          'btn-hover': '#7771BD',
+          border: '#484575',
+          text: '#F5F5F7',
+          'text-muted': '#B4B2C7',
+          success: '#3FA37C',
+          warning: '#D6A84B',
+          error: '#C95D6B',
         },
       },
       fontFamily: {

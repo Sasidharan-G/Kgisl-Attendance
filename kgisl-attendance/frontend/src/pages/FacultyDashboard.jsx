@@ -8,6 +8,8 @@ import QRPanel from '../components/QRPanel.jsx';
 import RecentScans from '../components/RecentScans.jsx';
 import ValidationStrip from '../components/ValidationStrip.jsx';
 import StatTile from '../components/StatTile.jsx';
+import AgentChat from '../components/AgentChat.jsx';
+import ManualAttendance from '../components/ManualAttendance.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { startSession, endSession, listSubjects, listRooms, listBatches } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
@@ -34,6 +36,7 @@ export default function FacultyDashboard() {
   const [qr, setQr] = useState(null);
   const [stats, setStats] = useState({ totalStudents: 0, present: 0, absent: 0, progressPercent: 0 });
   const [scans, setScans] = useState([]);
+  const [violations, setViolations] = useState(0);
   const [connected, setConnected] = useState(false);
 
   // Load real Subject/Room/Batch options from the backend on mount so the
@@ -83,6 +86,11 @@ export default function FacultyDashboard() {
       setScans((prev) => [data, ...prev].slice(0, 50));
     });
 
+    socket.on('geofence_violation', (data) => {
+      setViolations((prev) => prev + 1);
+      setScans((prev) => [{ ...data, isViolation: true }, ...prev].slice(0, 50));
+    });
+
     socket.on('session_ended', () => {
       setSessionActive(false);
       setQr(null);
@@ -111,6 +119,7 @@ export default function FacultyDashboard() {
       });
       setSessionActive(true);
       setScans([]);
+      setViolations(0);
       currentSessionIdRef.current = session.sessionId;
 
       socketRef.current?.emit('join_session', session.sessionId);
@@ -208,7 +217,10 @@ export default function FacultyDashboard() {
             </div>
           </div>
 
-          <QRPanel qr={qr} sessionMeta={sessionMeta} />
+          <div className="flex flex-col h-full gap-6">
+            <QRPanel qr={qr} sessionMeta={sessionMeta} />
+            {sessionActive && <ManualAttendance sessionId={sessionMeta?.sessionId} />}
+          </div>
 
           <RecentScans scans={scans} />
         </div>
@@ -219,7 +231,7 @@ export default function FacultyDashboard() {
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 px-8">
           <StatTile icon={Users2} iconTone="blue" title="Active Sessions" value={sessionActive ? '1' : '0'} subtitle="Session Running" />
-          <StatTile icon={ShieldAlert} iconTone="red" title="Proxy Attempts Tracked" value="0" subtitle="Blocked Today" />
+          <StatTile icon={ShieldAlert} iconTone="red" title="Proxy Attempts Tracked" value={violations} subtitle="Blocked Today" />
           <StatTile icon={Timer} iconTone="blue" title="Average Attendance Time" value="—" subtitle="Average Scan Time" />
           <StatTile
             icon={GraduationCap}
@@ -230,6 +242,9 @@ export default function FacultyDashboard() {
           />
         </div>
       </main>
+
+      {/* Global AI Agent for the Dashboard */}
+      <AgentChat />
     </div>
   );
 }

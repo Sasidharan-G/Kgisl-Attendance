@@ -8,6 +8,8 @@ import catalogRoutes from './routes/catalog.routes';
 import facultyRoutes from './routes/faculty.routes';
 import studentRoutes from './routes/student.routes';
 import historyRoutes from './routes/history.routes';
+import attendanceRoutes from './routes/attendance.routes';
+import agentRoutes from './routes/agent.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
 
@@ -46,6 +48,8 @@ export function createApp() {
   app.use('/api/v1/faculty', facultyRoutes);
   app.use('/api/v1/students', studentRoutes);
   app.use('/api/v1/history', historyRoutes);
+  app.use('/api/v1/agent', agentRoutes);
+  app.use('/api/attendance', attendanceRoutes);
 
   app.use(errorHandler);
 

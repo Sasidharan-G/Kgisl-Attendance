@@ -1,79 +1,127 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, GraduationCap, Lock, MapPin, Clock3, BarChart3, ArrowRight } from 'lucide-react';
-
-const FEATURES = [
-  { icon: Lock, title: 'Secure Access', body: 'Role-based authentication and data protection.' },
-  { icon: MapPin, title: 'Smart Verification', body: 'GPS and network checks confirm you\u2019re really in the room.' },
-  { icon: Clock3, title: 'Real-time Updates', body: 'Live attendance tracking and instant reports.' },
-  { icon: BarChart3, title: 'Insightful Reports', body: 'Analytics built for better academic decisions.' },
-];
+import AdminLogin from './AdminLogin.jsx';
+import StudentLogin from './StudentLogin.jsx';
+import GeometricPattern from '../components/GeometricPattern.jsx';
 
 export default function PortalSelect() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(() => {
+    return !sessionStorage.getItem('hasSeenLoadingScreen');
+  });
+  const [isStudent, setIsStudent] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      sessionStorage.setItem('hasSeenLoadingScreen', 'true');
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  if (isLoading) {
+    return (
+      <div
+        className="h-screen w-screen overflow-hidden flex items-center justify-center"
+        style={{ backgroundColor: '#272465' }}
+      >
+        <style>{`
+          @keyframes zoomInLogo {
+            0% { transform: scale(0.5); }
+            100% { transform: scale(1.5); }
+          }
+          @keyframes blinkLogo {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.1; }
+          }
+        `}</style>
+        <img
+          src="/loading-logo.png"
+          alt="Loading..."
+          style={{ animation: 'zoomInLogo 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, blinkLogo 0.8s ease-in-out infinite' }}
+          className="h-[150px] md:h-[250px] object-contain drop-shadow-2xl"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-5xl">
-        <div className="mb-14">
-          <div className="flex items-baseline gap-3">
-            <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white">
-              KGiSL<span className="text-signal-red">-IIM</span>
-            </h1>
+    <div
+      className="h-screen w-screen overflow-hidden flex font-sans relative"
+      style={{ backgroundColor: '#272465' }}
+    >
+      <GeometricPattern />
+
+      <style>{`
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+      `}</style>
+
+      {/* Main Content Wrapper */}
+      <div className="w-full h-full max-w-[1000px] lg:max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 lg:gap-32 px-4 relative pt-24 md:pt-0">
+        
+        {/* Mobile Logo */}
+        <img
+          src="/custom-logo.png"
+          alt="Custom Logo"
+          className="md:hidden absolute top-8 left-1/2 -translate-x-1/2 h-24 object-contain z-20 drop-shadow-xl"
+        />
+
+        {/* The Glassmorphic Card */}
+        <div className="w-full max-w-[400px] bg-white/30 backdrop-blur-xl border border-white/50 rounded-[40px] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(31,38,135,0.15)] relative z-10 shrink-0">
+          
+          {/* Content Area */}
+          <div className="px-6 pb-6 pt-10 flex flex-col items-center">
+            <h2 className="text-xl font-display font-bold text-slate-900 mb-4 tracking-wide">Select Portal</h2>
+
+            {/* Segmented Toggle for Admin/Student */}
+            <div className="flex justify-center items-center mb-6 gap-2 text-xs font-bold tracking-widest uppercase bg-white/40 backdrop-blur-md shadow-inner p-1.5 rounded-full border border-white/50 w-full max-w-[280px]">
+              <button 
+                onClick={() => setIsStudent(true)}
+                className={`flex-1 py-2.5 rounded-full transition-all duration-300 ${isStudent ? 'bg-signal-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Student
+              </button>
+              <button 
+                onClick={() => setIsStudent(false)}
+                className={`flex-1 py-2.5 rounded-full transition-all duration-300 ${!isStudent ? 'bg-signal-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Admin
+              </button>
+            </div>
+
+            {/* 3D Flip Card */}
+            <div className="relative w-full flex-1 perspective-1000 min-h-[380px]">
+              <div className={`w-full h-full transition-transform duration-700 ease-in-out preserve-3d grid ${isStudent ? '' : 'rotate-y-180'}`}>
+                
+                {/* Front (Student) */}
+                <div className={`row-start-1 col-start-1 w-full h-full backface-hidden flex justify-center ${!isStudent ? 'pointer-events-none' : ''}`}>
+                  <div className="w-full max-w-[320px]">
+                    <StudentLogin />
+                  </div>
+                </div>
+
+                {/* Back (Admin) */}
+                <div className={`row-start-1 col-start-1 w-full h-full backface-hidden rotate-y-180 flex justify-center ${isStudent ? 'pointer-events-none' : ''}`}>
+                  <div className="w-full max-w-[320px]">
+                    <AdminLogin />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
           </div>
-          <p className="mt-2 text-sm tracking-[0.2em] text-slate-500 uppercase">MCA Department</p>
-          <h2 className="mt-8 font-display text-2xl md:text-3xl font-semibold text-white">
-            Welcome to <span className="text-signal-red">Smart Attendance</span>
-          </h2>
-          <p className="mt-2 text-slate-400">Secure. Reliable. Seamless. Choose your portal to continue.</p>
         </div>
+      </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <button
-            onClick={() => navigate('/admin/login')}
-            className="group text-left rounded-2xl border border-ink-border bg-ink-850/60 p-8 shadow-card transition hover:border-signal-blue/40 hover:bg-ink-850"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-signal-blue/10 border border-signal-blue/20">
-              <ShieldCheck size={22} className="text-signal-blue" />
-            </div>
-            <h3 className="mt-6 font-display text-xl font-semibold text-white">Admin Portal</h3>
-            <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-              Access the faculty dashboard to run live sessions, manage students, and view reports.
-            </p>
-            <div className="mt-8 inline-flex items-center gap-2 rounded-lg bg-signal-blue/10 border border-signal-blue/30 px-4 py-2.5 text-sm font-medium text-slate-100 transition group-hover:bg-signal-blue/20">
-              Faculty Login <ArrowRight size={15} />
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/student/login')}
-            className="group text-left rounded-2xl border border-signal-red/30 bg-gradient-to-b from-ink-850/60 to-signal-redDim/10 p-8 shadow-glow transition hover:border-signal-red/60"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-signal-red/10 border border-signal-red/25">
-              <GraduationCap size={22} className="text-signal-red" />
-            </div>
-            <h3 className="mt-6 font-display text-xl font-semibold text-white">Student Portal</h3>
-            <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-              Scan the live session QR to mark your attendance and view your records.
-            </p>
-            <div className="mt-8 inline-flex items-center gap-2 rounded-lg bg-signal-red px-4 py-2.5 text-sm font-medium text-white transition group-hover:bg-red-600">
-              Student Login <ArrowRight size={15} />
-            </div>
-          </button>
-        </div>
-
-        <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-ink-border pt-10">
-          {FEATURES.map(({ icon: Icon, title, body }) => (
-            <div key={title}>
-              <Icon size={18} className="text-slate-500" />
-              <h4 className="mt-3 text-sm font-semibold text-slate-200">{title}</h4>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">{body}</p>
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-14 text-center text-xs text-slate-600">
-          © {new Date().getFullYear()} KGiSL Institute of Information Management (IIM). All rights reserved.
-        </p>
+      {/* Footer */}
+      <div className="absolute bottom-4 left-4 md:left-8 text-[10px] font-medium text-white/50 pointer-events-none z-0">
+        © {new Date().getFullYear()} KGiSL IIM. All rights reserved.
       </div>
     </div>
   );

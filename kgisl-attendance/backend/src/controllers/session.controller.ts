@@ -83,3 +83,42 @@ export async function getSessionPublicInfoHandler(req: Request, res: Response, n
     next(err);
   }
 }
+
+import { markManualAttendance } from '../services/attendance.service';
+import { broadcastAttendanceMarked } from '../websocket/socket';
+
+const manualAttendanceSchema = z.object({
+  rollNo: z.string().min(1),
+});
+
+export async function manualAttendanceHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { sessionId } = req.params;
+    const { rollNo } = manualAttendanceSchema.parse(req.body);
+    const facultyId = req.auth!.sub;
+
+    const { record, student } = await markManualAttendance({ sessionId, rollNo, facultyId });
+
+    broadcastAttendanceMarked(sessionId, {
+      studentId: student.id,
+      studentName: student.name,
+      studentRoll: student.rollNo,
+      scanTime: record.scanTime.toISOString(),
+    });
+
+    const ctx = requestContext(req);
+    await writeAuditLog({
+      actorId: facultyId,
+      actorType: 'FACULTY',
+      action: 'MANUAL_ATTENDANCE_MARKED',
+      sessionId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { rollNo },
+    });
+
+    res.status(201).json({ success: true, message: 'Attendance marked manually' });
+  } catch (err) {
+    next(err);
+  }
+}

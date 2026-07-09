@@ -52,26 +52,38 @@ export default function StudentScanPage() {
         const gps = await new Promise((resolve, reject) => {
           if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
           navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            () => reject(new Error('Location permission is required to mark attendance')),
-            { enableHighAccuracy: true, timeout: 8000 }
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+            () => reject(new Error('Location permission is required to mark attendance.')),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
         });
 
         await submitScan({
-          studentId: user.id,
           deviceId: getDeviceId(),
-          batchIdClaimed: sessionInfo.batchId,
-          subjectIdClaimed: sessionInfo.subjectId,
-          gps,
-          qr: qrPayload,
+          gpsLat: gps.lat,
+          gpsLng: gps.lng,
+          gpsAccuracy: gps.accuracy,
+          qrPayload: qrPayload,
         });
 
         setStatus('success');
         setMessage('Attendance marked successfully.');
       } catch (err) {
         setStatus('error');
-        setMessage(err.message || 'Could not mark attendance. Try scanning again.');
+        let errorMsg = err.message || 'Could not mark attendance. Try scanning again.';
+        if (err.response?.data?.message) {
+           const code = err.response.data.message;
+           if (code.includes('GEOFENCE_REJECTED')) {
+             errorMsg = 'Attendance rejected. You are outside the allowed 150-meter attendance location.';
+           } else if (code.includes('POOR_GPS_ACCURACY')) {
+             errorMsg = 'Location accuracy is too low. Please move to an open area and try again.';
+           } else if (code.includes('INVALID_GPS')) {
+             errorMsg = 'Unable to access your live location. Enable GPS and try again.';
+           } else {
+             errorMsg = code;
+           }
+        }
+        setMessage(errorMsg);
       } finally {
         scanningLockRef.current = false;
       }
