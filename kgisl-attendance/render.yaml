@@ -2,6 +2,7 @@ services:
   - type: web
     name: kgisl-attendance-app
     env: docker
+    rootDir: kgisl-attendance
     plan: free
     region: singapore
     envVars:
