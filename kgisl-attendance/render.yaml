@@ -17,8 +17,10 @@ services:
           property: connectionString
       - key: JWT_ACCESS_SECRET
         generateValue: true
-      - key: QR_HMAC_SECRET
+      - key: JWT_REFRESH_SECRET
         generateValue: true
+      - key: QR_HMAC_SECRET
+        value: "a3f8c2d1e4b7906f5a2c8d3e1b4f7a0c9d2e5b8f1a4c7d0e3b6f9a2c5d8e1b4"
       - key: FRONTEND_ORIGINS
         value: "https://kgisl-attendance-app.onrender.com"
       - key: NODE_ENV
