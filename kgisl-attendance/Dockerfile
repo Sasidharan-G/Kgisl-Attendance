@@ -13,6 +13,7 @@ COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 RUN npm ci
 COPY backend/ .
+RUN npx prisma generate
 RUN npm run build
 
 # Production runtime image
