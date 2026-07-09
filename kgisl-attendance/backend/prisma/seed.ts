@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import process from 'process';
+import 'dotenv/config';
 
 const prisma = new PrismaClient();
 
@@ -88,7 +90,7 @@ async function main() {
       name: 'MCA Lab',
       latitude: 11.0827,
       longitude: 76.9959,
-      geofenceRadiusM: 10000, 
+      geofenceRadiusM: 10000,
       wifiBssidWhitelist: []
     }
   });

@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: kgisl-attendance-app
+    env: docker
+    plan: free
+    region: singapore
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kgisl-attendance-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: kgisl-attendance-redis
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: QR_HMAC_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGINS
+        value: "https://kgisl-attendance-app.onrender.com"
+      - key: NODE_ENV
+        value: production
+
+  - type: redis
+    name: kgisl-attendance-redis
+    plan: free
+    region: singapore
+    ipAllowList: []
+
+databases:
+  - name: kgisl-attendance-db
+    databaseName: kgisl_attendance
+    user: kgisl
+    plan: free
+    region: singapore

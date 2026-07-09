@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import path from 'path';
 import sessionRoutes from './routes/session.routes';
 import scanRoutes from './routes/scan.routes';
 import authRoutes from './routes/auth.routes';
@@ -50,6 +51,15 @@ export function createApp() {
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/agent', agentRoutes);
   app.use('/api/attendance', attendanceRoutes);
+
+  // Serve frontend static files in production
+  if (process.env.NODE_ENV === 'production') {
+    const frontendPath = path.join(__dirname, '../../frontend/dist');
+    app.use(express.static(frontendPath));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+  }
 
   app.use(errorHandler);
 
