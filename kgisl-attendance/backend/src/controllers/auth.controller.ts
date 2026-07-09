@@ -34,7 +34,7 @@ export async function registerFacultyHandler(req: Request, res: Response, next: 
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const newFaculty = await prisma.faculty.create({
+    await prisma.faculty.create({
       data: { name, email, passwordHash },
     });
 

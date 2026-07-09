@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma';
 import { redis, qrRedisKey } from '../config/redis';
-import { sha256Hex, verifyQrPayloadSignature } from '../utils/crypto';
+import { sha256Hex, verifyQrSignature } from '../utils/crypto';
 import { broadcastGeofenceViolation } from '../websocket/socket';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -32,7 +32,7 @@ export async function markAttendance(input: {
 }) {
   const { studentId, qrPayload, gpsLat, gpsLng, gpsAccuracy, deviceId } = input;
 
-  const validSignature = verifyQrPayloadSignature(qrPayload);
+  const validSignature = verifyQrSignature(qrPayload, qrPayload.signature);
   if (!validSignature) throw new Error('INVALID_QR_SIGNATURE');
 
   if (Date.now() > qrPayload.expiresAt) throw new Error('QR_EXPIRED');
