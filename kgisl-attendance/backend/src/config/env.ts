@@ -28,7 +28,10 @@ const envSchema = z.object({
   QR_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(10),
   QR_CLOCK_SKEW_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(2),
 
+  // Geofence / GPS settings
   DEFAULT_GEOFENCE_RADIUS_M: z.coerce.number().int().positive().default(120),
+  // Reject scans whose GPS accuracy reading is worse than this threshold (metres).
+  MAX_GPS_ACCURACY_METERS: z.coerce.number().int().positive().default(50),
 
   SCAN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   SCAN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),

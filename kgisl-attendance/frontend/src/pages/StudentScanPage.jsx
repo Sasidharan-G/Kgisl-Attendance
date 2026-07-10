@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import jsQR from 'jsqr';
-import { CheckCircle2, XCircle, ScanLine, LogOut } from 'lucide-react';
+import {
+  CheckCircle2,
+  XCircle,
+  ScanLine,
+  LogOut,
+  MapPin,
+  Loader2,
+  Camera,
+  ShieldAlert,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { submitScan, getSessionPublicInfo } from '../services/api.js';
 
-// Simple stable per-browser device fingerprint (persisted locally) used as
-// the `deviceId` the backend cross-checks against the student's bound device.
+/**
+ * Stable per-browser device fingerprint (persisted in localStorage).
+ * Used as ONE of several verification layers — not as the sole auth factor.
+ */
 function getDeviceId() {
   let id = localStorage.getItem('kgisl_device_id');
   if (!id) {
@@ -15,79 +26,147 @@ function getDeviceId() {
   return id;
 }
 
+/** Map backend error codes to clear, student-facing messages. */
+function mapErrorCode(code, fallbackMessage) {
+  const messages = {
+    QR_EXPIRED: 'QR code has expired. Scan the latest QR shown by your faculty.',
+    INVALID_QR_SIGNATURE: 'Invalid QR code. Please scan the QR displayed on the screen.',
+    TOKEN_REVOKED: 'This QR code is no longer valid. Scan the latest one.',
+    TOKEN_ALREADY_USED: 'This QR code has already been used.',
+    ATTENDANCE_ALREADY_MARKED: 'Your attendance has already been marked for this session.',
+    BATCH_MISMATCH: 'You are not enrolled in this session\'s batch.',
+    SUBJECT_MISMATCH: 'Subject does not match this session.',
+    OUTSIDE_ALLOWED_LOCATION: 'You are outside the allowed attendance location.',
+    DEVICE_NOT_AUTHORIZED: 'This device is not authorised for your account. Contact your administrator.',
+    GPS_ACCURACY_TOO_LOW: 'GPS accuracy is too low. Move to an open area and try again.',
+    GPS_REQUIRED: 'Location access is required to mark attendance.',
+    SESSION_NOT_ACTIVE: 'This attendance session is no longer active.',
+    OUTSIDE_TIME_WINDOW: 'Attendance window has closed for this session.',
+    RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
+    VALIDATION_ERROR: 'Request could not be processed. Please try scanning again.',
+  };
+  return messages[code] || fallbackMessage || 'Something went wrong. Try scanning again.';
+}
+
+// Scan status states
+// idle | scanning | locating | submitting | success | error
 export default function StudentScanPage() {
   const { user, logout } = useAuth();
   const videoRef = useRef(null);
   const canvasRef = useRef(document.createElement('canvas'));
   const rafRef = useRef(null);
-  const scanningLockRef = useRef(false);
 
-  const [status, setStatus] = useState('idle'); // idle | scanning | submitting | success | error
-  const [message, setMessage] = useState('');
+  // Duplicate-scan prevention: store the last submitted token & submission in-flight flag
+  const lastScannedTokenRef = useRef(null);
+  const isSubmittingRef = useRef(false);
+
+  const [status, setStatus] = useState('idle');
   const [cameraError, setCameraError] = useState('');
+  const [message, setMessage] = useState('');
+  const [successData, setSuccessData] = useState(null); // from backend response
+  const [errorCode, setErrorCode] = useState('');
 
-  const stopScanning = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  const stopCamera = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     const stream = videoRef.current?.srcObject;
     stream?.getTracks()?.forEach((t) => t.stop());
+    if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
+
+  // Stop camera on component unmount
+  useEffect(() => stopCamera, [stopCamera]);
 
   const handleDecoded = useCallback(
     async (rawValue) => {
-      if (scanningLockRef.current) return;
-      scanningLockRef.current = true;
-      stopScanning();
-      setStatus('submitting');
-      setMessage('Verifying your location…');
+      // Guard 1: only one submission in-flight at a time
+      if (isSubmittingRef.current) return;
+
+      let qrPayload;
+      try {
+        qrPayload = JSON.parse(rawValue);
+      } catch {
+        return; // Not valid JSON — keep scanning
+      }
+
+      // Guard 2: validate required QR fields exist
+      if (
+        !qrPayload.sessionId ||
+        !qrPayload.token ||
+        !qrPayload.issuedAt ||
+        !qrPayload.expiresAt ||
+        !qrPayload.nonce ||
+        !qrPayload.signature
+      ) {
+        return; // Malformed QR — keep scanning
+      }
+
+      // Guard 3: don't re-submit the exact same token (QR is still visible on screen)
+      if (lastScannedTokenRef.current === qrPayload.token) return;
+
+      // Lock
+      isSubmittingRef.current = true;
+      lastScannedTokenRef.current = qrPayload.token;
+      stopCamera();
 
       try {
-        const qrPayload = JSON.parse(rawValue);
+        // Step A: fetch session public info (batchId + subjectId)
+        setStatus('locating');
+        setMessage('Looking up session…');
 
-        // The QR itself deliberately never carries batch/subject (see backend
-        // spec: "QR must NEVER contain attendance information"). We only know
-        // the sessionId at this point, so we look up the non-sensitive
-        // batch/subject the session belongs to before submitting the scan.
         const { data: sessionInfo } = await getSessionPublicInfo(qrPayload.sessionId);
 
+        // Step B: obtain GPS coordinates
+        setMessage('Verifying your location…');
         const gps = await new Promise((resolve, reject) => {
-          if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
+          if (!navigator.geolocation) {
+            return reject({ code: 'GPS_REQUIRED', message: 'Geolocation is not supported by this browser.' });
+          }
           navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-            () => reject(new Error('Location permission is required to mark attendance.')),
+            (pos) =>
+              resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+              }),
+            () =>
+              reject({
+                code: 'GPS_REQUIRED',
+                message: 'Location permission is required to mark attendance.',
+              }),
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
         });
 
-        await submitScan({
+        // Step C: submit attendance
+        setStatus('submitting');
+        setMessage('Marking attendance…');
+
+        const response = await submitScan({
           batchId: sessionInfo.batchId,
           subjectId: sessionInfo.subjectId,
-          gps: { lat: gps.lat, lng: gps.lng },
-          qr: qrPayload,
+          deviceId: getDeviceId(),
+          gps, // { lat, lng, accuracy }
+          qr: qrPayload, // full signed QR object
         });
 
+        // Success — show details from the backend response (never from QR)
+        setSuccessData(response.data);
         setStatus('success');
-        setMessage('Attendance marked successfully.');
+        setMessage('');
       } catch (err) {
+        const code = err?.code || err?.response?.data?.code || '';
+        const fallback = err?.message || err?.response?.data?.message || '';
+        setErrorCode(code);
+        setMessage(mapErrorCode(code, fallback));
         setStatus('error');
-        let errorMsg = err.message || 'Could not mark attendance. Try scanning again.';
-        if (err.response?.data?.message) {
-           const code = err.response.data.message;
-           if (code.includes('GEOFENCE_REJECTED')) {
-             errorMsg = 'Attendance rejected. You are outside the allowed 150-meter attendance location.';
-           } else if (code.includes('POOR_GPS_ACCURACY')) {
-             errorMsg = 'Location accuracy is too low. Please move to an open area and try again.';
-           } else if (code.includes('INVALID_GPS')) {
-             errorMsg = 'Unable to access your live location. Enable GPS and try again.';
-           } else {
-             errorMsg = code;
-           }
-        }
-        setMessage(errorMsg);
-      } finally {
-        scanningLockRef.current = false;
+        // Reset lock so the user can retry (but keep lastScannedToken to avoid immediate re-submit)
+        isSubmittingRef.current = false;
       }
     },
-    [stopScanning, user]
+    [stopCamera]
   );
 
   const tick = useCallback(() => {
@@ -102,7 +181,7 @@ export default function StudentScanPage() {
       const code = jsQR(imageData.data, imageData.width, imageData.height);
       if (code?.data) {
         handleDecoded(code.data);
-        return;
+        return; // handleDecoded takes over from here
       }
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -112,8 +191,15 @@ export default function StudentScanPage() {
     setStatus('scanning');
     setMessage('');
     setCameraError('');
+    setSuccessData(null);
+    setErrorCode('');
+    isSubmittingRef.current = false;
+    lastScannedTokenRef.current = null;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -125,17 +211,31 @@ export default function StudentScanPage() {
     }
   }
 
-  useEffect(() => stopScanning, [stopScanning]);
+  function handleRetry() {
+    // Reset token ref so the same QR can be tried if it was a transient error
+    // (e.g. network error) — but not if the error is permanent (duplicate, device).
+    const permanentCodes = ['ATTENDANCE_ALREADY_MARKED', 'DEVICE_NOT_AUTHORIZED', 'SESSION_NOT_ACTIVE'];
+    if (permanentCodes.includes(errorCode)) {
+      // Don't clear lastScannedTokenRef — prevent re-submitting same token
+    } else {
+      lastScannedTokenRef.current = null;
+    }
+    startScanning();
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-10">
       <div className="w-full max-w-sm">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500">Signed in as</p>
             <p className="text-sm font-medium text-slate-200">{user?.name}</p>
           </div>
-          <button onClick={logout} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300">
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300"
+          >
             <LogOut size={13} /> Sign out
           </button>
         </div>
@@ -144,6 +244,7 @@ export default function StudentScanPage() {
           <h1 className="font-display text-xl font-semibold text-white">Mark Attendance</h1>
           <p className="mt-1 text-sm text-slate-400">Scan the live QR shown by your faculty.</p>
 
+          {/* QR Viewfinder */}
           <div className="mt-6 scan-frame relative mx-auto w-full aspect-square max-w-[280px] overflow-hidden rounded-2xl bg-black">
             <span className="corner corner-tl" />
             <span className="corner corner-tr" />
@@ -160,8 +261,15 @@ export default function StudentScanPage() {
             )}
           </div>
 
-          {cameraError && <p className="mt-4 text-xs text-signal-red">{cameraError}</p>}
+          {/* Camera permission error */}
+          {cameraError && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3">
+              <Camera size={14} className="text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-300">{cameraError}</p>
+            </div>
+          )}
 
+          {/* IDLE state */}
           {status === 'idle' && (
             <button
               onClick={startScanning}
@@ -171,31 +279,81 @@ export default function StudentScanPage() {
             </button>
           )}
 
-          {status === 'submitting' && (
-            <p className="mt-6 text-center text-sm text-slate-400 animate-pulse">{message}</p>
-          )}
-
-          {status === 'success' && (
-            <div className="mt-6 flex flex-col items-center gap-2 rounded-lg border border-signal-green/30 bg-signal-green/10 px-4 py-4 text-center">
-              <CheckCircle2 size={22} className="text-signal-green" />
-              <p className="text-sm text-signal-green">{message}</p>
+          {/* LOCATING / SUBMITTING state */}
+          {(status === 'locating' || status === 'submitting') && (
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <Loader2 size={22} className="text-signal-green animate-spin" />
+              <p className="text-center text-sm text-slate-400 animate-pulse">{message}</p>
+              {status === 'locating' && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <MapPin size={12} />
+                  <span>Obtaining GPS coordinates…</span>
+                </div>
+              )}
             </div>
           )}
 
+          {/* SUCCESS state */}
+          {status === 'success' && successData && (
+            <div className="mt-6 rounded-lg border border-signal-green/30 bg-signal-green/10 px-4 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 size={20} className="text-signal-green shrink-0" />
+                <p className="text-sm font-semibold text-signal-green">Attendance Marked</p>
+              </div>
+              <div className="space-y-1.5">
+                <Row label="Name" value={successData.studentName} />
+                <Row label="Roll No" value={successData.rollNo} />
+                <Row label="Subject" value={successData.subjectName} />
+                <Row label="Status" value={successData.status} highlight />
+                <Row
+                  label="Time"
+                  value={new Date(successData.markedAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                />
+                {successData.distanceMeters !== undefined && (
+                  <Row label="Distance" value={`${successData.distanceMeters} m from class`} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ERROR state */}
           {status === 'error' && (
-            <div className="mt-6 flex flex-col items-center gap-2 rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-4 text-center">
-              <XCircle size={22} className="text-signal-red" />
-              <p className="text-sm text-red-300">{message}</p>
-              <button
-                onClick={startScanning}
-                className="mt-2 rounded-lg bg-signal-red px-4 py-2 text-xs font-medium text-white hover:bg-red-600"
-              >
-                Try Again
-              </button>
+            <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-4 text-center">
+              {errorCode === 'DEVICE_NOT_AUTHORIZED' ? (
+                <ShieldAlert size={22} className="text-signal-red" />
+              ) : (
+                <XCircle size={22} className="text-signal-red" />
+              )}
+              <p className="text-sm text-red-300 leading-relaxed">{message}</p>
+              {/* Only show retry for recoverable errors */}
+              {!['ATTENDANCE_ALREADY_MARKED', 'DEVICE_NOT_AUTHORIZED'].includes(errorCode) && (
+                <button
+                  onClick={handleRetry}
+                  className="mt-1 rounded-lg bg-signal-red px-4 py-2 text-xs font-medium text-white hover:bg-red-600"
+                >
+                  Try Again
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Small helper for the success detail rows */
+function Row({ label, value, highlight = false }) {
+  return (
+    <div className="flex justify-between text-xs">
+      <span className="text-slate-500">{label}</span>
+      <span className={highlight ? 'text-signal-green font-semibold' : 'text-slate-300'}>
+        {value}
+      </span>
     </div>
   );
 }

@@ -5,14 +5,14 @@ import { verifyQrSignature, sha256Hex, QrSignableFields } from '../utils/crypto'
 import { distanceMeters } from '../utils/geo';
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
-import { broadcastAttendanceMarked } from '../websocket/socket';
+import { broadcastAttendanceMarked, broadcastGeofenceViolation } from '../websocket/socket';
 
 export interface ScanRequest {
   studentId: string;
   deviceId: string;
   batchIdClaimed: string;
   subjectIdClaimed: string;
-  gps: { lat: number; lng: number };
+  gps: { lat: number; lng: number; accuracy?: number };
   qr: {
     sessionId: string;
     token: string;
@@ -21,6 +21,13 @@ export interface ScanRequest {
     nonce: string;
     signature: string;
   };
+}
+
+export interface ScanResult {
+  record: { id: string; scanTime: Date; status: string };
+  student: { id: string; name: string; rollNo: string };
+  subjectName: string;
+  distanceMeters: number;
 }
 
 /**
@@ -50,21 +57,21 @@ async function claimTokenOnce(sessionId: string, studentId: string, ttlMs: numbe
   return result === 1;
 }
 
-export async function validateAndRecordScan(req: ScanRequest) {
+export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResult> {
   const { studentId, deviceId, gps, qr } = req;
 
   // ---------------------------------------------------------------
-  // 1. Validate Student
+  // 1. Validate Student — exists and fetch full record
   // ---------------------------------------------------------------
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) throw Errors.STUDENT_NOT_FOUND();
 
   // ---------------------------------------------------------------
-  // 2. Validate Active Session
+  // 2. Validate Active Session (load room + subject for downstream checks)
   // ---------------------------------------------------------------
   const session = await prisma.attendanceSession.findUnique({
     where: { sessionId: qr.sessionId },
-    include: { room: true },
+    include: { room: true, subject: true },
   });
   if (!session) throw Errors.SESSION_NOT_FOUND();
   if (session.status !== 'ACTIVE') throw Errors.SESSION_NOT_ACTIVE();
@@ -84,7 +91,7 @@ export async function validateAndRecordScan(req: ScanRequest) {
   }
 
   // ---------------------------------------------------------------
-  // 4. Validate QR Expiry (server clock is source of truth, not client-sent times)
+  // 4. Validate QR Expiry (server clock is source of truth)
   // ---------------------------------------------------------------
   const now = Date.now();
   const skewMs = env.QR_CLOCK_SKEW_TOLERANCE_SECONDS * 1000;
@@ -93,8 +100,14 @@ export async function validateAndRecordScan(req: ScanRequest) {
   }
 
   // ---------------------------------------------------------------
-  // 5. Validate Secure Token — must match what's CURRENTLY held in Redis
-  //    (i.e. it must be the live, active token — not a past/future one).
+  // 5. Validate QR not issued in the future (clock manipulation check)
+  // ---------------------------------------------------------------
+  if (qr.issuedAt > now + skewMs) {
+    throw Errors.QR_EXPIRED();
+  }
+
+  // ---------------------------------------------------------------
+  // 6. Validate Secure Token — must match Redis live active token
   // ---------------------------------------------------------------
   const redisRaw = await redis.get(qrRedisKey(qr.sessionId));
   if (!redisRaw) throw Errors.QR_EXPIRED(); // Redis TTL already evicted it
@@ -112,9 +125,8 @@ export async function validateAndRecordScan(req: ScanRequest) {
   }
 
   // ---------------------------------------------------------------
-  // 6. Validate Token Not Revoked  &  7. Validate Token Not Previously Used
-  //    Cross-check against durable history for defense-in-depth (Redis is the
-  //    fast path; Postgres is the audit-grade backstop).
+  // 7. Validate Token Not Revoked & Not Previously Used
+  //    (Redis = fast path; Postgres = audit-grade backstop)
   // ---------------------------------------------------------------
   const historyRow = await prisma.attendanceQrHistory.findUnique({
     where: { tokenHash: incomingTokenHash },
@@ -122,9 +134,12 @@ export async function validateAndRecordScan(req: ScanRequest) {
   if (!historyRow || historyRow.revoked) throw Errors.TOKEN_REVOKED();
   if (historyRow.usedAt) throw Errors.TOKEN_ALREADY_USED();
 
-  // Atomic single-use claim (this is what actually prevents two students
-  // racing to submit the same still-valid, unused token — e.g. a shared screenshot).
-  const claimed = await claimTokenOnce(qr.sessionId, studentId, qr.expiresAt - now > 0 ? qr.expiresAt - now : 1000);
+  // Atomic single-use claim — prevents two students racing the same screenshot.
+  const claimed = await claimTokenOnce(
+    qr.sessionId,
+    studentId,
+    qr.expiresAt - now > 0 ? qr.expiresAt - now : 1000
+  );
   if (!claimed) throw Errors.TOKEN_ALREADY_USED();
 
   // ---------------------------------------------------------------
@@ -138,26 +153,37 @@ export async function validateAndRecordScan(req: ScanRequest) {
   if (req.subjectIdClaimed !== session.subjectId) throw Errors.SUBJECT_MISMATCH();
 
   // ---------------------------------------------------------------
-  // 10. Validate Attendance Time (session must still be within its active window —
-  //     already covered by status check, but also guard against a session that
-  //     was force-ended between QR issuance and scan submission).
+  // 10. Validate Session Still Active (re-check before write)
   // ---------------------------------------------------------------
   const freshSession = await prisma.attendanceSession.findUnique({ where: { sessionId: qr.sessionId } });
   if (!freshSession || freshSession.status !== 'ACTIVE') throw Errors.OUTSIDE_TIME_WINDOW();
 
   // ---------------------------------------------------------------
-  // 11. Validate GPS present
+  // 11. Validate GPS Present & Coordinates Valid
   // ---------------------------------------------------------------
-  if (gps.lat === undefined || gps.lng === undefined || Number.isNaN(gps.lat) || Number.isNaN(gps.lng)) {
+  if (
+    gps.lat === undefined ||
+    gps.lng === undefined ||
+    Number.isNaN(gps.lat) ||
+    Number.isNaN(gps.lng)
+  ) {
     throw Errors.GPS_REQUIRED();
   }
 
   // ---------------------------------------------------------------
-  // 12. Validate Campus Geofence
+  // 12. Validate GPS Accuracy (if reported by browser)
+  // ---------------------------------------------------------------
+  if (gps.accuracy !== undefined && gps.accuracy > env.MAX_GPS_ACCURACY_METERS) {
+    throw Errors.GPS_ACCURACY_TOO_LOW();
+  }
+
+  // ---------------------------------------------------------------
+  // 13. Validate Campus Geofence (Haversine)
   // ---------------------------------------------------------------
   const dist = distanceMeters(gps.lat, gps.lng, session.room.latitude, session.room.longitude);
   const allowedRadius = session.room.geofenceRadiusM ?? env.DEFAULT_GEOFENCE_RADIUS_M;
   if (dist > allowedRadius) {
+    // Persist the rejected attempt for audit — mark token used so it can't be replayed.
     await markHistoryUsed(incomingTokenHash, studentId);
     await prisma.attendanceRecord.create({
       data: {
@@ -165,15 +191,49 @@ export async function validateAndRecordScan(req: ScanRequest) {
         sessionId: qr.sessionId,
         gpsLat: gps.lat,
         gpsLng: gps.lng,
+        gpsAccuracy: gps.accuracy ?? null,
+        distanceFromCampus: dist,
         deviceId,
         status: 'REJECTED_GEOFENCE',
       },
+    });
+    // Broadcast geofence violation to faculty dashboard.
+    broadcastGeofenceViolation(qr.sessionId, {
+      studentId: student.id,
+      studentName: student.name,
+      studentRoll: student.rollNo,
+      scanTime: new Date().toISOString(),
+      distance: Math.round(dist),
     });
     throw Errors.OUTSIDE_GEOFENCE();
   }
 
   // ---------------------------------------------------------------
-  // 13. Validate Duplicate Attendance (DB unique constraint is the final backstop)
+  // 14. Validate Device Binding
+  //     First scan for this student — auto-bind the device.
+  //     Subsequent scans — must match the registered device.
+  // ---------------------------------------------------------------
+  if (student.deviceId === null) {
+    // First-time bind — silently register and continue.
+    await prisma.student.update({
+      where: { id: studentId },
+      data: { deviceId },
+    });
+    logger.info('[scan] device bound for student', {
+      studentId,
+      deviceId: deviceId.slice(0, 8) + '...',
+    });
+  } else if (student.deviceId !== deviceId) {
+    logger.warn('[scan] device mismatch', {
+      studentId,
+      expected: student.deviceId.slice(0, 8) + '...',
+      received: deviceId.slice(0, 8) + '...',
+    });
+    throw Errors.DEVICE_NOT_AUTHORIZED();
+  }
+
+  // ---------------------------------------------------------------
+  // 15. Validate No Duplicate Attendance
   // ---------------------------------------------------------------
   const existing = await prisma.attendanceRecord.findUnique({
     where: { uq_student_session: { studentId, sessionId: qr.sessionId } },
@@ -181,12 +241,7 @@ export async function validateAndRecordScan(req: ScanRequest) {
   if (existing) throw Errors.DUPLICATE_ATTENDANCE();
 
   // ---------------------------------------------------------------
-  // 14. Validate Session Status (final re-check immediately before write)
-  // ---------------------------------------------------------------
-  if (freshSession.status !== 'ACTIVE') throw Errors.SESSION_NOT_ACTIVE();
-
-  // ---------------------------------------------------------------
-  // ALL CHECKS PASSED -> persist atomically
+  // ALL CHECKS PASSED → persist atomically
   // ---------------------------------------------------------------
   try {
     const [record] = await prisma.$transaction([
@@ -196,6 +251,11 @@ export async function validateAndRecordScan(req: ScanRequest) {
           sessionId: qr.sessionId,
           gpsLat: gps.lat,
           gpsLng: gps.lng,
+          gpsAccuracy: gps.accuracy ?? null,
+          distanceFromCampus: dist,
+          locationVerified: true,
+          locationVerificationStatus: 'GPS_VERIFIED',
+          locationVerifiedAt: new Date(),
           deviceId,
           status: 'PRESENT',
         },
@@ -215,18 +275,24 @@ export async function validateAndRecordScan(req: ScanRequest) {
       scanTime: record.scanTime.toISOString(),
     });
 
-    return record;
+    return {
+      record: { id: record.id, scanTime: record.scanTime, status: record.status },
+      student: { id: student.id, name: student.name, rollNo: student.rollNo },
+      subjectName: session.subject.name,
+      distanceMeters: dist,
+    };
   } catch (err: any) {
-    // Unique constraint race (two requests slipped past the earlier check
-    // simultaneously) — surface as a clean duplicate error, not a 500.
+    // Unique constraint race (two requests slipped past the earlier check simultaneously).
     if (err.code === 'P2002') throw Errors.DUPLICATE_ATTENDANCE();
     throw err;
   }
 }
 
 async function markHistoryUsed(tokenHash: string, studentId: string) {
-  await prisma.attendanceQrHistory.update({
-    where: { tokenHash },
-    data: { usedAt: new Date(), usedByStudentId: studentId },
-  }).catch(() => void 0); // best-effort; rejection path already throws its own error
+  await prisma.attendanceQrHistory
+    .update({
+      where: { tokenHash },
+      data: { usedAt: new Date(), usedByStudentId: studentId },
+    })
+    .catch(() => void 0); // best-effort; rejection path already throws its own error
 }
