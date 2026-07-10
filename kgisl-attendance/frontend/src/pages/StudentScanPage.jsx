@@ -59,11 +59,10 @@ export default function StudentScanPage() {
         });
 
         await submitScan({
-          deviceId: getDeviceId(),
-          gpsLat: gps.lat,
-          gpsLng: gps.lng,
-          gpsAccuracy: gps.accuracy,
-          qrPayload: qrPayload,
+          batchId: sessionInfo.batchId,
+          subjectId: sessionInfo.subjectId,
+          gps: { lat: gps.lat, lng: gps.lng },
+          qr: qrPayload,
         });
 
         setStatus('success');
