@@ -57,3 +57,24 @@ export async function createFacultyHandler(req: Request, res: Response, next: Ne
     next(err);
   }
 }
+
+export async function deleteFacultyHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const faculty = await prisma.faculty.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, _count: { select: { sessions: true } } },
+    });
+    if (!faculty) {
+      res.status(404).json({ success: false, message: 'Faculty does not exist' });
+      return;
+    }
+    if (faculty._count.sessions > 0) {
+      res.status(409).json({ success: false, message: 'Faculty has attendance history and cannot be removed' });
+      return;
+    }
+    await prisma.faculty.delete({ where: { id: faculty.id } });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}

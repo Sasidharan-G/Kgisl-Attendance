@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { createStudent, listBatches, listStudents } from '../services/api.js';
-import { Search, GraduationCap, Plus, Users, X } from 'lucide-react';
+import { createStudent, deleteStudent, listBatches, listStudents } from '../services/api.js';
+import { Search, GraduationCap, Plus, Trash2, Users, X } from 'lucide-react';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
@@ -48,6 +48,18 @@ export default function StudentsPage() {
       setError(err.response?.data?.message || err.message || 'Failed to add student');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveStudent = async (student) => {
+    if (!window.confirm(`Remove ${student.name} (${student.rollNo})?`)) return;
+    setError(''); setSuccess('');
+    try {
+      await deleteStudent(student.id);
+      setStudents((current) => current.filter((item) => item.id !== student.id));
+      setSuccess(`${student.name} removed successfully.`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to remove student');
     }
   };
 
@@ -169,18 +181,19 @@ export default function StudentsPage() {
                     <th className="px-6 py-4">Attended / Total</th>
                     <th className="px-6 py-4">Attendance %</th>
                     <th className="px-6 py-4">Last Active</th>
+                    <th className="px-6 py-4">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-border/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                         Loading students data...
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                         No students found.
                       </td>
                     </tr>
@@ -209,6 +222,7 @@ export default function StudentsPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {s.lastScanTime ? new Date(s.lastScanTime).toLocaleString() : 'Never'}
                         </td>
+                        <td className="px-6 py-4"><button onClick={() => handleRemoveStudent(s)} title="Remove student" className="text-red-400 hover:text-red-300"><Trash2 size={17}/></button></td>
                       </tr>
                     ))
                   )}

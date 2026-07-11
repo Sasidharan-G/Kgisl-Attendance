@@ -80,7 +80,7 @@ export default function TimetablePage() {
     <div className="px-8 mt-6">
       <div className="flex items-center gap-3 mb-6"><CalendarDays className="text-signal-amber" /><div><h2 className="text-xl font-bold text-white">{admin ? 'Class Schedule Assignment' : 'My Assigned Timetable'}</h2><p className="text-sm text-slate-400">{admin ? 'Assign faculty, subject, class/section, room and time' : 'Only these assigned classes can start attendance sessions'}</p></div></div>
       {admin && <form onSubmit={submit} className="mb-6 grid grid-cols-2 xl:grid-cols-4 gap-3 rounded-2xl border border-ink-border bg-ink-850/60 p-5">
-        {field('facultyId', catalog.faculty)}{field('subjectId', catalog.subjects)}{field('batchId', catalog.batches)}{field('roomId', catalog.rooms)}
+        {field('facultyId', catalog.faculty)}{field('subjectId', catalog.subjects)}{field('batchId', catalog.batches)}
         <select value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{DAYS.map((d, i) => <option key={d} value={i + 1}>{d}</option>)}</select>
         <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-white" />
         <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-white" />
@@ -91,7 +91,7 @@ export default function TimetablePage() {
         <div className="grid gap-3 md:grid-cols-3">
           <input type="file" accept="image/*,.pdf,.csv,.xlsx,.doc,.docx" onChange={(e) => { setImportFile(e.target.files?.[0] || null); setPreview([]); }} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-300" />
           <select value={importBatchId} onChange={(e) => setImportBatchId(e.target.value)} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{catalog.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
-          <select value={importRoomId} onChange={(e) => setImportRoomId(e.target.value)} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{catalog.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+          <div className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-400">Default room will be assigned automatically</div>
         </div>
         <button type="button" onClick={analyzeFile} className="mt-3 rounded-lg bg-signal-blue px-4 py-2 text-sm font-semibold text-white">Analyze Timetable</button>
         {!!preview.length && <div className="mt-5">

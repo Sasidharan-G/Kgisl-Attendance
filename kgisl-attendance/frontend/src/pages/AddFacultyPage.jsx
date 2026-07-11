@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { listFaculty, createFaculty } from '../services/api.js';
-import { UserPlus, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { listFaculty, createFaculty, deleteFaculty } from '../services/api.js';
+import { UserPlus, ShieldAlert, CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function AddFacultyPage() {
   const [faculties, setFaculties] = useState([]);
@@ -46,6 +46,18 @@ export default function AddFacultyPage() {
       setError(err.message || 'Failed to register faculty');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRemove = async (faculty) => {
+    if (!window.confirm(`Remove ${faculty.name}? Their timetable assignments will also be removed.`)) return;
+    setError(''); setSuccess('');
+    try {
+      await deleteFaculty(faculty.id);
+      setSuccess(`${faculty.name} removed successfully.`);
+      await loadFaculties();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to remove faculty');
     }
   };
 
@@ -148,18 +160,19 @@ export default function AddFacultyPage() {
                     <th className="px-6 py-4">Email</th>
                     <th className="px-6 py-4">Role</th>
                     <th className="px-6 py-4">Registered Date</th>
+                    <th className="px-6 py-4">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-border/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-10 text-center text-slate-500">
+                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
                         Loading directory...
                       </td>
                     </tr>
                   ) : faculties.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-10 text-center text-slate-500">
+                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
                         No faculty registered yet.
                       </td>
                     </tr>
@@ -176,6 +189,7 @@ export default function AddFacultyPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {new Date(fac.createdAt).toLocaleDateString()}
                         </td>
+                        <td className="px-6 py-4"><button onClick={() => handleRemove(fac)} title="Remove faculty" className="text-red-400 hover:text-red-300"><Trash2 size={17}/></button></td>
                       </tr>
                     ))
                   )}

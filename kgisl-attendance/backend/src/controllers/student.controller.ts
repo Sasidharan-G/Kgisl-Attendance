@@ -63,6 +63,27 @@ export async function createStudentHandler(req: Request, res: Response, next: Ne
   }
 }
 
+export async function deleteStudentHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const student = await prisma.student.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, _count: { select: { records: true } } },
+    });
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student does not exist' });
+      return;
+    }
+    if (student._count.records > 0) {
+      res.status(409).json({ success: false, message: 'Student has attendance history and cannot be removed' });
+      return;
+    }
+    await prisma.student.delete({ where: { id: student.id } });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listStudentsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : undefined;

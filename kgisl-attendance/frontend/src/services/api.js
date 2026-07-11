@@ -92,8 +92,10 @@ export const submitScan = (payload) => api.post('/scan', payload).then((r) => r.
 // ---- Admin/Faculty Manage ----
 export const listFaculty = () => api.get('/faculty').then((r) => r.data.data);
 export const createFaculty = (payload) => api.post('/faculty', payload).then((r) => r.data);
+export const deleteFaculty = (id) => api.delete(`/faculty/${id}`).then((r) => r.data);
 export const listStudents = (batchId) => api.get('/students', { params: batchId ? { batchId } : {} }).then((r) => r.data.data);
 export const createStudent = (payload) => api.post('/students', payload).then((r) => r.data.data);
+export const deleteStudent = (id) => api.delete(`/students/${id}`).then((r) => r.data);
 export const listHistory = () => api.get('/history').then((r) => r.data.data);
 export const listAllocations = () => api.get('/timetable').then((r) => r.data.data);
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
