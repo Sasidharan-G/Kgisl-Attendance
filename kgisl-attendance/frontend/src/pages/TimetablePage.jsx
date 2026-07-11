@@ -15,6 +15,18 @@ const MCA_C_TEMPLATE = [
   [5,'09:10','10:50','OSC-LAB','MC'],[5,'11:10','12:00','OSC-LAB','MC'],[5,'12:00','12:50','NSC','SS'],[5,'13:40','14:30','PLAC',''],[5,'14:30','15:20','PLAC',''],[5,'15:30','16:20','TECH',''],
 ].map(([dayOfWeek,startTime,endTime,subjectCode,facultyCode]) => ({ dayOfWeek,startTime,endTime,subjectCode,facultyCode }));
 const FACULTY_NAMES = { DS: 'Surendhran D', RG: 'Gomathi R', SS: 'Saranya S', KY: 'Yamunarani K', MC: 'Chithra M' };
+const WEEK_SLOTS = [
+  { label: '1', start: '09:10', end: '10:00' },
+  { label: '2', start: '10:00', end: '10:50' },
+  { label: 'Break', break: true, time: '10:50–11:10' },
+  { label: '3', start: '11:10', end: '12:00' },
+  { label: '4', start: '12:00', end: '12:50' },
+  { label: 'Lunch', lunch: true, time: '12:50–13:40' },
+  { label: '5', start: '13:40', end: '14:30' },
+  { label: '6', start: '14:30', end: '15:20' },
+  { label: 'Break', break: true, time: '15:20–15:30' },
+  { label: '7', start: '15:30', end: '16:20' },
+];
 
 export default function TimetablePage() {
   const { user } = useAuth();
@@ -31,7 +43,7 @@ export default function TimetablePage() {
   const [importing, setImporting] = useState(false);
 
   async function load() {
-    const allocations = await listAllocations();
+    const allocations = await listAllocations(admin ? undefined : 'section');
     setRows(allocations);
     if (admin) {
       const [faculty, subjects, batches, rooms] = await Promise.all([listFaculty(), listSubjects(), listBatches(), listRooms()]);
@@ -101,6 +113,14 @@ export default function TimetablePage() {
         </div>}
       </section>}
       {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
-      <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60"><table className="w-full text-sm"><thead className="bg-ink-900 text-slate-400"><tr>{['Day','Time','Faculty','Subject','Class / Section','Room',''].map((x) => <th key={x} className="px-4 py-3 text-left">{x}</th>)}</tr></thead><tbody>{rows.map((r) => <tr key={r.id} className="border-t border-ink-border text-slate-200"><td className="px-4 py-3">{DAYS[r.dayOfWeek - 1]}</td><td className="px-4 py-3">{r.startTime} – {r.endTime}</td><td className="px-4 py-3">{r.faculty.name}</td><td className="px-4 py-3">{r.subject.code} · {r.subject.name}</td><td className="px-4 py-3">{r.batch.name}</td><td className="px-4 py-3">{r.room.name}</td><td>{admin && <button onClick={() => remove(r.id)} className="text-red-400"><Trash2 size={16}/></button>}</td></tr>)}</tbody></table>{!rows.length && <p className="p-8 text-center text-slate-500">No class schedules assigned yet.</p>}</div>
+      {!admin && <section className="mb-6 rounded-2xl border border-ink-border bg-ink-850/60 p-5 shadow-card">
+        <div className="mb-5"><h3 className="text-base font-bold text-white">Weekly Class Timetable</h3><p className="mt-1 text-xs text-slate-400">Full section schedule with all periods, breaks and lunch.</p></div>
+        <div className="overflow-x-auto rounded-xl border border-ink-border"><table className="min-w-[1180px] w-full border-collapse text-center text-xs"><thead><tr className="bg-ink-900/70"><th className="border-r border-ink-border px-4 py-4 text-left text-slate-300">Day</th>{WEEK_SLOTS.map((slot, index) => <th key={`${slot.label}-${index}`} className={`border-r border-ink-border px-3 py-3 ${slot.break || slot.lunch ? 'bg-signal-blue/5 text-signal-blue' : 'text-slate-300'}`}><span className="block font-bold">{slot.label}</span><span className="mt-1 block text-[9px] font-normal text-slate-500">{slot.time || `${slot.start}–${slot.end}`}</span></th>)}</tr></thead><tbody>{DAYS.slice(0, 5).map((day, dayIndex) => <tr key={day} className="border-t border-ink-border"><th className="border-r border-ink-border bg-ink-900/45 px-4 py-5 text-left font-bold text-white">{day}</th>{WEEK_SLOTS.map((slot, slotIndex) => {
+          if (slot.break || slot.lunch) return <td key={slotIndex} className="border-r border-ink-border bg-signal-blue/5 px-2 py-4 font-semibold uppercase tracking-wider text-signal-blue [writing-mode:vertical-rl]">{slot.label}</td>;
+          const allocation = rows.find((row) => row.dayOfWeek === dayIndex + 1 && row.startTime <= slot.start && row.endTime >= slot.end);
+          return <td key={slotIndex} className="border-r border-ink-border px-2 py-3">{allocation ? <div className="rounded-lg border border-signal-blue/15 bg-signal-blue/5 p-2"><p className="font-bold text-white">{allocation.subject.code}</p><p className="mt-1 text-[9px] text-slate-400">{allocation.faculty.name}</p><p className="mt-1 text-[9px] font-semibold text-signal-blue">{allocation.batch.name}</p></div> : <span className="text-slate-700">—</span>}</td>;
+        })}</tr>)}</tbody></table></div>{!rows.length && <p className="p-6 text-center text-sm text-slate-500">Admin schedule import confirm pannina full timetable inga varum.</p>}
+      </section>}
+      {admin && <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60"><table className="w-full text-sm"><thead className="bg-ink-900 text-slate-400"><tr>{['Day','Time','Faculty','Subject','Class / Section','Room',''].map((x) => <th key={x} className="px-4 py-3 text-left">{x}</th>)}</tr></thead><tbody>{rows.map((r) => <tr key={r.id} className="border-t border-ink-border text-slate-200"><td className="px-4 py-3">{DAYS[r.dayOfWeek - 1]}</td><td className="px-4 py-3">{r.startTime} – {r.endTime}</td><td className="px-4 py-3">{r.faculty.name}</td><td className="px-4 py-3">{r.subject.code} · {r.subject.name}</td><td className="px-4 py-3">{r.batch.name}</td><td className="px-4 py-3">{r.room.name}</td><td><button onClick={() => remove(r.id)} className="text-red-400"><Trash2 size={16}/></button></td></tr>)}</tbody></table>{!rows.length && <p className="p-8 text-center text-slate-500">No class schedules assigned yet.</p>}</div>}
     </div></main></div>;
 }

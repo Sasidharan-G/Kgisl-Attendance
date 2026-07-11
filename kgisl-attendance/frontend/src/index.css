@@ -58,3 +58,160 @@ body {
     animation: none !important;
   }
 }
+
+/* Authenticated workspace — liquid glass theme. The :has(aside) scope keeps
+   the public portal and all login screens exactly as they are. */
+body:has(aside) {
+  background-color: #070b1d;
+  background-image:
+    radial-gradient(900px 620px at 12% 8%, rgba(56, 189, 248, 0.22), transparent 68%),
+    radial-gradient(760px 600px at 92% 14%, rgba(99, 102, 241, 0.18), transparent 70%),
+    radial-gradient(820px 580px at 60% 100%, rgba(34, 211, 238, 0.10), transparent 72%),
+    linear-gradient(145deg, #050817 0%, #0b1430 46%, #070b1d 100%);
+  background-attachment: fixed;
+}
+
+body:has(aside)::before,
+body:has(aside)::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 9999px;
+  filter: blur(72px);
+  opacity: 0.24;
+  pointer-events: none;
+  animation: liquid-float 14s ease-in-out infinite alternate;
+}
+
+body:has(aside)::before {
+  top: 8%;
+  left: 23%;
+  background: #38bdf8;
+}
+
+body:has(aside)::after {
+  right: 4%;
+  bottom: 4%;
+  background: #6366f1;
+  animation-delay: -7s;
+}
+
+body:has(aside) .bg-ink-950 {
+  background-color: transparent !important;
+}
+
+body:has(aside) aside {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: linear-gradient(180deg, rgba(10, 20, 48, 0.88), rgba(4, 9, 25, 0.76)) !important;
+  border-color: rgba(255, 255, 255, 0.11) !important;
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.20);
+  -webkit-backdrop-filter: blur(26px) saturate(145%);
+  backdrop-filter: blur(26px) saturate(145%);
+}
+
+body:has(aside) aside nav button,
+body:has(aside) aside > button {
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+body:has(aside) aside nav button:hover,
+body:has(aside) aside > button:hover {
+  transform: translateX(4px);
+  border-color: rgba(56, 189, 248, 0.38) !important;
+  background: rgba(56, 189, 248, 0.10) !important;
+  box-shadow: 0 0 26px rgba(56, 189, 248, 0.16);
+}
+
+body:has(aside) main [class*='bg-ink-850'],
+body:has(aside) main .shadow-card {
+  background: linear-gradient(145deg, rgba(18, 42, 83, 0.50), rgba(7, 16, 43, 0.62)) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+    0 18px 50px -26px rgba(0, 0, 0, 0.8);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+body:has(aside) main .rounded-2xl,
+body:has(aside) main .rounded-xl {
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+
+body:has(aside) main .rounded-2xl:hover {
+  border-color: rgba(56, 189, 248, 0.36) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 22px 58px -28px rgba(56, 189, 248, 0.58),
+    0 0 28px rgba(99, 102, 241, 0.12);
+}
+
+body:has(aside) main button:not(:disabled) {
+  transition: transform 170ms ease, filter 170ms ease, box-shadow 170ms ease;
+}
+
+body:has(aside) main button:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 10px 30px -12px rgba(56, 189, 248, 0.65), 0 0 20px rgba(99, 102, 241, 0.16);
+}
+
+body:has(aside) main input,
+body:has(aside) main select,
+body:has(aside) main textarea {
+  background: rgba(4, 10, 29, 0.64) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+body:has(aside) main input:focus,
+body:has(aside) main select:focus,
+body:has(aside) main textarea:focus {
+  border-color: rgba(56, 189, 248, 0.72) !important;
+  background: rgba(8, 20, 50, 0.82) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.10), 0 0 26px rgba(56, 189, 248, 0.14);
+}
+
+body:has(aside) main thead {
+  background: rgba(3, 8, 24, 0.52) !important;
+}
+
+body:has(aside) main tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+body:has(aside) main tbody tr:hover {
+  background: rgba(56, 189, 248, 0.08) !important;
+  box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.74);
+}
+
+body:has(aside) header h1,
+body:has(aside) main h2 {
+  background: linear-gradient(110deg, #f8fafc, #bae6fd 48%, #a5b4fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+body:has(aside) ::-webkit-scrollbar { width: 9px; height: 9px; }
+body:has(aside) ::-webkit-scrollbar-track { background: rgba(3, 8, 24, 0.50); }
+body:has(aside) ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.34); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+body:has(aside) ::-webkit-scrollbar-thumb:hover { background-color: rgba(56, 189, 248, 0.62); }
+
+@keyframes liquid-float {
+  from { transform: translate3d(-3%, -4%, 0) scale(0.92); }
+  to { transform: translate3d(8%, 7%, 0) scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(aside)::before,
+  body:has(aside)::after { animation: none; }
+  body:has(aside) * { scroll-behavior: auto !important; }
+}

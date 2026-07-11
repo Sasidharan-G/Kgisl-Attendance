@@ -97,7 +97,7 @@ export const listStudents = (batchId) => api.get('/students', { params: batchId 
 export const createStudent = (payload) => api.post('/students', payload).then((r) => r.data.data);
 export const deleteStudent = (id) => api.delete(`/students/${id}`).then((r) => r.data);
 export const listHistory = () => api.get('/history').then((r) => r.data.data);
-export const listAllocations = () => api.get('/timetable').then((r) => r.data.data);
+export const listAllocations = (scope) => api.get('/timetable', { params: scope ? { scope } : {} }).then((r) => r.data.data);
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);
 

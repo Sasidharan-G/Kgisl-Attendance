@@ -11,7 +11,19 @@ const include = { faculty: { select: { id: true, name: true } }, subject: true, 
 
 export async function listAllocationsHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const where = req.auth!.role === 'FACULTY' ? { facultyId: req.auth!.sub } : {};
+    let where = {};
+    if (req.auth!.role === 'FACULTY') {
+      if (req.query.scope === 'section') {
+        const ownAllocations = await prisma.timetableAllocation.findMany({
+          where: { facultyId: req.auth!.sub },
+          select: { batchId: true },
+          distinct: ['batchId'],
+        });
+        where = { batchId: { in: ownAllocations.map((item) => item.batchId) } };
+      } else {
+        where = { facultyId: req.auth!.sub };
+      }
+    }
     const data = await prisma.timetableAllocation.findMany({ where, include, orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] });
     res.json({ success: true, data });
   } catch (err) { next(err); }
