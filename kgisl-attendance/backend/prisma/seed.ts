@@ -128,6 +128,36 @@ async function main() {
     }
   });
 
+  const timetableFaculty = [
+    { name: 'Surendhran D', email: 'surendhran.d@kgisl.edu' },
+    { name: 'Gomathi R', email: 'gomathi.r@kgisl.edu' },
+    { name: 'Saranya S', email: 'saranya.s@kgisl.edu' },
+    { name: 'Yamunarani K', email: 'yamunarani.k@kgisl.edu' },
+    { name: 'Chithra M', email: 'chithra.m@kgisl.edu' },
+  ];
+  for (const faculty of timetableFaculty) {
+    await prisma.faculty.upsert({
+      where: { email: faculty.email },
+      update: { name: faculty.name },
+      create: { ...faculty, passwordHash },
+    });
+  }
+
+  const timetableSubjects = [
+    { code: 'AIML', name: 'Artificial Intelligence and Machine Learning' },
+    { code: 'PHP', name: 'PHP Programming' },
+    { code: 'OSC', name: 'Open Source Computing' },
+    { code: 'NSC', name: 'Network Security and Cryptography' },
+    { code: 'AIML-LAB', name: 'AI and ML Laboratory' },
+    { code: 'CC', name: 'Cloud Computing' },
+    { code: 'OSC-LAB', name: 'Open Source Computing Laboratory' },
+    { code: 'PLAC', name: 'Placement Training' },
+    { code: 'TECH', name: 'Technical Training' },
+  ];
+  for (const subject of timetableSubjects) {
+    await prisma.subject.upsert({ where: { code: subject.code }, update: { name: subject.name }, create: subject });
+  }
+
   await prisma.room.upsert({
     where: { name: 'MCA Lab' },
     update: {},
