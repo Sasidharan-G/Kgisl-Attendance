@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { listBatches, listStudents } from '../services/api.js';
-import { Search, GraduationCap, Users } from 'lucide-react';
+import { createStudent, listBatches, listStudents } from '../services/api.js';
+import { Search, GraduationCap, Plus, Users, X } from 'lucide-react';
+
+const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
 export default function StudentsPage() {
   const [students, setStudents] = useState([]);
@@ -11,6 +13,10 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -25,6 +31,25 @@ export default function StudentsPage() {
       }
     })();
   }, []);
+
+  const handleAddStudent = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const student = await createStudent(form);
+      setStudents((current) => [...current, student]);
+      setSelectedBatch(student.batchId);
+      setForm(emptyForm);
+      setShowAddForm(false);
+      setSuccess(`${student.name} added to ${student.batchName}`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to add student');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const normalizedSearch = search.trim().toLowerCase();
   const filtered = students.filter((s) =>
@@ -54,7 +79,12 @@ export default function StudentsPage() {
               </div>
             </div>
 
-            <div className="relative max-w-sm w-full">
+            <div className="flex w-full max-w-xl gap-3">
+              <button onClick={() => setShowAddForm((value) => !value)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-signal-red px-4 py-2 text-sm font-bold text-white hover:brightness-110">
+                {showAddForm ? <X size={16} /> : <Plus size={16} />}
+                {showAddForm ? 'Cancel' : 'Add Student'}
+              </button>
+              <div className="relative w-full">
               <span className="absolute inset-y-0 left-3 flex items-center text-slate-500">
                 <Search size={16} />
               </span>
@@ -65,14 +95,49 @@ export default function StudentsPage() {
                 placeholder="Search by name or roll number..."
                 className="w-full pl-10 pr-4 py-2 bg-ink-900 border border-ink-border rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:border-signal-red transition"
               />
+              </div>
             </div>
           </div>
+
+          {showAddForm && (
+            <form onSubmit={handleAddStudent} className="mb-6 rounded-2xl border border-ink-border bg-ink-850/60 p-5">
+              <div className="mb-4">
+                <h3 className="font-bold text-white">Add Student</h3>
+                <p className="text-xs text-slate-400">Choose the section and enter the student's login details.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ['name', 'Student Name', 'text'],
+                  ['rollNo', 'Roll Number', 'text'],
+                  ['regNo', 'Register Number', 'text'],
+                  ['email', 'College Email', 'email'],
+                  ['password', 'Initial Password', 'text'],
+                ].map(([key, label, type]) => (
+                  <label key={key} className="text-xs font-semibold text-slate-400">
+                    {label}
+                    <input required type={type} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="mt-1.5 w-full rounded-xl border border-ink-border bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-signal-red" />
+                  </label>
+                ))}
+                <label className="text-xs font-semibold text-slate-400">
+                  Section
+                  <select required value={form.batchId} onChange={(e) => setForm({ ...form, batchId: e.target.value })} className="mt-1.5 w-full rounded-xl border border-ink-border bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-signal-red">
+                    <option value="">Select section</option>
+                    {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.name}</option>)}
+                  </select>
+                </label>
+              </div>
+              <button disabled={saving} className="mt-5 rounded-xl bg-signal-red px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                {saving ? 'Adding...' : 'Add Student'}
+              </button>
+            </form>
+          )}
 
           {error && (
             <p className="rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300 mb-6">
               {error}
             </p>
           )}
+          {success && <p className="mb-6 rounded-lg border border-signal-green/30 bg-signal-green/10 px-4 py-2.5 text-xs text-signal-green">{success}</p>}
 
           <div className="mb-6">
             <div className="mb-3">
