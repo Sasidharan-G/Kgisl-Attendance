@@ -9,6 +9,7 @@ RUN npm run build
 # Build stage for backend
 FROM node:18-alpine AS backend-builder
 WORKDIR /app/backend
+RUN apk add --no-cache openssl
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 RUN npm ci
@@ -19,6 +20,7 @@ RUN npm run build
 # Production runtime image
 FROM node:18-alpine
 WORKDIR /app
+RUN apk add --no-cache openssl
 
 # Copy backend dependencies and build
 COPY --from=backend-builder /app/backend/package*.json ./backend/
@@ -37,5 +39,5 @@ ENV NODE_ENV=production
 ENV PORT=4000
 
 WORKDIR /app/backend
-# Start the backend server
-CMD ["npm", "start"]
+# Keep the Render database schema and idempotent seed data ready before boot.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run prisma:seed && npm start"]
