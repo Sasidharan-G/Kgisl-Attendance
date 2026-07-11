@@ -4,7 +4,7 @@ import { listFacultyHandler, createFacultyHandler } from '../controllers/faculty
 
 const router = Router();
 
-router.get('/', requireAuth('FACULTY'), listFacultyHandler);
-router.post('/', requireAuth('FACULTY'), createFacultyHandler);
+router.get('/', requireAuth('ADMIN'), listFacultyHandler);
+router.post('/', requireAuth('ADMIN'), createFacultyHandler);
 
 export default router;

@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 
-export async function listStudentsHandler(_req: Request, res: Response, next: NextFunction) {
+export async function listStudentsHandler(req: Request, res: Response, next: NextFunction) {
   try {
+    const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : undefined;
     const students = await prisma.student.findMany({
+      where: batchId ? { batchId } : undefined,
       include: {
         batch: true,
         records: {
@@ -41,6 +43,7 @@ export async function listStudentsHandler(_req: Request, res: Response, next: Ne
         rollNo: student.rollNo,
         email: student.email,
         batchName: student.batch.name,
+        batchId: student.batchId,
         lastScanTime: lastScan ? lastScan.scanTime : null,
         attendancePercentage: percentage,
         totalSessions: totalBatchSessions,

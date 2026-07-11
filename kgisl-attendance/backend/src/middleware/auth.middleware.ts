@@ -5,7 +5,7 @@ import { Errors } from '../utils/AppError';
 
 export interface AuthPayload {
   sub: string; // user id
-  role: 'FACULTY' | 'STUDENT';
+  role: 'ADMIN' | 'FACULTY' | 'STUDENT';
   deviceId?: string;
 }
 
@@ -18,7 +18,7 @@ declare global {
   }
 }
 
-export function requireAuth(...allowedRoles: Array<'FACULTY' | 'STUDENT'>) {
+export function requireAuth(...allowedRoles: Array<'ADMIN' | 'FACULTY' | 'STUDENT'>) {
   return (req: Request, _res: Response, next: NextFunction) => {
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) return next(Errors.INVALID_JWT());
@@ -45,7 +45,7 @@ export function signAccessToken(payload: AuthPayload): string {
 
 export interface RefreshPayload {
   sub: string;
-  role: 'FACULTY' | 'STUDENT';
+  role: 'ADMIN' | 'FACULTY' | 'STUDENT';
   jti: string; // unique id for this specific refresh token — enables single-token revocation
   familyId: string; // shared across all tokens descended from one login — enables reuse-detection revocation
 }

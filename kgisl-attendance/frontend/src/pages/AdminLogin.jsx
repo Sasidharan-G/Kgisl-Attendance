@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, User, KeyRound, Eye, EyeOff, ArrowRight, BadgeCheck } from 'lucide-react';
-import { loginFaculty, registerFaculty } from '../services/api.js';
+import { loginAdmin, loginFaculty } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Loader from '../components/Loader.jsx';
 
-export default function AdminLogin() {
-  const [isRegister, setIsRegister] = useState(true);
+export default function AdminLogin({ portal = 'ADMIN' }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,21 +21,16 @@ export default function AdminLogin() {
     setError('');
     setLoading(true);
     try {
-      let res;
-      if (isRegister) {
-        res = await registerFaculty({ name, email, password });
-      } else {
-        res = await loginFaculty(email, password);
-      }
+      const res = portal === 'ADMIN' ? await loginAdmin(email, password) : await loginFaculty(email, password);
       const { token, refreshToken, user } = res;
       login(token, refreshToken, user);
       setIsSuccessLoading(true);
       setTimeout(() => {
         setIsSuccessLoading(false);
-        navigate('/faculty/dashboard');
+        navigate(portal === 'ADMIN' ? '/admin/timetable' : '/faculty/dashboard');
       }, 2000);
     } catch (err) {
-      setError(err.message || (isRegister ? 'Registration failed' : 'Login failed'));
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -85,13 +79,13 @@ export default function AdminLogin() {
           <div className="w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center mb-4">
             <ShieldCheck size={28} className="text-black" strokeWidth={2.5} />
           </div>
-          <h2 className="text-2xl font-bold text-black tracking-wide">Admin Portal</h2>
+          <h2 className="text-2xl font-bold text-black tracking-wide">{portal === 'ADMIN' ? 'Admin' : 'Faculty'} Portal</h2>
           <p className="text-xs text-black/70 font-medium mb-6">
-            {isRegister ? 'Register for a new admin account' : 'Access the administration dashboard'}
+            {portal === 'ADMIN' ? 'Full administration access' : 'Access assigned classes and attendance'}
           </p>
 
           <form onSubmit={handleSubmit} className="w-full space-y-4">
-            {isRegister && (
+            {false && (
               <div className="relative overflow-hidden rounded-[1rem]">
                 <input
                   type="text"
@@ -138,31 +132,6 @@ export default function AdminLogin() {
               </button>
             </div>
 
-            {!isRegister && (
-              <div className="flex items-center justify-between text-xs px-1">
-                <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-500 hover:text-slate-800 transition-colors">
-                  <input type="checkbox" className="w-3.5 h-3.5 accent-signal-blue rounded-sm border-slate-300" />
-                  Remember me
-                </label>
-                <a href="#" className="font-medium text-signal-blue hover:text-blue-700 underline-offset-2 hover:underline transition-all">
-                  Forgot Password?
-                </a>
-              </div>
-            )}
-
-            <div className="text-center mt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRegister(!isRegister);
-                  setError('');
-                }}
-                className="text-xs text-slate-500 hover:text-signal-blue transition-colors underline-offset-2 hover:underline font-medium"
-              >
-                {isRegister ? 'Do you have an account? Login' : "Don't have an account? Register"}
-              </button>
-            </div>
-
             {error && (
               <div className="w-full bg-red-500/20 border border-red-500/50 rounded-lg p-2 text-center text-xs font-semibold text-red-200">
                 {error}
@@ -170,7 +139,7 @@ export default function AdminLogin() {
             )}
 
             <button type="submit" disabled={loading} className="w-full py-3.5 font-bold tracking-wider uppercase text-sm bg-signal-blue hover:bg-blue-600 text-white rounded-[1rem] transition-all shadow-md hover:shadow-lg hover:-translate-y-[1px] active:translate-y-0 flex items-center justify-center gap-2 mt-4">
-              {loading ? (isRegister ? 'Registering...' : 'Logging in...') : (isRegister ? 'Register' : 'Sign In')}
+              {loading ? 'Logging in...' : 'Sign In'}
               {!loading && <ArrowRight size={16} strokeWidth={2.5} />}
             </button>
           </form>

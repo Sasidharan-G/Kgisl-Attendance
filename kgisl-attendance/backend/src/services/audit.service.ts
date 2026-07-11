@@ -2,7 +2,7 @@ import { Request } from 'express';
 import { prisma } from '../config/prisma';
 import { logger } from '../utils/logger';
 
-export type ActorType = 'FACULTY' | 'STUDENT' | 'SYSTEM';
+export type ActorType = 'ADMIN' | 'FACULTY' | 'STUDENT' | 'SYSTEM';
 
 export interface AuditEntry {
   actorId?: string | null;

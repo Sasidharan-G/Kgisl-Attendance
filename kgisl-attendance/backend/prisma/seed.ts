@@ -2,22 +2,29 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import process from 'process';
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
 async function main() {
   const passwordHash = await bcrypt.hash('password123', 10);
+  const adminPasswordHash = await bcrypt.hash('Admin@123', 10);
 
-  // 1. Create a Batch
-  const batch = await prisma.batch.upsert({
-    where: { name: 'MCA - 2025' },
-    update: {},
-    create: {
-      name: 'MCA - 2025',
-    },
+  await prisma.admin.upsert({
+    where: { email: 'admin@kgisl.edu' }, update: {},
+    create: { name: 'System Administrator', email: 'admin@kgisl.edu', passwordHash: adminPasswordHash },
   });
 
-  const studentsData = [
+  // These are the only valid MCA sections.
+  const validSections = ['MCA-A', 'MCA-B', 'MCA-C'] as const;
+  for (const name of validSections) {
+    await prisma.batch.upsert({ where: { name }, update: {}, create: { name } });
+  }
+
+  /* Previous partial test list retained only in git history. The authoritative
+     section-wise student roster is imported from students.tsv below. */
+  const legacyStudentsData = [
     { regNo: '2538M0054', rollNo: '25MCA01', name: 'ABDULLAH NIYAS A' },
     { regNo: '2538M0060', rollNo: '25MCA07', name: 'ALAGIRI K' },
     { regNo: '2538M0061', rollNo: '25MCA08', name: 'AMAL C SIMON' },
@@ -43,21 +50,59 @@ async function main() {
     { regNo: '2538M0171', rollNo: '25MCA118', name: 'VIGNESH B' },
     { regNo: '2538M0174', rollNo: '25MCA121', name: 'VINOTHKUMAR' },
   ];
+  // Keep the legacy setup compatible while the roster import owns student data.
+  void legacyStudentsData;
 
   console.log('Seeding students...');
 
+  const rosterPath = path.join(__dirname, 'students.tsv');
+  const rows = fs.readFileSync(rosterPath, 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1);
+  const studentsData = rows.map((row, index) => {
+    const columns = row.split('\t');
+    if (columns.length < 7) throw new Error(`Invalid student row ${index + 2}`);
+    const [, section, rollNo, regNo, name, email, initialPassword] = columns.map((value) => value.trim());
+    if (!section || !rollNo || !regNo || !name || !email || !initialPassword) {
+      throw new Error(`Missing required student data at row ${index + 2}`);
+    }
+    return { section, rollNo, regNo, name, email: email.toLowerCase(), initialPassword };
+  });
+
+  const duplicateCheck = (field: 'rollNo' | 'email') => {
+    const values = studentsData.map((student) => student[field]);
+    const duplicates = values.filter((value, index) => values.indexOf(value) !== index);
+    if (duplicates.length) throw new Error(`Duplicate ${field}: ${[...new Set(duplicates)].join(', ')}`);
+  };
+  duplicateCheck('rollNo');
+  duplicateCheck('email');
+
+  const invalidSections = [...new Set(studentsData.map((student) => student.section))]
+    .filter((section) => !validSections.includes(section as typeof validSections[number]));
+  if (invalidSections.length) {
+    throw new Error(`Invalid section(s): ${invalidSections.join(', ')}. Allowed: ${validSections.join(', ')}`);
+  }
+
+  const sectionBatches = new Map<string, string>();
+  for (const section of [...new Set(studentsData.map((student) => student.section))]) {
+    const sectionBatch = await prisma.batch.upsert({
+      where: { name: section },
+      update: {},
+      create: { name: section },
+    });
+    sectionBatches.set(section, sectionBatch.id);
+  }
+
   for (const s of studentsData) {
-    const email = `${s.rollNo.toLowerCase()}@kgisliim.ac.in`;
-    const studentPasswordHash = await bcrypt.hash(s.rollNo, 10);
+    const studentPasswordHash = await bcrypt.hash(s.initialPassword, 10);
     await prisma.student.upsert({
       where: { rollNo: s.rollNo },
-      update: { email: email, passwordHash: studentPasswordHash },
+      update: { name: s.name, regNo: s.regNo, email: s.email, passwordHash: studentPasswordHash, batchId: sectionBatches.get(s.section)! },
       create: {
         name: s.name,
         rollNo: s.rollNo,
-        email: email,
+        regNo: s.regNo,
+        email: s.email,
         passwordHash: studentPasswordHash,
-        batchId: batch.id,
+        batchId: sectionBatches.get(s.section)!,
       },
     });
   }

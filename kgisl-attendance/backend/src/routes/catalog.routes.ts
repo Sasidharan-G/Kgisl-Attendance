@@ -4,8 +4,8 @@ import { listSubjectsHandler, listRoomsHandler, listBatchesHandler } from '../co
 
 const router = Router();
 
-router.get('/subjects', requireAuth('FACULTY'), listSubjectsHandler);
-router.get('/rooms', requireAuth('FACULTY'), listRoomsHandler);
-router.get('/batches', requireAuth('FACULTY'), listBatchesHandler);
+router.get('/subjects', requireAuth('ADMIN', 'FACULTY'), listSubjectsHandler);
+router.get('/rooms', requireAuth('ADMIN', 'FACULTY'), listRoomsHandler);
+router.get('/batches', requireAuth('ADMIN', 'FACULTY'), listBatchesHandler);
 
 export default router;

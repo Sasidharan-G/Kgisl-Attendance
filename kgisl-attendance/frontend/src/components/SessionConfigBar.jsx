@@ -46,7 +46,7 @@ export default function SessionConfigBar({
 }) {
   return (
     <div className="mx-8 flex flex-wrap items-center gap-6 rounded-xl border border-ink-border bg-ink-850/60 px-6 py-4 shadow-card">
-      <Field icon={Code2} label="Subject" value={subjectId} onChange={setSubjectId} options={subjects} loading={loadingCatalog} />
+      <Field icon={Code2} label="Admin Assigned Class / Section" value={subjectId} onChange={setSubjectId} options={subjects} loading={loadingCatalog} />
       <div className="h-8 w-px bg-ink-border hidden md:block" />
       <Field icon={Building2} label="Room" value={roomId} onChange={setRoomId} options={rooms} loading={loadingCatalog} />
       <div className="h-8 w-px bg-ink-border hidden md:block" />

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { loginFaculty, loginStudent } from '../services/auth.service';
+import { loginAdmin, loginFaculty, loginStudent } from '../services/auth.service';
 import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
 import { requestContext } from '../services/audit.service';
 import { Errors } from '../utils/AppError';
@@ -53,6 +53,13 @@ export async function facultyLoginHandler(req: Request, res: Response, next: Nex
   } catch (err) {
     next(err);
   }
+}
+
+export async function adminLoginHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email, password } = loginSchema.parse(req.body);
+    res.json(await loginAdmin(email, password, requestContext(req)));
+  } catch (err) { next(err); }
 }
 
 export async function studentLoginHandler(req: Request, res: Response, next: NextFunction) {

@@ -9,6 +9,17 @@ export interface LoginContext {
   userAgent: string | null;
 }
 
+export async function loginAdmin(email: string, password: string, ctx: LoginContext) {
+  const admin = await prisma.admin.findUnique({ where: { email } });
+  if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
+    await writeAuditLog({ actorId: admin?.id ?? null, actorType: 'ADMIN', action: 'LOGIN_FAILED', success: false, reasonCode: 'INVALID_CREDENTIALS', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { email } });
+    throw Errors.INVALID_CREDENTIALS();
+  }
+  const { accessToken, refreshToken, expiresIn } = await issueTokenPair(admin.id, 'ADMIN');
+  await writeAuditLog({ actorId: admin.id, actorType: 'ADMIN', action: 'LOGIN_SUCCESS', ip: ctx.ip, userAgent: ctx.userAgent });
+  return { token: accessToken, refreshToken, expiresIn, user: { id: admin.id, name: admin.name, email: admin.email, role: 'ADMIN' as const } };
+}
+
 export async function loginFaculty(email: string, password: string, ctx: LoginContext) {
   const faculty = await prisma.faculty.findUnique({ where: { email } });
   if (!faculty || !(await bcrypt.compare(password, faculty.passwordHash))) {

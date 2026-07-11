@@ -11,7 +11,7 @@ import StatTile from '../components/StatTile.jsx';
 import AgentChat from '../components/AgentChat.jsx';
 import ManualAttendance from '../components/ManualAttendance.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { startSession, endSession, listSubjects, listRooms, listBatches } from '../services/api.js';
+import { startSession, endSession, listAllocations } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
 
 export default function FacultyDashboard() {
@@ -20,6 +20,7 @@ export default function FacultyDashboard() {
   const currentSessionIdRef = useRef(null);
 
   const [subjects, setSubjects] = useState([]);
+  const [allocations, setAllocations] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [batches, setBatches] = useState([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -44,13 +45,15 @@ export default function FacultyDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, r, b] = await Promise.all([listSubjects(), listRooms(), listBatches()]);
-        setSubjects(s);
-        setRooms(r);
-        setBatches(b);
-        setSubjectId(s[0]?.id ?? '');
-        setRoomId(r[0]?.id ?? '');
-        setBatchId(b[0]?.id ?? '');
+        const a = await listAllocations();
+        setAllocations(a);
+        setSubjects(a.map((x) => ({ id: x.id, name: `${x.subject.code} · ${x.batch.name} · ${x.startTime}-${x.endTime}` })));
+        const first = a[0];
+        setRooms(first ? [first.room] : []);
+        setBatches(first ? [first.batch] : []);
+        setSubjectId(first?.id ?? '');
+        setRoomId(first?.roomId ?? '');
+        setBatchId(first?.batchId ?? '');
       } catch (err) {
         setCatalogError(err.message || 'Could not load subjects/rooms/batches. Run the backend seed script.');
       } finally {
@@ -58,6 +61,15 @@ export default function FacultyDashboard() {
       }
     })();
   }, []);
+
+  function selectAllocation(id) {
+    setSubjectId(id);
+    const a = allocations.find((x) => x.id === id);
+    if (a) {
+      setRooms([a.room]); setBatches([a.batch]);
+      setRoomId(a.roomId); setBatchId(a.batchId);
+    }
+  }
 
   useEffect(() => {
     const socket = getSocket();
@@ -105,9 +117,11 @@ export default function FacultyDashboard() {
   async function handleStart() {
     setStarting(true);
     try {
+      const allocation = allocations.find((x) => x.id === subjectId);
+      if (!allocation) throw new Error('Select an admin-assigned class');
       const { data: session } = await startSession({
-        facultyId: user.id,
-        subjectId,
+        allocationId: allocation.id,
+        subjectId: allocation.subjectId,
         roomId,
         batchId,
       });
@@ -155,7 +169,7 @@ export default function FacultyDashboard() {
 
         <SessionConfigBar
           subjectId={subjectId}
-          setSubjectId={setSubjectId}
+          setSubjectId={selectAllocation}
           batchId={batchId}
           setBatchId={setBatchId}
           roomId={roomId}

@@ -8,19 +8,19 @@ import { logger } from '../utils/logger';
 
 interface RedisRtRecord {
   sub: string;
-  role: 'FACULTY' | 'STUDENT';
+  role: 'ADMIN' | 'FACULTY' | 'STUDENT';
   familyId: string;
 }
 
 const TTL_SECONDS = env.JWT_REFRESH_TTL_SECONDS;
 
 /** Issues a brand-new access + refresh token pair for a fresh login (new family). */
-export async function issueTokenPair(sub: string, role: 'FACULTY' | 'STUDENT') {
+export async function issueTokenPair(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT') {
   const familyId = crypto.randomUUID();
   return mintPair(sub, role, familyId);
 }
 
-async function mintPair(sub: string, role: 'FACULTY' | 'STUDENT', familyId: string) {
+async function mintPair(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT', familyId: string) {
   const jti = crypto.randomUUID();
 
   const record: RedisRtRecord = { sub, role, familyId };

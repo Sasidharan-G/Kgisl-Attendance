@@ -14,15 +14,18 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const NAV = [
+const FACULTY_NAV = [
   { icon: ScanLine, label: 'Attendance', path: '/faculty/dashboard' },
   { icon: LayoutGrid, label: 'Dashboard', path: '/faculty/analytics' },
-  { icon: Users, label: 'Students', path: '/faculty/students' },
   { icon: BookOpen, label: 'Courses', path: '/faculty/courses' },
   { icon: CalendarDays, label: 'Timetable', path: '/faculty/timetable' },
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
   { icon: FileClock, label: 'Logs', path: '/faculty/logs' },
-  { icon: UserPlus, label: 'Add Faculty', path: '/faculty/add-faculty' },
+];
+const ADMIN_NAV = [
+  { icon: CalendarDays, label: 'Class Schedule', path: '/admin/timetable' },
+  { icon: Users, label: 'Students', path: '/admin/students' },
+  { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },
 ];
 
 export default function Sidebar() {
@@ -43,7 +46,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {NAV.map(({ icon: Icon, label, path, badge }) => {
+        {(user?.role === 'ADMIN' ? ADMIN_NAV : FACULTY_NAV).map(({ icon: Icon, label, path, badge }) => {
           const isActive = location.pathname === path;
           return (
             <button
@@ -76,7 +79,7 @@ export default function Sidebar() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="truncate text-sm font-medium text-slate-200">{user?.name ?? 'Faculty'}</p>
-          <p className="text-xs text-slate-500">Faculty</p>
+          <p className="text-xs text-slate-500">{user?.role === 'ADMIN' ? 'Administrator' : 'Faculty'}</p>
         </div>
         <ChevronDown size={14} className="text-slate-500" />
       </button>

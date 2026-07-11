@@ -13,12 +13,19 @@ const activeTimers = new Map<string, NodeJS.Timeout>();
 
 export interface StartSessionInput {
   facultyId: string;
+  allocationId: string;
   subjectId: string;
   roomId: string;
   batchId: string;
 }
 
 export async function startSession(input: StartSessionInput) {
+  const allocation = await prisma.timetableAllocation.findFirst({
+    where: { id: input.allocationId, facultyId: input.facultyId },
+  });
+  if (!allocation || allocation.subjectId !== input.subjectId || allocation.roomId !== input.roomId || allocation.batchId !== input.batchId) {
+    throw Errors.SESSION_NOT_ACTIVE();
+  }
   const session = await prisma.attendanceSession.create({
     data: {
       facultyId: input.facultyId,

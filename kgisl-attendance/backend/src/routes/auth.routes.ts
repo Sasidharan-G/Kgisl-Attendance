@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   facultyLoginHandler,
+  adminLoginHandler,
   studentLoginHandler,
   refreshHandler,
   logoutHandler,
@@ -12,6 +13,7 @@ const router = Router();
 
 router.post('/faculty/register', authRateLimiter, registerFacultyHandler);
 router.post('/faculty/login', authRateLimiter, facultyLoginHandler);
+router.post('/admin/login', authRateLimiter, adminLoginHandler);
 router.post('/student/login', authRateLimiter, studentLoginHandler);
 router.post('/refresh', authRateLimiter, refreshHandler);
 router.post('/logout', logoutHandler);

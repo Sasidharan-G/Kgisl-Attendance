@@ -4,6 +4,7 @@ import { startSession, endSession, getSessionStats, getSessionPublicInfo } from 
 import { writeAuditLog, requestContext } from '../services/audit.service';
 
 const startSchema = z.object({
+  allocationId: z.string().uuid(),
   subjectId: z.string().uuid(),
   roomId: z.string().uuid(),
   batchId: z.string().uuid(),

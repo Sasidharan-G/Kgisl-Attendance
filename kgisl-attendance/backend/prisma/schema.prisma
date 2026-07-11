@@ -24,14 +24,26 @@ model Faculty {
   createdAt DateTime @default(now())
 
   sessions AttendanceSession[]
+  allocations TimetableAllocation[]
 
   @@map("faculty")
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("admin")
 }
 
 model Student {
   id            String   @id @default(uuid())
   name          String
   rollNo        String   @unique @map("roll_no")
+  regNo         String   @unique @map("reg_no")
   batchId       String   @map("batch_id")
   email         String   @unique
   passwordHash  String
@@ -49,6 +61,7 @@ model Batch {
   name     String @unique // e.g. "MCA - II Year A"
   students Student[]
   sessions AttendanceSession[]
+  allocations TimetableAllocation[]
 
   @@map("batch")
 }
@@ -58,6 +71,7 @@ model Subject {
   name     String
   code     String @unique
   sessions AttendanceSession[]
+  allocations TimetableAllocation[]
 
   @@map("subject")
 }
@@ -70,8 +84,30 @@ model Room {
   geofenceRadiusM   Int     @default(120) @map("geofence_radius_m")
   wifiBssidWhitelist String[] @map("wifi_bssid_whitelist")
   sessions          AttendanceSession[]
+  allocations       TimetableAllocation[]
 
   @@map("room")
+}
+
+model TimetableAllocation {
+  id        String   @id @default(uuid())
+  facultyId String   @map("faculty_id")
+  subjectId String   @map("subject_id")
+  batchId   String   @map("batch_id")
+  roomId    String   @map("room_id")
+  dayOfWeek Int      @map("day_of_week")
+  startTime String   @map("start_time")
+  endTime   String   @map("end_time")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id])
+  batch   Batch   @relation(fields: [batchId], references: [id])
+  room    Room    @relation(fields: [roomId], references: [id])
+
+  @@unique([facultyId, dayOfWeek, startTime])
+  @@index([facultyId, dayOfWeek])
+  @@map("timetable_allocation")
 }
 
 // ------------------------------------------------------------
@@ -169,6 +205,7 @@ model AttendanceRecord {
 // ------------------------------------------------------------
 
 enum ActorType {
+  ADMIN
   FACULTY
   STUDENT
   SYSTEM

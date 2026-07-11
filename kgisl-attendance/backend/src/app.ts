@@ -7,6 +7,7 @@ import scanRoutes from './routes/scan.routes';
 import authRoutes from './routes/auth.routes';
 import catalogRoutes from './routes/catalog.routes';
 import facultyRoutes from './routes/faculty.routes';
+import timetableRoutes from './routes/timetable.routes';
 import studentRoutes from './routes/student.routes';
 import historyRoutes from './routes/history.routes';
 import attendanceRoutes from './routes/attendance.routes';
@@ -47,6 +48,7 @@ export function createApp() {
   app.use('/api/v1/sessions', sessionRoutes);
   app.use('/api/v1/scan', scanRoutes);
   app.use('/api/v1/faculty', facultyRoutes);
+  app.use('/api/v1/timetable', timetableRoutes);
   app.use('/api/v1/students', studentRoutes);
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/agent', agentRoutes);

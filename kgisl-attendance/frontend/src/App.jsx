@@ -25,6 +25,9 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<PortalSelect />} />
+          <Route path="/admin/timetable" element={<ProtectedRoute role="ADMIN"><TimetablePage /></ProtectedRoute>} />
+          <Route path="/admin/students" element={<ProtectedRoute role="ADMIN"><StudentsPage /></ProtectedRoute>} />
+          <Route path="/admin/faculty" element={<ProtectedRoute role="ADMIN"><AddFacultyPage /></ProtectedRoute>} />
           <Route
             path="/faculty/dashboard"
             element={

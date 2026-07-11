@@ -1,144 +1,52 @@
+import { useEffect, useState } from 'react';
+import { CalendarDays, Plus, Trash2 } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { CalendarDays } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
+import { createAllocation, deleteAllocation, listAllocations, listBatches, listFaculty, listRooms, listSubjects } from '../services/api.js';
 
-const PERIODS = [
-  { name: 'First', time: '9:10 AM - 10:00 AM' },
-  { name: 'Second', time: '10:00 AM - 10:50 AM' },
-  { name: 'Third', time: '11:10 AM - 12:00 PM' },
-  { name: 'Fourth', time: '12:00 PM - 12:50 PM' },
-  { name: 'Fifth', time: '1:40 PM - 2:30 PM' },
-  { name: 'Sixth', time: '2:30 PM - 3:20 PM' },
-  { name: 'Seven', time: '3:30 PM - 4:20 PM' },
-];
-
-const TIMETABLE_ROWS = [
-  {
-    day: 'I',
-    periods: ['33-B\nSURENDREN', '33-B\nSURENDREN', '3-EA\nDr.YEMUNARANE', '3-EA\nDr.YEMUNARANE', 'Plac\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE'],
-  },
-  {
-    day: 'II',
-    periods: ['33-A\nR.G', '33-A\nR.G', '33C\nSARANYA', '33C\nSARANYA', 'Plac\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE'],
-  },
-  {
-    day: 'III',
-    periods: ['33-P\nR.G', '33-P\nR.G', '33-P\nR.G', '33-A\nR.G', 'Plac\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE'],
-  },
-  {
-    day: 'IV',
-    periods: ['33D\nDr.YEMUNARANE', '33D\nDr.YEMUNARANE', '33D\nDr.YEMUNARANE', '33C\nSARANYA', 'Plac\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE'],
-  },
-  {
-    day: 'V',
-    periods: ['33-Q\nSURENDREN', '33-Q\nSURENDREN', '33-Q\nSURENDREN', '33-B\nSURENDREN', 'Plac\nDr.YEMUNARANE', 'Plac\nDr.YEMUNARANE', 'TECH\nDr.YEMUNARANE'],
-  },
-];
-
-const SUBJECTS_INFO = [
-  { sno: 1, code: 'Plac', name: 'Aptitude and Communication', short: 'Plac', marks: 100, hours: 6, staff: 'Yemunarane Kumaravel', initial: 'Dr.YEMUNARANE' },
-  { sno: 2, code: 'Tech', name: 'Technical', short: 'TECH', marks: 100, hours: 9, staff: 'Yemunarane Kumaravel', initial: 'Dr.YEMUNARANE' },
-  { sno: 3, code: '33Q', name: 'Artificial Intelligence and Machine Learning Lab', short: '33-Q', marks: 100, hours: 3, staff: 'D Surendren', initial: 'SURENDREN' },
-  { sno: 4, code: '33P', name: 'Open Source Computing Lab', short: '33-P', marks: 100, hours: 3, staff: 'Gomathi R', initial: 'R.G' },
-  { sno: 5, code: '33B', name: 'Artificial Intelligence and Machine Learning (33B)', short: '33-B', marks: 100, hours: 3, staff: 'D Surendren', initial: 'SURENDREN' },
-  { sno: 6, code: '3EA', name: 'PHP Programming - 3EA', short: '3-EA', marks: 100, hours: 2, staff: 'Yemunarane Kumaravel', initial: 'Dr.YEMUNARANE' },
-  { sno: 7, code: '33A', name: 'Open Source Computing (33A)', short: '33-A', marks: 100, hours: 3, staff: 'Gomathi R', initial: 'R.G' },
-  { sno: 8, code: '33C', name: 'Network security and cryptography', short: '33C', marks: 100, hours: 3, staff: 'Saranya S', initial: 'SARANYA' },
-  { sno: 9, code: '33D', name: 'Cloud Computing', short: '33D', marks: 100, hours: 3, staff: 'Yemunarane Kumaravel', initial: 'Dr.YEMUNARANE' },
-];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const initial = { facultyId: '', subjectId: '', batchId: '', roomId: '', dayOfWeek: 1, startTime: '09:10', endTime: '10:00' };
 
 export default function TimetablePage() {
-  return (
-    <div className="flex min-h-screen bg-ink-950">
-      <Sidebar />
+  const { user } = useAuth();
+  const admin = user?.role === 'ADMIN';
+  const [rows, setRows] = useState([]);
+  const [catalog, setCatalog] = useState({ faculty: [], subjects: [], batches: [], rooms: [] });
+  const [form, setForm] = useState(initial);
+  const [error, setError] = useState('');
 
-      <main className="flex-1 min-w-0 pb-10">
-        <TopBar connected={true} />
+  async function load() {
+    const allocations = await listAllocations();
+    setRows(allocations);
+    if (admin) {
+      const [faculty, subjects, batches, rooms] = await Promise.all([listFaculty(), listSubjects(), listBatches(), listRooms()]);
+      setCatalog({ faculty, subjects, batches, rooms });
+      setForm((f) => ({ ...f, facultyId: f.facultyId || faculty[0]?.id || '', subjectId: f.subjectId || subjects[0]?.id || '', batchId: f.batchId || batches[0]?.id || '', roomId: f.roomId || rooms[0]?.id || '' }));
+    }
+  }
+  useEffect(() => { load().catch((e) => setError(e.message)); }, []);
 
-        <div className="px-8 mt-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-signal-amber/10 border border-signal-amber/20 text-signal-amber">
-              <CalendarDays size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">Department Timetable</h2>
-              <p className="text-sm text-slate-400">Class schedule & subject hours distribution</p>
-            </div>
-          </div>
+  async function submit(e) {
+    e.preventDefault(); setError('');
+    try { await createAllocation({ ...form, dayOfWeek: Number(form.dayOfWeek) }); await load(); }
+    catch (e) { setError(e.message || 'Could not assign class'); }
+  }
 
-          {/* Timetable Grid Table */}
-          <div className="rounded-2xl border border-ink-border bg-ink-850/60 shadow-card overflow-hidden mb-8">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-center text-sm">
-                <thead>
-                  <tr className="border-b border-ink-border bg-ink-900 text-slate-400 font-semibold">
-                    <th className="px-4 py-5 border-r border-ink-border/50">Day Order / Period</th>
-                    {PERIODS.map((p, idx) => (
-                      <th key={idx} className="px-4 py-3 border-r border-ink-border/50 last:border-r-0 leading-tight">
-                        <div className="text-white font-bold">{p.name}</div>
-                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{p.time}</div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-border/50">
-                  {TIMETABLE_ROWS.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-ink-800/20 transition-colors">
-                      <td className="px-4 py-5 bg-ink-900/40 text-white font-bold border-r border-ink-border/50 font-display">
-                        {row.day}
-                      </td>
-                      {row.periods.map((cell, cidx) => {
-                        const [code, teacher] = cell.split('\n');
-                        return (
-                          <td key={cidx} className="px-4 py-4 border-r border-ink-border/50 last:border-r-0 leading-tight">
-                            <span className="font-semibold text-slate-200 block text-xs">{code}</span>
-                            <span className="text-[10px] text-slate-500 block mt-1 font-medium">{teacher}</span>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+  async function remove(id) { await deleteAllocation(id); await load(); }
+  const field = (key, options) => <select value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{options.map((x) => <option key={x.id} value={x.id}>{x.name || x.code}</option>)}</select>;
 
-          {/* Subjects Details reference */}
-          <div className="rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6">
-            <h3 className="text-base font-bold text-white mb-4">Subject References</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-ink-border text-slate-400 font-semibold">
-                    <th className="pb-3 pr-4">S.No</th>
-                    <th className="pb-3 px-4">Subject Code</th>
-                    <th className="pb-3 px-4">Subject Name</th>
-                    <th className="pb-3 px-4">Short</th>
-                    <th className="pb-3 px-4 text-center">Marks</th>
-                    <th className="pb-3 px-4 text-center">Hours/Week</th>
-                    <th className="pb-3 pl-4">Staff Handled By</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-border/40">
-                  {SUBJECTS_INFO.map((sub) => (
-                    <tr key={sub.sno} className="hover:bg-ink-800/10 transition-colors">
-                      <td className="py-3 pr-4 text-slate-500 font-mono">{sub.sno}</td>
-                      <td className="py-3 px-4 font-mono text-signal-amber font-semibold">{sub.code}</td>
-                      <td className="py-3 px-4 text-white font-medium">{sub.name}</td>
-                      <td className="py-3 px-4 text-slate-400 font-semibold">{sub.short}</td>
-                      <td className="py-3 px-4 text-center text-slate-400 font-mono">{sub.marks}</td>
-                      <td className="py-3 px-4 text-center text-slate-400 font-mono font-semibold">{sub.hours}</td>
-                      <td className="py-3 pl-4 text-slate-300">
-                        {sub.staff} <span className="text-[10px] text-slate-500 ml-1 font-mono">({sub.initial})</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
+  return <div className="flex min-h-screen bg-ink-950"><Sidebar /><main className="flex-1 min-w-0 pb-10"><TopBar connected />
+    <div className="px-8 mt-6">
+      <div className="flex items-center gap-3 mb-6"><CalendarDays className="text-signal-amber" /><div><h2 className="text-xl font-bold text-white">{admin ? 'Class Schedule Assignment' : 'My Assigned Timetable'}</h2><p className="text-sm text-slate-400">{admin ? 'Assign faculty, subject, class/section, room and time' : 'Only these assigned classes can start attendance sessions'}</p></div></div>
+      {admin && <form onSubmit={submit} className="mb-6 grid grid-cols-2 xl:grid-cols-4 gap-3 rounded-2xl border border-ink-border bg-ink-850/60 p-5">
+        {field('facultyId', catalog.faculty)}{field('subjectId', catalog.subjects)}{field('batchId', catalog.batches)}{field('roomId', catalog.rooms)}
+        <select value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{DAYS.map((d, i) => <option key={d} value={i + 1}>{d}</option>)}</select>
+        <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-white" />
+        <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-white" />
+        <button className="flex items-center justify-center gap-2 rounded-lg bg-signal-blue px-4 py-2 font-semibold text-white"><Plus size={16}/>Assign Class</button>
+      </form>}
+      {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
+      <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60"><table className="w-full text-sm"><thead className="bg-ink-900 text-slate-400"><tr>{['Day','Time','Faculty','Subject','Class / Section','Room',''].map((x) => <th key={x} className="px-4 py-3 text-left">{x}</th>)}</tr></thead><tbody>{rows.map((r) => <tr key={r.id} className="border-t border-ink-border text-slate-200"><td className="px-4 py-3">{DAYS[r.dayOfWeek - 1]}</td><td className="px-4 py-3">{r.startTime} – {r.endTime}</td><td className="px-4 py-3">{r.faculty.name}</td><td className="px-4 py-3">{r.subject.code} · {r.subject.name}</td><td className="px-4 py-3">{r.batch.name}</td><td className="px-4 py-3">{r.room.name}</td><td>{admin && <button onClick={() => remove(r.id)} className="text-red-400"><Trash2 size={16}/></button>}</td></tr>)}</tbody></table>{!rows.length && <p className="p-8 text-center text-slate-500">No class schedules assigned yet.</p>}</div>
+    </div></main></div>;
 }

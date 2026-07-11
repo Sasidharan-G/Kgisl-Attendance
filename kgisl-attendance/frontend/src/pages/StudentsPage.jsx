@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { listStudents } from '../services/api.js';
-import { Search, GraduationCap } from 'lucide-react';
+import { listBatches, listStudents } from '../services/api.js';
+import { Search, GraduationCap, Users } from 'lucide-react';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -13,8 +15,9 @@ export default function StudentsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await listStudents();
+        const [data, batchData] = await Promise.all([listStudents(), listBatches()]);
         setStudents(data);
+        setBatches(batchData);
       } catch (err) {
         setError(err.message || 'Failed to load students');
       } finally {
@@ -23,9 +26,13 @@ export default function StudentsPage() {
     })();
   }, []);
 
+  const normalizedSearch = search.trim().toLowerCase();
   const filtered = students.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.rollNo.toLowerCase().includes(search.toLowerCase())
+    (!selectedBatch || s.batchId === selectedBatch) &&
+    (
+      s.name.toLowerCase().includes(normalizedSearch) ||
+      s.rollNo.toLowerCase().includes(normalizedSearch)
+    )
   );
 
   return (
@@ -66,6 +73,25 @@ export default function StudentsPage() {
               {error}
             </p>
           )}
+
+          <div className="mb-6">
+            <div className="mb-3">
+              <h3 className="text-base font-bold text-white">Batch Distribution</h3>
+              <p className="text-xs text-slate-400">Active department batches currently configured under MCA</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {batches.map((batch) => {
+                const count = students.filter((s) => s.batchId === batch.id).length;
+                const active = selectedBatch === batch.id;
+                return <button key={batch.id} onClick={() => setSelectedBatch(active ? '' : batch.id)} className={`rounded-2xl border p-5 text-left transition ${active ? 'border-signal-blue bg-signal-blue/10 ring-2 ring-signal-blue/20' : 'border-ink-border bg-ink-850/60 hover:border-signal-blue/50'}`}>
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-signal-blue/10 text-signal-blue"><Users size={18}/></div>
+                  <p className="font-bold text-white">{batch.name}</p>
+                  <p className="mt-1 text-sm text-slate-400">{count} Students</p>
+                </button>;
+              })}
+            </div>
+            {selectedBatch && <button onClick={() => setSelectedBatch('')} className="mt-3 text-xs font-semibold text-signal-blue hover:underline">Show all batches</button>}
+          </div>
 
           <div className="rounded-2xl border border-ink-border bg-ink-850/60 shadow-card overflow-hidden">
             <div className="overflow-x-auto">

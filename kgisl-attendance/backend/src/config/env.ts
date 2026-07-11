@@ -25,7 +25,7 @@ const envSchema = z.object({
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, 'QR_HMAC_SECRET must be a 64-char hex string (256-bit)'),
 
-  QR_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(10),
+  QR_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
   QR_CLOCK_SKEW_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(2),
 
   // Geofence / GPS settings
