@@ -29,7 +29,7 @@ export default function FacultyDashboard() {
   const [subjectId, setSubjectId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [batchId, setBatchId] = useState('');
-  const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [timeLabel, setTimeLabel] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
   const [sessionActive, setSessionActive] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -39,6 +39,11 @@ export default function FacultyDashboard() {
   const [scans, setScans] = useState([]);
   const [violations, setViolations] = useState(0);
   const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTimeLabel(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load real Subject/Room/Batch options from the backend on mount so the
   // session-start request sends actual UUIDs, not display labels.
@@ -159,7 +164,7 @@ export default function FacultyDashboard() {
       <Sidebar />
 
       <main className="flex-1 min-w-0 pb-10">
-        <TopBar connected={connected} />
+        <TopBar connected={connected} sessionActive={sessionActive} />
 
         {catalogError && (
           <p className="mx-8 mb-4 rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300">
@@ -240,7 +245,7 @@ export default function FacultyDashboard() {
         </div>
 
         <div className="mt-6">
-          <ValidationStrip />
+          <ValidationStrip active={sessionActive} connected={connected} />
         </div>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 px-8">

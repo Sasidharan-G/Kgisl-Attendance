@@ -31,7 +31,7 @@ const TITLE_MAP = {
   '/faculty/add-faculty': 'Add Faculty Management',
 };
 
-export default function TopBar({ connected, notificationCount = 3 }) {
+export default function TopBar({ connected, sessionActive = false }) {
   const location = useLocation();
   const title = TITLE_MAP[location.pathname] || 'Smart Attendance';
 
@@ -43,8 +43,8 @@ export default function TopBar({ connected, notificationCount = 3 }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <StatusPill icon={Wifi} label="Network" value="IIM Wi-Fi" tone="blue" />
-        <StatusPill icon={MapPin} label="Location" value="Within Campus" tone="green" />
+        <StatusPill icon={Wifi} label="Live Connection" value={connected ? 'Connected' : 'Offline'} tone={connected ? 'green' : 'blue'} />
+        <StatusPill icon={MapPin} label="Geofence" value={sessionActive ? 'Enforced' : 'Standby'} tone={sessionActive ? 'green' : 'blue'} />
         <StatusPill
           icon={ShieldCheck}
           label="Session Security"

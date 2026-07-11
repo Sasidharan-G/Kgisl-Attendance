@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 
-export async function listSessionHistoryHandler(_req: Request, res: Response, next: NextFunction) {
+export async function listSessionHistoryHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const sessions = await prisma.attendanceSession.findMany({
+      where: { facultyId: req.auth!.sub },
       include: {
         faculty: { select: { name: true, email: true } },
         subject: { select: { name: true, code: true } },
