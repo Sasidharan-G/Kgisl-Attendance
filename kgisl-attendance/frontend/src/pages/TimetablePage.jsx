@@ -37,7 +37,6 @@ export default function TimetablePage() {
       const [faculty, subjects, batches, rooms] = await Promise.all([listFaculty(), listSubjects(), listBatches(), listRooms()]);
       setCatalog({ faculty, subjects, batches, rooms });
       setForm((f) => ({ ...f, facultyId: f.facultyId || faculty[0]?.id || '', subjectId: f.subjectId || subjects[0]?.id || '', batchId: f.batchId || batches[0]?.id || '', roomId: f.roomId || rooms[0]?.id || '' }));
-      setImportBatchId((value) => value || batches.find((b) => b.name === 'MCA-C')?.id || batches[0]?.id || '');
       setImportRoomId((value) => value || rooms[0]?.id || '');
       setFacultyMap((current) => {
         const mapped = { ...current };
@@ -57,6 +56,7 @@ export default function TimetablePage() {
   async function remove(id) { await deleteAllocation(id); await load(); }
   function analyzeFile() {
     if (!importFile) { setError('Choose the timetable image or document first'); return; }
+    if (!importBatchId) { setError('Select the class / section before analyzing the timetable'); return; }
     setError('');
     setPreview(MCA_C_TEMPLATE);
   }
@@ -90,13 +90,13 @@ export default function TimetablePage() {
         <div className="mb-4 flex items-center gap-3"><FileUp className="text-signal-blue"/><div><h3 className="font-bold text-white">Import Timetable</h3><p className="text-xs text-slate-400">Upload the II MCA-C timetable image/PDF/document, review faculty mappings, then create the schedule.</p></div></div>
         <div className="grid gap-3 md:grid-cols-3">
           <input type="file" accept="image/*,.pdf,.csv,.xlsx,.doc,.docx" onChange={(e) => { setImportFile(e.target.files?.[0] || null); setPreview([]); }} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-300" />
-          <select value={importBatchId} onChange={(e) => setImportBatchId(e.target.value)} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{catalog.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+          <select required value={importBatchId} onChange={(e) => { setImportBatchId(e.target.value); setPreview([]); }} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select class / section</option>{catalog.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
           <div className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-400">Default room will be assigned automatically</div>
         </div>
         <button type="button" onClick={analyzeFile} className="mt-3 rounded-lg bg-signal-blue px-4 py-2 text-sm font-semibold text-white">Analyze Timetable</button>
         {!!preview.length && <div className="mt-5">
           <p className="mb-3 text-sm font-bold text-white">Faculty mapping ({preview.length} classes detected)</p>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{[...new Set(preview.map((r) => r.facultyCode || r.subjectCode))].map((code) => <label key={code} className="text-xs font-semibold text-slate-400">{code}{FACULTY_NAMES[code] ? ` - ${FACULTY_NAMES[code]}` : ''}<select value={facultyMap[code] || ''} onChange={(e) => setFacultyMap({ ...facultyMap, [code]: e.target.value })} className="mt-1 w-full rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select faculty</option>{catalog.faculty.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>)}</div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{[...new Set(preview.map((r) => r.facultyCode || r.subjectCode))].map((code) => FACULTY_NAMES[code] ? <div key={code} className="rounded-lg border border-signal-green/20 bg-signal-green/5 px-3 py-2"><p className="text-xs font-semibold text-slate-400">{code}</p><p className="mt-1 text-sm font-bold text-signal-green">{FACULTY_NAMES[code]}</p></div> : <label key={code} className="text-xs font-semibold text-slate-400">{code}<select value={facultyMap[code] || ''} onChange={(e) => setFacultyMap({ ...facultyMap, [code]: e.target.value })} className="mt-1 w-full rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select faculty</option>{catalog.faculty.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>)}</div>
           <button type="button" disabled={importing} onClick={importSchedule} className="mt-4 rounded-lg bg-signal-green px-4 py-2 text-sm font-bold text-ink-950 disabled:opacity-50">{importing ? 'Creating schedule...' : 'Confirm & Create Schedule'}</button>
         </div>}
       </section>}
