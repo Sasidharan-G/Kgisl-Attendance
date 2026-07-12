@@ -9,7 +9,9 @@ import {
   Loader2,
   Camera,
   ShieldAlert,
+  History,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { submitScan, getSessionPublicInfo } from '../services/api.js';
 
@@ -52,6 +54,7 @@ function mapErrorCode(code, fallbackMessage) {
 // idle | scanning | locating | submitting | success | error
 export default function StudentScanPage() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const videoRef = useRef(null);
   const canvasRef = useRef(document.createElement('canvas'));
   const rafRef = useRef(null);
@@ -232,12 +235,12 @@ export default function StudentScanPage() {
             <p className="text-xs text-slate-500">Signed in as</p>
             <p className="text-sm font-medium text-slate-200">{user?.name}</p>
           </div>
-          <button
+          <div className="flex items-center gap-3"><button onClick={() => navigate('/student/attendance')} className="flex items-center gap-1.5 text-xs text-signal-blue"><History size={13}/>History</button><button
             onClick={logout}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300"
           >
             <LogOut size={13} /> Sign out
-          </button>
+          </button></div>
         </div>
 
         <div className="mt-8 rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6">

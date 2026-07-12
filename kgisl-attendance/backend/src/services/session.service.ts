@@ -26,6 +26,16 @@ export async function startSession(input: StartSessionInput) {
   if (!allocation || allocation.subjectId !== input.subjectId || allocation.roomId !== input.roomId || allocation.batchId !== input.batchId) {
     throw Errors.SESSION_NOT_ACTIVE();
   }
+  const active = await prisma.attendanceSession.findFirst({ where: { facultyId: input.facultyId, status: 'ACTIVE' } });
+  if (active) throw Errors.SESSION_ALREADY_ACTIVE();
+
+  const now = new Date();
+  const ist = new Date(now.getTime() + 330 * 60 * 1000);
+  const dayOfWeek = ist.getUTCDay() === 0 ? 7 : ist.getUTCDay();
+  if (allocation.dayOfWeek !== dayOfWeek) throw Errors.WRONG_TIMETABLE_DAY();
+  const minutes = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  const toMinutes = (value: string) => { const [hours, mins] = value.split(':').map(Number); return hours * 60 + mins; };
+  if (minutes < toMinutes(allocation.startTime) - 15 || minutes > toMinutes(allocation.endTime) + 15) throw Errors.OUTSIDE_PERIOD_TIME();
   const session = await prisma.attendanceSession.create({
     data: {
       facultyId: input.facultyId,
@@ -40,6 +50,14 @@ export async function startSession(input: StartSessionInput) {
   scheduleRefresh(session.sessionId);
 
   return session;
+}
+
+export async function getActiveSession(facultyId: string) {
+  return prisma.attendanceSession.findFirst({
+    where: { facultyId, status: 'ACTIVE' },
+    include: { subject: true, batch: true, room: true },
+    orderBy: { startedAt: 'desc' },
+  });
 }
 
 function scheduleRefresh(sessionId: string) {

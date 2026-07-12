@@ -81,10 +81,12 @@ export const listBatches = () => api.get('/catalog/batches').then((r) => r.data.
 
 // ---- Sessions ----
 export const startSession = (payload) => api.post('/sessions', payload).then((r) => r.data);
+export const getActiveSession = () => api.get('/sessions/active/mine').then((r) => r.data.data);
 export const endSession = (sessionId) => api.post(`/sessions/${sessionId}/end`).then((r) => r.data);
 export const getSessionStats = (sessionId) => api.get(`/sessions/${sessionId}/stats`).then((r) => r.data);
 export const getSessionPublicInfo = (sessionId) => api.get(`/sessions/${sessionId}/public`).then((r) => r.data);
 export const markManualAttendance = (sessionId, rollNo) => api.post(`/sessions/${sessionId}/manual-attendance`, { rollNo }).then((r) => r.data);
+export const correctAttendance = (sessionId, payload) => api.patch(`/sessions/${sessionId}/attendance`, payload).then((r) => r.data);
 
 // ---- Scan ----
 export const submitScan = (payload) => api.post('/scan', payload).then((r) => r.data);
@@ -94,9 +96,11 @@ export const listFaculty = () => api.get('/faculty').then((r) => r.data.data);
 export const createFaculty = (payload) => api.post('/faculty', payload).then((r) => r.data);
 export const deleteFaculty = (id) => api.delete(`/faculty/${id}`).then((r) => r.data);
 export const listStudents = (batchId) => api.get('/students', { params: batchId ? { batchId } : {} }).then((r) => r.data.data);
+export const getMyAttendance = () => api.get('/students/me/attendance').then((r) => r.data.data);
 export const createStudent = (payload) => api.post('/students', payload).then((r) => r.data.data);
 export const deleteStudent = (id) => api.delete(`/students/${id}`).then((r) => r.data);
 export const listHistory = () => api.get('/history').then((r) => r.data.data);
+export const getSessionAttendance = (sessionId) => api.get(`/history/${sessionId}`).then((r) => r.data.data);
 export const listAllocations = (scope) => api.get('/timetable', { params: scope ? { scope } : {} }).then((r) => r.data.data);
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);

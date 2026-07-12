@@ -10,7 +10,10 @@ import {
   FileClock,
   ChevronDown,
   UserPlus,
+  Menu,
+  X,
 } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -26,15 +29,18 @@ const ADMIN_NAV = [
   { icon: CalendarDays, label: 'Class Schedule', path: '/admin/timetable' },
   { icon: Users, label: 'Students', path: '/admin/students' },
   { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },
+  { icon: BarChart3, label: 'Attendance Reports', path: '/admin/analytics' },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="w-64 shrink-0 border-r border-ink-border bg-ink-900 flex flex-col">
+    <><button onClick={() => setOpen(true)} className="fixed left-4 top-4 z-40 rounded-lg border border-ink-border bg-ink-900/90 p-2 text-white md:hidden"><Menu size={20}/></button>{open && <button aria-label="Close menu" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-black/60 md:hidden"/>}<aside className={`fixed inset-y-0 left-0 z-50 w-64 shrink-0 border-r border-ink-border bg-ink-900 flex flex-col transition-transform md:sticky md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <button onClick={() => setOpen(false)} className="absolute right-3 top-3 p-2 text-slate-400 md:hidden"><X size={18}/></button>
       <div className="px-6 py-6 border-b border-ink-border">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-signal-red">
@@ -51,7 +57,7 @@ export default function Sidebar() {
           return (
             <button
               key={label}
-              onClick={() => navigate(path)}
+              onClick={() => { navigate(path); setOpen(false); }}
               className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
                 isActive
                   ? 'bg-signal-red/10 text-white border border-signal-red/25'
@@ -83,7 +89,7 @@ export default function Sidebar() {
         </div>
         <ChevronDown size={14} className="text-slate-500" />
       </button>
-    </aside>
+    </aside></>
   );
 }
 
