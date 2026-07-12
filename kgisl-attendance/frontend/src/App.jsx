@@ -11,6 +11,7 @@ import AddFacultyPage from './pages/AddFacultyPage.jsx';
 import AnalyticsDashboard from './pages/AnalyticsDashboard.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import LogsPage from './pages/LogsPage.jsx';
+import StudentAttendancePage from './pages/StudentAttendancePage.jsx';
 
 function ProtectedRoute({ role, children }) {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/admin/timetable" element={<ProtectedRoute role="ADMIN"><TimetablePage /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute role="ADMIN"><StudentsPage /></ProtectedRoute>} />
           <Route path="/admin/faculty" element={<ProtectedRoute role="ADMIN"><AddFacultyPage /></ProtectedRoute>} />
+          <Route path="/admin/analytics" element={<ProtectedRoute role="ADMIN"><AnalyticsDashboard /></ProtectedRoute>} />
           <Route
             path="/faculty/dashboard"
             element={
@@ -100,6 +102,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/student/attendance" element={<ProtectedRoute role="STUDENT"><StudentAttendancePage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

@@ -19,6 +19,9 @@ export const Errors = {
   STUDENT_NOT_FOUND: () => new AppError('STUDENT_NOT_FOUND', 'Student does not exist', 404),
   SESSION_NOT_FOUND: () => new AppError('SESSION_NOT_FOUND', 'Attendance session not found', 404),
   SESSION_NOT_ACTIVE: () => new AppError('SESSION_NOT_ACTIVE', 'Attendance session is not active', 409),
+  SESSION_ALREADY_ACTIVE: () => new AppError('SESSION_ALREADY_ACTIVE', 'End your current active session before starting another.', 409),
+  WRONG_TIMETABLE_DAY: () => new AppError('WRONG_TIMETABLE_DAY', 'This class is not allocated for today.', 403),
+  OUTSIDE_PERIOD_TIME: () => new AppError('OUTSIDE_PERIOD_TIME', 'Session can only be started within 15 minutes of its allocated period.', 403),
 
   // QR validation
   INVALID_SIGNATURE: () =>

@@ -11,7 +11,7 @@ import StatTile from '../components/StatTile.jsx';
 import AgentChat from '../components/AgentChat.jsx';
 import ManualAttendance from '../components/ManualAttendance.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { startSession, endSession, listAllocations } from '../services/api.js';
+import { startSession, endSession, getActiveSession, getSessionStats, listAllocations } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
 
 export default function FacultyDashboard() {
@@ -27,6 +27,7 @@ export default function FacultyDashboard() {
   const [catalogError, setCatalogError] = useState('');
 
   const [subjectId, setSubjectId] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
   const [roomId, setRoomId] = useState('');
   const [batchId, setBatchId] = useState('');
   const [timeLabel, setTimeLabel] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -45,6 +46,18 @@ export default function FacultyDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    getActiveSession().then(async (session) => {
+      if (!session) return;
+      currentSessionIdRef.current = session.sessionId;
+      setSessionMeta({ sessionId: session.sessionId, startedBy: user.name, startedAt: new Date(session.startedAt).toLocaleTimeString(), subject: session.subject?.name, batch: session.batch?.name, room: session.room?.name });
+      setSessionActive(true);
+      const currentStats = await getSessionStats(session.sessionId);
+      setStats(currentStats.data);
+      socketRef.current?.emit('join_session', session.sessionId);
+    }).catch(() => void 0);
+  }, [user.name]);
+
   // Load real Subject/Room/Batch options from the backend on mount so the
   // session-start request sends actual UUIDs, not display labels.
   useEffect(() => {
@@ -52,13 +65,7 @@ export default function FacultyDashboard() {
       try {
         const a = await listAllocations();
         setAllocations(a);
-        setSubjects(a.map((x) => ({ id: x.id, name: `${x.subject.code} · ${x.batch.name} · ${x.startTime}-${x.endTime}` })));
-        const first = a[0];
-        setRooms(first ? [first.room] : []);
-        setBatches(first ? [first.batch] : []);
-        setSubjectId(first?.id ?? '');
-        setRoomId(first?.roomId ?? '');
-        setBatchId(first?.batchId ?? '');
+        setSubjects([]);
       } catch (err) {
         setCatalogError(err.message || 'Could not load subjects/rooms/batches. Run the backend seed script.');
       } finally {
@@ -66,6 +73,16 @@ export default function FacultyDashboard() {
       }
     })();
   }, []);
+
+  function selectDay(day) {
+    setSelectedDay(day);
+    setSubjectId(''); setRoomId(''); setBatchId('');
+    setSubjects(allocations
+      .filter((allocation) => String(allocation.dayOfWeek) === day)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .map((allocation, index) => ({ id: allocation.id, name: `Period ${index + 1} · ${allocation.startTime}-${allocation.endTime} · ${allocation.subject.code} · ${allocation.batch.name}` })));
+    setRooms([]); setBatches([]);
+  }
 
   function selectAllocation(id) {
     setSubjectId(id);
@@ -173,6 +190,8 @@ export default function FacultyDashboard() {
         )}
 
         <SessionConfigBar
+          selectedDay={selectedDay}
+          setSelectedDay={selectDay}
           subjectId={subjectId}
           setSubjectId={selectAllocation}
           batchId={batchId}
@@ -188,6 +207,7 @@ export default function FacultyDashboard() {
           starting={starting}
           onStart={handleStart}
           onEnd={handleEnd}
+          dayAllocations={allocations.filter((allocation) => String(allocation.dayOfWeek) === selectedDay).sort((a, b) => a.startTime.localeCompare(b.startTime))}
         />
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_1fr] gap-6 px-8">

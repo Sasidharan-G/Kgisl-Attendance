@@ -140,3 +140,19 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
     next(err);
   }
 }
+
+export async function getMyAttendanceHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const student = await prisma.student.findUnique({ where: { id: req.auth!.sub }, include: { batch: true } });
+    if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
+    const sessions = await prisma.attendanceSession.findMany({
+      where: { batchId: student.batchId, status: { in: ['ENDED', 'ACTIVE'] } },
+      include: { subject: true, faculty: { select: { name: true } }, records: { where: { studentId: student.id, status: 'PRESENT' }, select: { scanTime: true } } },
+      orderBy: { startedAt: 'desc' },
+    });
+    const grouped = new Map<string, { code: string; name: string; total: number; present: number }>();
+    for (const session of sessions) { const current = grouped.get(session.subjectId) || { code: session.subject.code, name: session.subject.name, total: 0, present: 0 }; current.total += 1; if (session.records.length) current.present += 1; grouped.set(session.subjectId, current); }
+    const subjects = [...grouped.values()].map((item) => ({ ...item, absent: item.total - item.present, percentage: item.total ? Math.round(item.present / item.total * 100) : 100, shortage: item.total > 0 && item.present / item.total < 0.75 }));
+    res.json({ success: true, data: { student: { name: student.name, rollNo: student.rollNo, regNo: student.regNo, batchName: student.batch.name }, subjects, sessions: sessions.map((session) => ({ sessionId: session.sessionId, subjectCode: session.subject.code, subjectName: session.subject.name, facultyName: session.faculty.name, startedAt: session.startedAt, status: session.records.length ? 'PRESENT' : 'ABSENT', scanTime: session.records[0]?.scanTime ?? null })) } });
+  } catch (err) { next(err); }
+}

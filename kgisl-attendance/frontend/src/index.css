@@ -59,6 +59,23 @@ body {
   }
 }
 
+@media print {
+  aside, header, button, input, select { display: none !important; }
+  body, body:has(aside), main { background: white !important; color: #111827 !important; }
+  main { padding: 0 !important; }
+  main > div > *:not(section) { display: none !important; }
+  section { border: 0 !important; box-shadow: none !important; background: white !important; }
+  section h3, section th, section td, section p { color: #111827 !important; }
+  section table { width: 100%; border-collapse: collapse; }
+  section th, section td { border: 1px solid #cbd5e1; }
+}
+
+@media (max-width: 767px) {
+  body:has(aside) aside { position: fixed !important; }
+  body:has(aside) header { padding-left: 4.5rem; }
+  body:has(aside) main > div { padding-left: 1rem; padding-right: 1rem; }
+}
+
 /* Authenticated workspace — liquid glass theme. The :has(aside) scope keeps
    the public portal and all login screens exactly as they are. */
 body:has(aside) {

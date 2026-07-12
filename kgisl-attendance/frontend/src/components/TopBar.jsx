@@ -29,6 +29,7 @@ const TITLE_MAP = {
   '/faculty/settings': 'System Settings',
   '/faculty/logs': 'System Logs',
   '/faculty/add-faculty': 'Add Faculty Management',
+  '/admin/analytics': 'Attendance Reports',
 };
 
 export default function TopBar({ connected, sessionActive = false }) {

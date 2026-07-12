@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
-import { listSessionHistoryHandler } from '../controllers/history.controller';
+import { getSessionAttendanceHandler, listSessionHistoryHandler } from '../controllers/history.controller';
 
 const router = Router();
 
-router.get('/', requireAuth('FACULTY'), listSessionHistoryHandler);
+router.get('/', requireAuth('ADMIN', 'FACULTY'), listSessionHistoryHandler);
+router.get('/:sessionId', requireAuth('ADMIN', 'FACULTY'), getSessionAttendanceHandler);
 
 export default router;
