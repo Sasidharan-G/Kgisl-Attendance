@@ -43,6 +43,7 @@ const envSchema = z.object({
 
   // Transactional email (Resend). Required in production for self-service password reset.
   RESEND_API_KEY: z.string().default(''),
+  BREVO_API_KEY: z.string().default(''),
   EMAIL_FROM: z.string().default('KGiSL Attendance <onboarding@resend.dev>'),
   PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().min(300).max(1800).default(600),
   SMTP_HOST: z.string().default(''),
@@ -51,7 +52,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
 }).superRefine((value, ctx) => {
-  const emailConfigured = Boolean(value.RESEND_API_KEY || (value.SMTP_HOST && value.SMTP_USER && value.SMTP_PASS));
+  const emailConfigured = Boolean(value.BREVO_API_KEY || value.RESEND_API_KEY || (value.SMTP_HOST && value.SMTP_USER && value.SMTP_PASS));
   if (value.NODE_ENV === 'production' && !emailConfigured) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_PASS'], message: 'Resend or SMTP email credentials are required in production' });
   }
