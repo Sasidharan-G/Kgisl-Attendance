@@ -46,10 +46,14 @@ export async function startSession(input: StartSessionInput) {
     },
   });
 
-  await tickAndBroadcast(session.sessionId); // issue the very first QR immediately
+  // Return the first QR with the HTTP response as well as broadcasting it. The
+  // faculty client cannot join the Socket.IO room until it learns the new
+  // sessionId, so a websocket-only first QR is inherently racy and can leave
+  // the dashboard waiting for the next refresh interval.
+  const initialQr = await tickAndBroadcast(session.sessionId);
   scheduleRefresh(session.sessionId);
 
-  return session;
+  return { ...session, initialQr };
 }
 
 export async function getActiveSession(facultyId: string) {
@@ -82,13 +86,13 @@ async function tickAndBroadcast(sessionId: string) {
   const session = await prisma.attendanceSession.findUnique({ where: { sessionId } });
   if (!session || session.status !== 'ACTIVE') {
     clearRefresh(sessionId);
-    return;
+    return null;
   }
 
   const { payload, qrImageDataUrl } = await generateNewQr(sessionId);
   const stats = await getSessionStats(sessionId);
 
-  broadcastQrUpdate(sessionId, {
+  const update = {
     qrImageDataUrl,
     // Note: we only ever emit the payload fields the client needs to render the
     // image + know when to expect the next one — the server drives the countdown.
@@ -96,7 +100,9 @@ async function tickAndBroadcast(sessionId: string) {
     expiresAt: payload.expiresAt,
     refreshIntervalSeconds: env.QR_REFRESH_INTERVAL_SECONDS,
     stats,
-  });
+  };
+  broadcastQrUpdate(sessionId, update);
+  return update;
 }
 
 export async function endSession(sessionId: string, facultyId: string) {

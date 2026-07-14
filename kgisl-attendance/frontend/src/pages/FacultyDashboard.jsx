@@ -36,6 +36,7 @@ export default function FacultyDashboard() {
   const [starting, setStarting] = useState(false);
   const [sessionMeta, setSessionMeta] = useState(null);
   const [qr, setQr] = useState(null);
+  const [qrSecondsLeft, setQrSecondsLeft] = useState(0);
   const [stats, setStats] = useState({ totalStudents: 0, present: 0, absent: 0, progressPercent: 0 });
   const [scans, setScans] = useState([]);
   const [violations, setViolations] = useState(0);
@@ -46,9 +47,31 @@ export default function FacultyDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Drive the QR status ring with a dedicated clock so the seconds never
+  // depend on an unrelated component render.
+  useEffect(() => {
+    if (!qr?.expiresAt) {
+      setQrSecondsLeft(0);
+      return undefined;
+    }
+
+    const updateCountdown = () => {
+      setQrSecondsLeft(Math.max(0, Math.ceil((qr.expiresAt - Date.now()) / 1000)));
+    };
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [qr?.expiresAt]);
+
   useEffect(() => {
     getActiveSession().then(async (session) => {
-      if (!session) return;
+      if (!session) {
+        setSessionActive(false);
+        setSessionMeta(null);
+        setQr(null);
+        currentSessionIdRef.current = null;
+        return;
+      }
       currentSessionIdRef.current = session.sessionId;
       setSessionMeta({ sessionId: session.sessionId, startedBy: user.name, startedAt: new Date(session.startedAt).toLocaleTimeString(), subject: session.subject?.name, batch: session.batch?.name, room: session.room?.name });
       setSessionActive(true);
@@ -56,6 +79,42 @@ export default function FacultyDashboard() {
       setStats(currentStats.data);
       socketRef.current?.emit('join_session', session.sessionId);
     }).catch(() => void 0);
+  }, [user.name]);
+
+  // WebSocket remains the fast path, but periodically reconcile the lifecycle
+  // with Postgres so a missed disconnect/end event cannot leave the UI stuck.
+  useEffect(() => {
+    const reconcile = async () => {
+      try {
+        const session = await getActiveSession();
+        if (!session) {
+          setSessionActive(false);
+          setSessionMeta(null);
+          setQr(null);
+          currentSessionIdRef.current = null;
+          return;
+        }
+
+        setSessionActive(true);
+        if (currentSessionIdRef.current !== session.sessionId) {
+          currentSessionIdRef.current = session.sessionId;
+          setSessionMeta({
+            sessionId: session.sessionId,
+            startedBy: user.name,
+            startedAt: new Date(session.startedAt).toLocaleTimeString(),
+            subject: session.subject?.name,
+            batch: session.batch?.name,
+            room: session.room?.name,
+          });
+          socketRef.current?.emit('join_session', session.sessionId);
+        }
+      } catch {
+        // A temporary network failure must not incorrectly mark a live session idle.
+      }
+    };
+
+    const timer = setInterval(reconcile, 5000);
+    return () => clearInterval(timer);
   }, [user.name]);
 
   // Load real Subject/Room/Batch options from the backend on mount so the
@@ -154,6 +213,8 @@ export default function FacultyDashboard() {
         startedAt: new Date(session.startedAt).toLocaleTimeString(),
       });
       setSessionActive(true);
+      setQr(session.initialQr ?? null);
+      if (session.initialQr?.stats) setStats(session.initialQr.stats);
       setScans([]);
       setViolations(0);
       currentSessionIdRef.current = session.sessionId;
@@ -170,6 +231,9 @@ export default function FacultyDashboard() {
     if (!sessionMeta?.sessionId) return;
     try {
       await endSession(sessionMeta.sessionId);
+      setSessionActive(false);
+      setSessionMeta(null);
+      setQr(null);
       currentSessionIdRef.current = null;
     } catch (err) {
       alert(err.message || 'Could not end session');
@@ -221,9 +285,9 @@ export default function FacultyDashboard() {
             </div>
 
             <StatusRing
-              value={qr ? Math.max(0, Math.ceil((qr.expiresAt - Date.now()) / 1000)) : 0}
+              value={qrSecondsLeft}
               max={qr?.refreshIntervalSeconds ?? 10}
-              label={qr ? Math.max(0, Math.ceil((qr.expiresAt - Date.now()) / 1000)) : '—'}
+              label={qr ? qrSecondsLeft : '—'}
               sublabel="SEC · QR Expires In"
               color="#2fd97a"
             />
