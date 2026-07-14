@@ -32,6 +32,32 @@ export async function listAllocationsHandler(req: Request, res: Response, next: 
 export async function createAllocationHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const body = allocationSchema.parse(req.body);
+    const conflict = await prisma.timetableAllocation.findFirst({
+      where: {
+        dayOfWeek: body.dayOfWeek,
+        startTime: { lt: body.endTime },
+        endTime: { gt: body.startTime },
+        OR: [
+          { facultyId: body.facultyId },
+          { batchId: body.batchId },
+          { roomId: body.roomId },
+        ],
+      },
+      include,
+    });
+    if (conflict) {
+      const resource = conflict.facultyId === body.facultyId
+        ? `faculty ${conflict.faculty.name}`
+        : conflict.batchId === body.batchId
+          ? `section ${conflict.batch.name}`
+          : `room ${conflict.room.name}`;
+      res.status(409).json({
+        success: false,
+        code: 'TIMETABLE_CONFLICT',
+        message: `Timetable conflict: ${resource} is already allocated from ${conflict.startTime} to ${conflict.endTime}.`,
+      });
+      return;
+    }
     const data = await prisma.timetableAllocation.create({ data: body, include });
     res.status(201).json({ success: true, data });
   } catch (err) { next(err); }

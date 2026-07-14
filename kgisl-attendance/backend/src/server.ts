@@ -17,24 +17,38 @@ async function bootstrap() {
   await resumeActiveSessions();
 
   // Housekeeping sweep for the audit table — Redis already governs live validation.
-  setInterval(() => {
+  const sweepTimer = setInterval(() => {
     sweepExpiredQrHistory().catch((err) => logger.error('[sweeper] failed', { error: err.message }));
   }, 30_000);
+  sweepTimer.unref();
 
   server.listen(env.PORT, () => {
     logger.info(`🚀 KGiSL-IIM Attendance server listening on port ${env.PORT}`);
   });
 
+  let shuttingDown = false;
   const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     logger.info(`Received ${signal}, shutting down gracefully...`);
-    server.close();
-    await prisma.$disconnect();
-    redis.disconnect();
-    process.exit(0);
+    clearInterval(sweepTimer);
+    const forceExit = setTimeout(() => process.exit(1), 10_000);
+    forceExit.unref();
+    server.close(async () => {
+      await prisma.$disconnect();
+      redis.disconnect();
+      clearTimeout(forceExit);
+      process.exit(0);
+    });
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection', { reason }));
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+    shutdown('uncaughtException');
+  });
 }
 
 bootstrap().catch((err) => {

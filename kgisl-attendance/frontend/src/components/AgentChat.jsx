@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { sendAgentMessage } from '../services/api';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function AgentChat() {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { sender: 'agent', text: "Hello! I'm Genius, your Faculty Assistant. How can I help you today?" }
+    { sender: 'agent', text: "Hello! I'm Genius. I can answer questions and complete authorised admin tasks." }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -36,11 +38,9 @@ export default function AgentChat() {
     }
   };
 
-  const quickPrompts = [
-    "Today's Attendance",
-    "Show active sessions",
-    "Who is absent today?"
-  ];
+  const quickPrompts = user?.role === 'ADMIN'
+    ? ['Assign Yamunarani a session after lunch', 'List faculty', 'Show pending leave requests']
+    : ['Session status', 'Start my session', 'Show pending leave requests'];
 
   return (
     <>
@@ -64,7 +64,7 @@ export default function AgentChat() {
                 <span className="text-xl">🤖</span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Genius</h3>
+                <h3 className="text-sm font-bold text-white">Genius {user?.role === 'ADMIN' ? 'Admin Agent' : 'Assistant'}</h3>
                 <p className="text-xs text-[#3FA37C] flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-[#3FA37C] animate-pulse"></span> Online
                 </p>

@@ -16,3 +16,19 @@ export function listRooms() {
 export function listBatches() {
   return prisma.batch.findMany({ orderBy: { name: 'asc' } });
 }
+
+export type BatchInput = {
+  name: string;
+  department: string;
+  programme: string;
+  semester: number;
+  academicYear: string;
+};
+
+export function createBatch(data: BatchInput) {
+  return prisma.batch.create({ data });
+}
+
+export function updateBatch(id: string, data: BatchInput) {
+  return prisma.batch.update({ where: { id }, data });
+}

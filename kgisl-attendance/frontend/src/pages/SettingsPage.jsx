@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Settings, Shield, KeyRound, Wifi, MapPin } from 'lucide-react';
+import { changePassword } from '../services/api.js';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -12,17 +13,24 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  const handlePasswordUpdate = (e) => {
+  const handlePasswordUpdate = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
       return;
     }
-    setError('');
-    setSuccess('Password updated successfully!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    if (newPassword.length < 8) {
+      setError('New password must contain at least 8 characters');
+      return;
+    }
+    setError(''); setSuccess('');
+    try {
+      await changePassword(currentPassword, newPassword);
+      setSuccess('Password updated successfully!');
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+    } catch (err) {
+      setError(err.message || 'Could not update password');
+    }
   };
 
   return (

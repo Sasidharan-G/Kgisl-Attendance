@@ -50,11 +50,11 @@ export default function AddFacultyPage() {
   };
 
   const handleRemove = async (faculty) => {
-    if (!window.confirm(`Remove ${faculty.name}? Their timetable assignments will also be removed.`)) return;
+    if (!window.confirm(`Delete ${faculty.name}? Their login will be disabled while attendance history remains safe.`)) return;
     setError(''); setSuccess('');
     try {
       await deleteFaculty(faculty.id);
-      setSuccess(`${faculty.name} removed successfully.`);
+      setSuccess(`${faculty.name} deleted successfully.`);
       await loadFaculties();
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to remove faculty');
@@ -189,7 +189,7 @@ export default function AddFacultyPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {new Date(fac.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4"><button onClick={() => handleRemove(fac)} title="Remove faculty" className="text-red-400 hover:text-red-300"><Trash2 size={17}/></button></td>
+                        <td className="px-6 py-4"><button onClick={() => handleRemove(fac)} title="Delete faculty" className="rounded-lg p-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"><Trash2 size={17}/></button></td>
                       </tr>
                     ))
                   )}

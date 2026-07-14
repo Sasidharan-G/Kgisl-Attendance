@@ -10,6 +10,7 @@ import {
   Camera,
   ShieldAlert,
   History,
+  CalendarCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -26,6 +27,56 @@ function getDeviceId() {
     localStorage.setItem('kgisl_device_id', id);
   }
   return id;
+}
+
+/**
+ * Collect several fresh high-accuracy readings and use the best one instead of
+ * trusting the first indoor GPS fix. Resolves early after two strong fixes, or
+ * uses the best available reading when the sampling window ends.
+ */
+function getAccurateLocation(onProgress) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject({ code: 'GPS_REQUIRED', message: 'Geolocation is not supported by this browser.' });
+      return;
+    }
+
+    let best = null;
+    let samples = 0;
+    let settled = false;
+    let watchId;
+    const finish = (result, error) => {
+      if (settled) return;
+      settled = true;
+      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+      clearTimeout(timeoutId);
+      if (error) reject(error); else resolve(result);
+    };
+    const timeoutId = setTimeout(() => {
+      if (best) finish(best);
+      else finish(null, { code: 'GPS_REQUIRED', message: 'Could not get your location. Turn on precise location and try again.' });
+    }, 9000);
+
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        samples += 1;
+        const reading = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        };
+        if (!best || reading.accuracy < best.accuracy) best = reading;
+        onProgress?.(best.accuracy, samples);
+        if (samples >= 2 && best.accuracy <= 25) finish(best);
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          finish(null, { code: 'GPS_REQUIRED', message: 'Precise location permission is required to mark attendance.' });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  });
 }
 
 /** Map backend error codes to clear, student-facing messages. */
@@ -123,24 +174,8 @@ export default function StudentScanPage() {
 
         // Step B: obtain GPS coordinates
         setMessage('Verifying your location…');
-        const gps = await new Promise((resolve, reject) => {
-          if (!navigator.geolocation) {
-            return reject({ code: 'GPS_REQUIRED', message: 'Geolocation is not supported by this browser.' });
-          }
-          navigator.geolocation.getCurrentPosition(
-            (pos) =>
-              resolve({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                accuracy: pos.coords.accuracy,
-              }),
-            () =>
-              reject({
-                code: 'GPS_REQUIRED',
-                message: 'Location permission is required to mark attendance.',
-              }),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-          );
+        const gps = await getAccurateLocation((accuracy, samples) => {
+          setMessage(`Improving location accuracy… ${Math.round(accuracy)} m · sample ${samples}`);
         });
 
         // Step C: submit attendance
@@ -235,7 +270,7 @@ export default function StudentScanPage() {
             <p className="text-xs text-slate-500">Signed in as</p>
             <p className="text-sm font-medium text-slate-200">{user?.name}</p>
           </div>
-          <div className="flex items-center gap-3"><button onClick={() => navigate('/student/attendance')} className="flex items-center gap-1.5 text-xs text-signal-blue"><History size={13}/>History</button><button
+          <div className="flex items-center gap-3"><button onClick={() => navigate('/student/attendance')} className="flex items-center gap-1.5 text-xs text-signal-blue"><History size={13}/>History</button><button onClick={() => navigate('/student/leave')} className="flex items-center gap-1.5 text-xs text-signal-blue"><CalendarCheck size={13}/>Leave</button><button
             onClick={logout}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300"
           >
@@ -318,6 +353,9 @@ export default function StudentScanPage() {
                 />
                 {successData.distanceMeters !== undefined && (
                   <Row label="Distance" value={`${successData.distanceMeters} m from class`} />
+                )}
+                {successData.gpsAccuracy !== undefined && (
+                  <Row label="GPS Accuracy" value={`±${Math.round(successData.gpsAccuracy)} m`} />
                 )}
               </div>
             </div>

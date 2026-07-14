@@ -14,6 +14,7 @@ export const Errors = {
   // Auth
   INVALID_JWT: () => new AppError('INVALID_JWT', 'Authentication token is invalid or expired', 401),
   INVALID_CREDENTIALS: () => new AppError('INVALID_CREDENTIALS', 'Invalid email or password', 401),
+  ACCOUNT_INACTIVE: () => new AppError('ACCOUNT_INACTIVE', 'This account has been deactivated. Contact the administrator.', 403),
 
   // Student / session lookup
   STUDENT_NOT_FOUND: () => new AppError('STUDENT_NOT_FOUND', 'Student does not exist', 404),

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { createStudent, deleteStudent, listBatches, listStudents } from '../services/api.js';
-import { Search, GraduationCap, Plus, Trash2, Users, X } from 'lucide-react';
+import { createStudent, setStudentActive, listBatches, listStudents } from '../services/api.js';
+import { Search, GraduationCap, Plus, Power, Users, X } from 'lucide-react';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
@@ -52,12 +52,13 @@ export default function StudentsPage() {
   };
 
   const handleRemoveStudent = async (student) => {
-    if (!window.confirm(`Remove ${student.name} (${student.rollNo})?`)) return;
+    const nextActive = !student.isActive;
+    if (!window.confirm(`${nextActive ? 'Reactivate' : 'Deactivate'} ${student.name} (${student.rollNo})?`)) return;
     setError(''); setSuccess('');
     try {
-      await deleteStudent(student.id);
-      setStudents((current) => current.filter((item) => item.id !== student.id));
-      setSuccess(`${student.name} removed successfully.`);
+      await setStudentActive(student.id, nextActive);
+      setStudents((current) => current.map((item) => item.id === student.id ? { ...item, isActive: nextActive } : item));
+      setSuccess(`${student.name} ${nextActive ? 'reactivated' : 'deactivated'} successfully.`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to remove student');
     }
@@ -222,7 +223,7 @@ export default function StudentsPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {s.lastScanTime ? new Date(s.lastScanTime).toLocaleString() : 'Never'}
                         </td>
-                        <td className="px-6 py-4"><button onClick={() => handleRemoveStudent(s)} title="Remove student" className="text-red-400 hover:text-red-300"><Trash2 size={17}/></button></td>
+                        <td className="px-6 py-4"><button onClick={() => handleRemoveStudent(s)} title={s.isActive ? 'Deactivate student' : 'Reactivate student'} className={s.isActive ? 'text-red-400 hover:text-red-300' : 'text-signal-green hover:text-green-300'}><Power size={17}/></button></td>
                       </tr>
                     ))
                   )}

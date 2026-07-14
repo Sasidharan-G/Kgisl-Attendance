@@ -4,6 +4,7 @@ import { ShieldCheck, User, KeyRound, Eye, EyeOff, ArrowRight, BadgeCheck } from
 import { loginAdmin, loginFaculty } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Loader from '../components/Loader.jsx';
+import ForgotPasswordModal from '../components/ForgotPasswordModal.jsx';
 
 export default function AdminLogin({ portal = 'ADMIN' }) {
   const [name, setName] = useState('');
@@ -13,6 +14,7 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSuccessLoading, setIsSuccessLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -112,6 +114,8 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
               <label className="custom-label">Username / Email</label>
             </div>
 
+            {portal === 'FACULTY' && <div className="text-right"><button type="button" onClick={() => setShowForgot(true)} className="text-xs font-semibold text-signal-blue hover:underline">Forgot Password?</button></div>}
+
             <div className="relative overflow-hidden rounded-[1rem]">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -151,6 +155,7 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
           <Loader />
         </div>
       )}
+      {showForgot && <ForgotPasswordModal role="FACULTY" initialEmail={email} onClose={() => setShowForgot(false)}/>}
     </div>
   );
 }

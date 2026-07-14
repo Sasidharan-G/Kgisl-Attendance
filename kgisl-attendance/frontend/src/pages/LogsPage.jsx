@@ -2,39 +2,16 @@ import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { FileClock, Terminal } from 'lucide-react';
-
-const MOCK_LOGS = [
-  { time: '17:55:36', type: 'INFO', msg: '[redis] connected successfully' },
-  { time: '17:55:37', type: 'INFO', msg: 'KGiSL-IIM Attendance server listening on port 4000' },
-  { time: '17:56:04', type: 'AUDIT', msg: 'Faculty Login Success: ravi.kumar@kgisl-iim.ac.in' },
-  { time: '17:56:45', type: 'INFO', msg: 'Active attendance session started: session_id = 9e28f72a' },
-  { time: '17:56:55', type: 'INFO', msg: 'Generated secure dynamic QR code hash token: a281c7f9' },
-  { time: '17:57:02', type: 'AUDIT', msg: 'Attendance Marked: Student MCA24001 present (GPS verification: PASS)' },
-  { time: '17:57:08', type: 'AUDIT', msg: 'Attendance Marked: Student MCA24002 present (GPS verification: PASS)' },
-  { time: '17:57:15', type: 'WARN', msg: 'Duplicate scan blocked for Student MCA24001 (already registered)' },
-  { time: '17:57:42', type: 'AUDIT', msg: 'Attendance Marked: Student MCA24003 present (GPS verification: PASS)' },
-  { time: '17:58:10', type: 'INFO', msg: 'Secure QR Code token rotated (hash: c129a0df)' },
-];
+import { listAuditLogs } from '../services/api.js';
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Simulated live log append
-    setLogs(MOCK_LOGS);
-    const interval = setInterval(() => {
-      const now = new Date().toTimeString().split(' ')[0];
-      const types = ['INFO', 'AUDIT', 'WARN'];
-      const messages = [
-        'Prisma Query executed: SELECT 1 FROM "public"."attendance_session"',
-        'Token generation heartbeat status: OK',
-        'Redis session state TTL check complete',
-        'Client socket heartbeats verified: 4 clients active',
-      ];
-      const randomType = types[Math.floor(Math.random() * types.length)];
-      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-      setLogs((prev) => [...prev, { time: now, type: randomType, msg: randomMsg }].slice(-15));
-    }, 5000);
+    const load = () => listAuditLogs().then(setLogs).catch((err) => setError(err.message || 'Could not load audit logs'));
+    load();
+    const interval = setInterval(load, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -53,7 +30,7 @@ export default function LogsPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">System Activity Logs</h2>
-              <p className="text-sm text-slate-400">Live operational log trace stream</p>
+              <p className="text-sm text-slate-400">Database-backed security and attendance audit trail</p>
             </div>
           </div>
 
@@ -70,24 +47,24 @@ export default function LogsPage() {
               </span>
             </div>
 
+            {error && <p className="mb-3 text-red-300">{error}</p>}
             <div className="space-y-2 max-h-[450px] overflow-y-auto leading-relaxed">
               {logs.map((log, idx) => (
-                <div key={idx} className="flex gap-4">
-                  <span className="text-slate-500 font-mono select-none">{log.time}</span>
+                <div key={log.id || idx} className="flex gap-4">
+                  <span className="text-slate-500 font-mono select-none">{new Date(log.createdAt).toLocaleString('en-IN')}</span>
                   <span
                     className={`font-semibold ${
-                      log.type === 'WARN'
+                      !log.success
                         ? 'text-signal-amber'
-                        : log.type === 'AUDIT'
-                        ? 'text-signal-blue'
-                        : 'text-slate-400'
+                        : 'text-signal-blue'
                     }`}
                   >
-                    [{log.type}]
+                    [{log.actorType}]
                   </span>
-                  <span className="text-slate-300 font-mono">{log.msg}</span>
+                  <span className="text-slate-300 font-mono">{log.action}{log.reasonCode ? ` · ${log.reasonCode}` : ''}{log.sessionId ? ` · session ${log.sessionId.slice(0, 8)}` : ''}</span>
                 </div>
               ))}
+              {!logs.length && !error && <p className="py-8 text-center text-slate-500">No audit activity found.</p>}
             </div>
           </div>
         </div>

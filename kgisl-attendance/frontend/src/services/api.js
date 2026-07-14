@@ -16,6 +16,12 @@ api.interceptors.request.use((config) => {
 // revoked, or reuse was detected server-side) — clear the session and force re-login.
 let refreshInFlight = null;
 
+function clearStoredSession() {
+  localStorage.removeItem('kgisl_token');
+  localStorage.removeItem('kgisl_refresh_token');
+  localStorage.removeItem('kgisl_user');
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -38,11 +44,14 @@ api.interceptors.response.use(
           return api(original);
         } catch {
           refreshInFlight = null;
-          localStorage.removeItem('kgisl_token');
-          localStorage.removeItem('kgisl_refresh_token');
-          localStorage.removeItem('kgisl_user');
+          clearStoredSession();
           window.location.assign('/');
+          return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
         }
+      } else {
+        clearStoredSession();
+        window.location.assign('/');
+        return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
       }
     }
 
@@ -73,16 +82,26 @@ export const loginStudent = (email, password) =>
 
 export const logoutRequest = (refreshToken) =>
   api.post('/auth/logout', { refreshToken }).then((r) => r.data);
+export const changePassword = (currentPassword, newPassword) =>
+  api.post('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data);
+export const requestPasswordReset = (email, role) =>
+  api.post('/auth/password-reset/request', { email, role }).then((r) => r.data);
+export const confirmPasswordReset = (email, role, code, newPassword) =>
+  api.post('/auth/password-reset/confirm', { email, role, code, newPassword }).then((r) => r.data);
 
 // ---- Catalog (real DB-backed options for session config) ----
 export const listSubjects = () => api.get('/catalog/subjects').then((r) => r.data.data);
 export const listRooms = () => api.get('/catalog/rooms').then((r) => r.data.data);
 export const listBatches = () => api.get('/catalog/batches').then((r) => r.data.data);
+export const createBatch = (payload) => api.post('/catalog/batches', payload).then((r) => r.data.data);
+export const updateBatch = (id, payload) => api.patch(`/catalog/batches/${id}`, payload).then((r) => r.data.data);
 
 // ---- Sessions ----
 export const startSession = (payload) => api.post('/sessions', payload).then((r) => r.data);
 export const getActiveSession = () => api.get('/sessions/active/mine').then((r) => r.data.data);
 export const endSession = (sessionId) => api.post(`/sessions/${sessionId}/end`).then((r) => r.data);
+export const pauseSession = (sessionId) => api.post(`/sessions/${sessionId}/pause`).then((r) => r.data);
+export const resumeSession = (sessionId) => api.post(`/sessions/${sessionId}/resume`).then((r) => r.data);
 export const getSessionStats = (sessionId) => api.get(`/sessions/${sessionId}/stats`).then((r) => r.data);
 export const getSessionPublicInfo = (sessionId) => api.get(`/sessions/${sessionId}/public`).then((r) => r.data);
 export const markManualAttendance = (sessionId, rollNo) => api.post(`/sessions/${sessionId}/manual-attendance`, { rollNo }).then((r) => r.data);
@@ -95,12 +114,19 @@ export const submitScan = (payload) => api.post('/scan', payload).then((r) => r.
 export const listFaculty = () => api.get('/faculty').then((r) => r.data.data);
 export const createFaculty = (payload) => api.post('/faculty', payload).then((r) => r.data);
 export const deleteFaculty = (id) => api.delete(`/faculty/${id}`).then((r) => r.data);
+export const setFacultyActive = (id, isActive) => api.patch(`/faculty/${id}/status`, { isActive }).then((r) => r.data.data);
 export const listStudents = (batchId) => api.get('/students', { params: batchId ? { batchId } : {} }).then((r) => r.data.data);
 export const getMyAttendance = () => api.get('/students/me/attendance').then((r) => r.data.data);
 export const createStudent = (payload) => api.post('/students', payload).then((r) => r.data.data);
 export const deleteStudent = (id) => api.delete(`/students/${id}`).then((r) => r.data);
-export const listHistory = () => api.get('/history').then((r) => r.data.data);
+export const setStudentActive = (id, isActive) => api.patch(`/students/${id}/status`, { isActive }).then((r) => r.data.data);
+export const listHistory = (params) => api.get('/history', { params }).then((r) => r.data.data);
 export const getSessionAttendance = (sessionId) => api.get(`/history/${sessionId}`).then((r) => r.data.data);
+export const getAnalyticsSummary = () => api.get('/history/summary').then((r) => r.data.data);
+export const listAuditLogs = () => api.get('/history/audit').then((r) => r.data.data);
+export const listLeaveRequests = () => api.get('/leave-requests').then((r) => r.data.data);
+export const createLeaveRequest = (payload) => api.post('/leave-requests', payload).then((r) => r.data.data);
+export const reviewLeaveRequest = (id, payload) => api.patch(`/leave-requests/${id}/review`, payload).then((r) => r.data.data);
 export const listAllocations = (scope) => api.get('/timetable', { params: scope ? { scope } : {} }).then((r) => r.data.data);
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);
