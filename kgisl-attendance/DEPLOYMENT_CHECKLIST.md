@@ -12,6 +12,7 @@ Configure these in the Render web service before deployment. Never commit real v
 - `FRONTEND_ORIGINS` - `https://kgisl-attendance-1.onrender.com`
 - `NODE_ENV` - `production`
 - `EMAIL_FROM` - for example `KGiSL Attendance <noreply@attendance.yourdomain.com>`
+- `BREVO_API_KEY` - Brevo transactional email API key (recommended for Render free services)
 - `PASSWORD_RESET_TTL_SECONDS` - `600`
 - `SMTP_HOST` - `smtp.gmail.com`
 - `SMTP_PORT` - `465`
@@ -38,6 +39,8 @@ Until a domain is verified, Resend test-mode recipient restrictions may apply.
 ### Current no-domain setup
 
 This project is configured to use Google Workspace SMTP. Set `EMAIL_FROM` to `KGiSL Attendance <25mca95@kgisliim.ac.in>` and store the Google App Password only in Render as `SMTP_PASS`. Do not put it in Git, `.env.example`, screenshots, or chat. Gmail/Workspace sending limits apply.
+
+Render free web services block outbound SMTP ports. For a free Render deployment, verify `25mca95@kgisliim.ac.in` as a Brevo sender and set `BREVO_API_KEY`; the application prioritizes Brevo's HTTPS API over SMTP. SMTP remains available for local or paid-host testing and fails fast instead of hanging requests.
 
 ## 3. Database
 

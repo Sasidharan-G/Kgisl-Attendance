@@ -28,6 +28,8 @@ services:
         value: production
       - key: EMAIL_FROM
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
       - key: PASSWORD_RESET_TTL_SECONDS
         value: "600"
       - key: SMTP_HOST
