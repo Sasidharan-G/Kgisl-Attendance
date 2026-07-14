@@ -37,13 +37,13 @@ export default function TopBar({ connected, sessionActive = false }) {
   const title = TITLE_MAP[location.pathname] || 'Smart Attendance';
 
   return (
-    <header className="flex items-center justify-between px-8 py-6">
+    <header className="flex items-center justify-between gap-3 px-4 py-4 pl-16 sm:px-6 md:px-8 md:py-6 md:pl-8">
       <div>
-        <h1 className="font-display text-2xl font-bold text-white">{title}</h1>
-        <p className="text-sm text-slate-500">Smart. Secure. Seamless.</p>
+        <h1 className="font-display text-xl font-bold text-white sm:text-2xl">{title}</h1>
+        <p className="hidden text-sm text-slate-500 sm:block">Smart. Secure. Seamless.</p>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="hidden items-center gap-3 sm:flex">
         <StatusPill icon={Wifi} label="Live Connection" value={connected ? 'Connected' : 'Offline'} tone={connected ? 'green' : 'blue'} />
         <StatusPill icon={MapPin} label="Geofence" value={sessionActive ? 'Enforced' : 'Standby'} tone={sessionActive ? 'green' : 'blue'} />
         <StatusPill

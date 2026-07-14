@@ -281,7 +281,7 @@ export default function FacultyDashboard() {
         <TopBar connected={connected} sessionActive={sessionActive} />
 
         {catalogError && (
-          <p className="mx-8 mb-4 rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300">
+          <p className="mx-3 mb-4 rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300 sm:mx-6 md:mx-8">
             {catalogError}
           </p>
         )}
@@ -310,8 +310,8 @@ export default function FacultyDashboard() {
           dayAllocations={allocations.filter((allocation) => String(allocation.dayOfWeek) === selectedDay).sort((a, b) => a.startTime.localeCompare(b.startTime))}
         />
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_1fr] gap-6 px-8">
-          <div className="rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6 flex flex-col items-center">
+        <div className="mt-3 grid grid-cols-1 gap-3 px-3 sm:mt-6 sm:gap-6 sm:px-6 md:px-8 lg:grid-cols-[1fr_1.3fr_1fr]">
+          <div className="flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">
             <div className="w-full flex items-center justify-between mb-4">
               <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Session Status</h3>
               <span className="flex items-center gap-1.5 text-[11px] text-signal-green">
@@ -368,7 +368,7 @@ export default function FacultyDashboard() {
           <ValidationStrip active={sessionActive} connected={connected} />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 px-8">
+        <div className="mt-3 grid grid-cols-2 gap-3 px-3 sm:mt-6 sm:gap-6 sm:px-6 md:px-8 xl:grid-cols-4">
           <StatTile icon={Users2} iconTone="blue" title="Active Sessions" value={sessionActive ? '1' : '0'} subtitle="Session Running" />
           <StatTile icon={ShieldAlert} iconTone="red" title="Proxy Attempts Tracked" value={violations} subtitle="Blocked Today" />
           <StatTile icon={Timer} iconTone="blue" title="Average Attendance Time" value="—" subtitle="Average Scan Time" />

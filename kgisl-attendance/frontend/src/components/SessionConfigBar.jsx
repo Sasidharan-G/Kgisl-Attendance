@@ -1,7 +1,7 @@
 import { Building2, CalendarDays, Clock, Code2, Pause, Play, Square } from 'lucide-react';
 
 function Field({ icon: Icon, label, value, onChange, options, loading, placeholder }) {
-  return <div className="flex min-w-[180px] flex-1 items-center gap-2.5">
+  return <div className="flex min-w-0 flex-1 basis-full items-center gap-2.5 sm:min-w-[180px] sm:basis-auto">
     <Icon size={16} className="shrink-0 text-slate-500" />
     <div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
       {loading ? <p className="text-sm text-slate-500">Loading…</p> : <select value={value || ''} onChange={(e) => onChange(e.target.value)} className="w-full cursor-pointer truncate bg-transparent text-sm font-medium text-slate-100 outline-none">
@@ -20,15 +20,15 @@ const DAYS = [
 ];
 
 export default function SessionConfigBar({ selectedDay, setSelectedDay, subjectId, setSubjectId, batchId, roomId, subjects, rooms, loadingCatalog, timeLabel, sessionActive, sessionPaused, onStart, onEnd, onPause, onResume, starting, dayAllocations }) {
-  return <div className="mx-8 rounded-xl border border-ink-border bg-ink-850/60 px-6 py-5 shadow-card">
-    <div className="flex flex-wrap items-end gap-5">
+  return <div className="mx-3 rounded-xl border border-ink-border bg-ink-850/60 px-4 py-4 shadow-card sm:mx-6 md:mx-8 md:px-6 md:py-5">
+    <div className="flex flex-wrap items-end gap-3 sm:gap-5">
       <Field icon={CalendarDays} label="1. Select Day" value={selectedDay} onChange={setSelectedDay} options={DAYS} loading={loadingCatalog} placeholder="Choose day" />
       <div className="hidden h-8 w-px bg-ink-border md:block" />
       <Field icon={Code2} label="2. Choose Assigned Period" value={subjectId} onChange={setSubjectId} options={selectedDay ? subjects : []} loading={loadingCatalog} placeholder={selectedDay ? 'Choose period / session' : 'Select day first'} />
       <div className="hidden h-8 w-px bg-ink-border md:block" />
       <Field icon={Building2} label="Assigned Room" value={roomId} onChange={() => {}} options={rooms} loading={loadingCatalog} placeholder="Select a period" />
       <div className="flex min-w-[110px] items-center gap-2.5"><Clock size={16} className="text-slate-500"/><div><p className="text-[10px] uppercase tracking-wide text-slate-500">Current Time</p><p className="text-sm font-medium text-slate-100">{timeLabel}</p></div></div>
-      {sessionActive ? <div className="flex gap-2"><button onClick={sessionPaused ? onResume : onPause} className="flex items-center gap-2 rounded-lg bg-signal-amber/90 px-4 py-2.5 text-sm font-medium text-ink-950">{sessionPaused ? <Play size={14} fill="currentColor"/> : <Pause size={14} fill="currentColor"/>}{sessionPaused ? 'Resume' : 'Pause'}</button><button onClick={onEnd} className="flex items-center gap-2 rounded-lg bg-signal-red/90 px-4 py-2.5 text-sm font-medium text-white"><Square size={14} fill="currentColor"/>End Session</button></div> : <button onClick={onStart} disabled={starting || loadingCatalog || !selectedDay || !subjectId || !batchId || !roomId} className="flex items-center gap-2 rounded-lg bg-signal-green/90 px-4 py-2.5 text-sm font-medium text-ink-950 disabled:cursor-not-allowed disabled:opacity-40"><Play size={14} fill="currentColor"/>{starting ? 'Starting…' : 'Start Session'}</button>}
+      {sessionActive ? <div className="flex w-full gap-2 sm:w-auto"><button onClick={sessionPaused ? onResume : onPause} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-signal-amber/90 px-4 py-2.5 text-sm font-medium text-ink-950 sm:flex-none">{sessionPaused ? <Play size={14} fill="currentColor"/> : <Pause size={14} fill="currentColor"/>}{sessionPaused ? 'Resume' : 'Pause'}</button><button onClick={onEnd} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-signal-red/90 px-4 py-2.5 text-sm font-medium text-white sm:flex-none"><Square size={14} fill="currentColor"/>End Session</button></div> : <button onClick={onStart} disabled={starting || loadingCatalog || !selectedDay || !subjectId || !batchId || !roomId} className="flex w-full items-center justify-center gap-2 rounded-lg bg-signal-green/90 px-4 py-2.5 text-sm font-medium text-ink-950 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><Play size={14} fill="currentColor"/>{starting ? 'Starting…' : 'Start Session'}</button>}
     </div>
     {!selectedDay && !sessionActive && <p className="mt-4 rounded-lg border border-signal-blue/20 bg-signal-blue/5 px-3 py-2 text-xs text-signal-blue">Select a day to view the periods assigned by the administrator in time order.</p>}
     {selectedDay && !loadingCatalog && dayAllocations.length === 0 && <p className="mt-4 rounded-lg border border-signal-amber/20 bg-signal-amber/5 px-3 py-2 text-xs text-signal-amber">No session is assigned for this day.</p>}
