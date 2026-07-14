@@ -28,7 +28,7 @@ export default function ForgotPasswordModal({ role, initialEmail = '', onClose }
   }
 
   return <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-    <div className="relative w-full max-w-md rounded-3xl bg-white p-6 text-slate-900 shadow-2xl">
+    <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-white p-6 text-slate-900 shadow-2xl">
       <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"><X size={18}/></button>
       <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-signal-blue"><KeyRound/></div>
       <h2 className="text-xl font-bold">Reset {role === 'FACULTY' ? 'Faculty' : 'Student'} Password</h2>
