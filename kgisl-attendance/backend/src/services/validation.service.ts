@@ -12,7 +12,7 @@ export interface ScanRequest {
   deviceId: string;
   batchIdClaimed: string;
   subjectIdClaimed: string;
-  gps: { lat: number; lng: number; accuracy?: number };
+  gps: { lat: number; lng: number; accuracy: number };
   qr: {
     sessionId: string;
     token: string;
@@ -43,7 +43,7 @@ local stored = redis.call('GET', KEYS[1])
 if not stored then
   return 0
 end
-local usedKey = KEYS[1] .. ':used'
+local usedKey = KEYS[1] .. ':used:' .. ARGV[1]
 local wasSet = redis.call('SET', usedKey, ARGV[1], 'NX', 'PX', ARGV[2])
 if wasSet then
   return 1
@@ -132,15 +132,6 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
     where: { tokenHash: incomingTokenHash },
   });
   if (!historyRow || historyRow.revoked) throw Errors.TOKEN_REVOKED();
-  if (historyRow.usedAt) throw Errors.TOKEN_ALREADY_USED();
-
-  // Atomic single-use claim — prevents two students racing the same screenshot.
-  const claimed = await claimTokenOnce(
-    qr.sessionId,
-    studentId,
-    qr.expiresAt - now > 0 ? qr.expiresAt - now : 1000
-  );
-  if (!claimed) throw Errors.TOKEN_ALREADY_USED();
 
   // ---------------------------------------------------------------
   // 8. Validate Batch
@@ -171,9 +162,9 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
   }
 
   // ---------------------------------------------------------------
-  // 12. Validate GPS Accuracy (if reported by browser)
+  // 12. Validate required browser GPS accuracy measurement
   // ---------------------------------------------------------------
-  if (gps.accuracy !== undefined && gps.accuracy > env.MAX_GPS_ACCURACY_METERS) {
+  if (!Number.isFinite(gps.accuracy) || gps.accuracy > env.MAX_GPS_ACCURACY_METERS) {
     throw Errors.GPS_ACCURACY_TOO_LOW();
   }
 
@@ -183,20 +174,9 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
   const dist = distanceMeters(gps.lat, gps.lng, session.room.latitude, session.room.longitude);
   const allowedRadius = session.room.geofenceRadiusM ?? env.DEFAULT_GEOFENCE_RADIUS_M;
   if (dist > allowedRadius) {
-    // Persist the rejected attempt for audit — mark token used so it can't be replayed.
-    await markHistoryUsed(incomingTokenHash, studentId);
-    await prisma.attendanceRecord.create({
-      data: {
-        studentId,
-        sessionId: qr.sessionId,
-        gpsLat: gps.lat,
-        gpsLng: gps.lng,
-        gpsAccuracy: gps.accuracy ?? null,
-        distanceFromCampus: dist,
-        deviceId,
-        status: 'REJECTED_GEOFENCE',
-      },
-    });
+    // The controller records this rejection in the append-only audit log. Do
+    // not occupy the unique attendance row: the student can move into range
+    // and retry with the next live QR.
     // Broadcast geofence violation to faculty dashboard.
     broadcastGeofenceViolation(qr.sessionId, {
       studentId: student.id,
@@ -240,12 +220,20 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
   });
   if (existing) throw Errors.DUPLICATE_ATTENDANCE();
 
+  // Per-student atomic claim: many students may scan the same live classroom
+  // QR, but the same student cannot double-submit that QR token.
+  const claimed = await claimTokenOnce(
+    qr.sessionId,
+    studentId,
+    qr.expiresAt - now > 0 ? qr.expiresAt - now : 1000
+  );
+  if (!claimed) throw Errors.TOKEN_ALREADY_USED();
+
   // ---------------------------------------------------------------
   // ALL CHECKS PASSED → persist atomically
   // ---------------------------------------------------------------
   try {
-    const [record] = await prisma.$transaction([
-      prisma.attendanceRecord.create({
+    const record = await prisma.attendanceRecord.create({
         data: {
           studentId,
           sessionId: qr.sessionId,
@@ -259,12 +247,7 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
           deviceId,
           status: 'PRESENT',
         },
-      }),
-      prisma.attendanceQrHistory.update({
-        where: { tokenHash: incomingTokenHash },
-        data: { usedAt: new Date(), usedByStudentId: studentId },
-      }),
-    ]);
+      });
 
     logger.info('[scan] attendance recorded', { sessionId: qr.sessionId, studentId });
 
@@ -286,13 +269,4 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
     if (err.code === 'P2002') throw Errors.DUPLICATE_ATTENDANCE();
     throw err;
   }
-}
-
-async function markHistoryUsed(tokenHash: string, studentId: string) {
-  await prisma.attendanceQrHistory
-    .update({
-      where: { tokenHash },
-      data: { usedAt: new Date(), usedByStudentId: studentId },
-    })
-    .catch(() => void 0); // best-effort; rejection path already throws its own error
 }

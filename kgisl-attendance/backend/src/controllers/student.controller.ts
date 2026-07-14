@@ -50,6 +50,7 @@ export async function createStudentHandler(req: Request, res: Response, next: Ne
         rollNo: student.rollNo,
         regNo: student.regNo,
         email: student.email,
+        isActive: student.isActive,
         batchId: student.batchId,
         batchName: student.batch.name,
         lastScanTime: null,
@@ -67,21 +68,29 @@ export async function deleteStudentHandler(req: Request, res: Response, next: Ne
   try {
     const student = await prisma.student.findUnique({
       where: { id: req.params.id },
-      select: { id: true, _count: { select: { records: true } } },
+      select: { id: true },
     });
     if (!student) {
       res.status(404).json({ success: false, message: 'Student does not exist' });
       return;
     }
-    if (student._count.records > 0) {
-      res.status(409).json({ success: false, message: 'Student has attendance history and cannot be removed' });
-      return;
-    }
-    await prisma.student.delete({ where: { id: student.id } });
-    res.json({ success: true });
+    await prisma.student.update({ where: { id: student.id }, data: { isActive: false } });
+    res.json({ success: true, message: 'Student account deactivated; attendance history was preserved.' });
   } catch (err) {
     next(err);
   }
+}
+
+export async function setStudentStatusHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { isActive } = z.object({ isActive: z.boolean() }).parse(req.body);
+    const student = await prisma.student.update({
+      where: { id: req.params.id },
+      data: { isActive },
+      select: { id: true, isActive: true },
+    });
+    res.json({ success: true, data: student });
+  } catch (err) { next(err); }
 }
 
 export async function listStudentsHandler(req: Request, res: Response, next: NextFunction) {
@@ -92,7 +101,7 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
       include: {
         batch: true,
         records: {
-          where: { status: 'PRESENT' },
+          where: { status: { in: ['PRESENT', 'LATE', 'ON_DUTY'] } },
           orderBy: { scanTime: 'desc' },
         },
       },
@@ -126,6 +135,7 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
         rollNo: student.rollNo,
         regNo: student.regNo,
         email: student.email,
+        isActive: student.isActive,
         batchName: student.batch.name,
         batchId: student.batchId,
         lastScanTime: lastScan ? lastScan.scanTime : null,
@@ -147,12 +157,12 @@ export async function getMyAttendanceHandler(req: Request, res: Response, next: 
     if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
     const sessions = await prisma.attendanceSession.findMany({
       where: { batchId: student.batchId, status: { in: ['ENDED', 'ACTIVE'] } },
-      include: { subject: true, faculty: { select: { name: true } }, records: { where: { studentId: student.id, status: 'PRESENT' }, select: { scanTime: true } } },
+      include: { subject: true, faculty: { select: { name: true } }, records: { where: { studentId: student.id }, select: { scanTime: true, status: true } } },
       orderBy: { startedAt: 'desc' },
     });
     const grouped = new Map<string, { code: string; name: string; total: number; present: number }>();
-    for (const session of sessions) { const current = grouped.get(session.subjectId) || { code: session.subject.code, name: session.subject.name, total: 0, present: 0 }; current.total += 1; if (session.records.length) current.present += 1; grouped.set(session.subjectId, current); }
+    for (const session of sessions) { const current = grouped.get(session.subjectId) || { code: session.subject.code, name: session.subject.name, total: 0, present: 0 }; current.total += 1; if (session.records.some((record) => ['PRESENT', 'LATE', 'ON_DUTY'].includes(record.status))) current.present += 1; grouped.set(session.subjectId, current); }
     const subjects = [...grouped.values()].map((item) => ({ ...item, absent: item.total - item.present, percentage: item.total ? Math.round(item.present / item.total * 100) : 100, shortage: item.total > 0 && item.present / item.total < 0.75 }));
-    res.json({ success: true, data: { student: { name: student.name, rollNo: student.rollNo, regNo: student.regNo, batchName: student.batch.name }, subjects, sessions: sessions.map((session) => ({ sessionId: session.sessionId, subjectCode: session.subject.code, subjectName: session.subject.name, facultyName: session.faculty.name, startedAt: session.startedAt, status: session.records.length ? 'PRESENT' : 'ABSENT', scanTime: session.records[0]?.scanTime ?? null })) } });
+    res.json({ success: true, data: { student: { name: student.name, rollNo: student.rollNo, regNo: student.regNo, batchName: student.batch.name }, subjects, sessions: sessions.map((session) => ({ sessionId: session.sessionId, subjectCode: session.subject.code, subjectName: session.subject.name, facultyName: session.faculty.name, startedAt: session.startedAt, status: session.records[0]?.status ?? 'ABSENT', scanTime: session.records[0]?.scanTime ?? null })) } });
   } catch (err) { next(err); }
 }

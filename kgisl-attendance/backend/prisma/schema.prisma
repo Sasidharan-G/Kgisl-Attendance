@@ -22,6 +22,7 @@ model Faculty {
   email     String   @unique
   passwordHash String
   createdAt DateTime @default(now())
+  isActive  Boolean  @default(true) @map("is_active")
 
   sessions AttendanceSession[]
   allocations TimetableAllocation[]
@@ -35,6 +36,7 @@ model Admin {
   email        String   @unique
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
+  isActive     Boolean  @default(true) @map("is_active")
 
   @@map("admin")
 }
@@ -49,9 +51,11 @@ model Student {
   passwordHash  String
   deviceId      String?  @map("device_id") // bound device for anti-sharing checks
   createdAt     DateTime @default(now())
+  isActive      Boolean  @default(true) @map("is_active")
 
   batch   Batch @relation(fields: [batchId], references: [id])
   records AttendanceRecord[]
+  leaveRequests LeaveRequest[]
 
   @@map("student")
 }
@@ -59,6 +63,10 @@ model Student {
 model Batch {
   id       String @id @default(uuid())
   name     String @unique // e.g. "MCA - II Year A"
+  department   String @default("Computer Applications")
+  programme    String @default("MCA")
+  semester     Int    @default(1)
+  academicYear String @default("2026-2027") @map("academic_year")
   students Student[]
   sessions AttendanceSession[]
   allocations TimetableAllocation[]
@@ -116,6 +124,7 @@ model TimetableAllocation {
 
 enum SessionStatus {
   ACTIVE
+  PAUSED
   ENDED
   EXPIRED
 }
@@ -129,6 +138,9 @@ model AttendanceSession {
   status            SessionStatus @default(ACTIVE)
   startedAt         DateTime      @default(now()) @map("started_at")
   endedAt           DateTime?     @map("ended_at")
+  scheduledEndAt    DateTime?     @map("scheduled_end_at")
+  sessionType       String        @default("SCHEDULED") @map("session_type")
+  notes             String?
 
   // Only a HASH of the currently active token is ever persisted.
   currentQrTokenHash String?      @map("current_qr_token_hash")
@@ -169,6 +181,10 @@ model AttendanceQrHistory {
 
 enum AttendanceStatus {
   PRESENT
+  ABSENT
+  LATE
+  ON_DUTY
+  LEAVE
   REJECTED_DUPLICATE
   REJECTED_EXPIRED
   REJECTED_GEOFENCE
@@ -198,6 +214,38 @@ model AttendanceRecord {
   @@unique([studentId, sessionId], name: "uq_student_session")
   @@index([sessionId])
   @@map("attendance_record")
+}
+
+enum LeaveRequestType {
+  LEAVE
+  ON_DUTY
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveRequest {
+  id          String             @id @default(uuid())
+  studentId   String             @map("student_id")
+  type        LeaveRequestType
+  fromDate    DateTime           @map("from_date")
+  toDate      DateTime           @map("to_date")
+  reason      String
+  status      LeaveRequestStatus @default(PENDING)
+  reviewNote  String?            @map("review_note")
+  reviewedBy  String?            @map("reviewed_by")
+  reviewedAt  DateTime?          @map("reviewed_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([studentId, createdAt])
+  @@index([status, createdAt])
+  @@map("leave_request")
 }
 
 // ------------------------------------------------------------

@@ -12,8 +12,11 @@ import studentRoutes from './routes/student.routes';
 import historyRoutes from './routes/history.routes';
 import attendanceRoutes from './routes/attendance.routes';
 import agentRoutes from './routes/agent.routes';
+import leaveRoutes from './routes/leave.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
+import { prisma } from './config/prisma';
+import { redis } from './config/redis';
 
 export function createApp() {
   const app = express();
@@ -41,7 +44,23 @@ export function createApp() {
   app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json({ limit: '32kb' })); // QR/scan payloads are tiny — cap body size
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.get('/health/live', (_req, res) => {
+    res.json({ status: 'ok', uptimeSeconds: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+  });
+
+  const readinessHandler = async (_req: express.Request, res: express.Response) => {
+    const checks = { database: false, redis: false };
+    try { await prisma.$queryRaw`SELECT 1`; checks.database = true; } catch { /* reported below */ }
+    try { checks.redis = (await redis.ping()) === 'PONG'; } catch { /* reported below */ }
+    const healthy = checks.database && checks.redis;
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      checks,
+      timestamp: new Date().toISOString(),
+    });
+  };
+  app.get('/health', readinessHandler);
+  app.get('/health/ready', readinessHandler);
 
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/catalog', catalogRoutes);
@@ -52,6 +71,7 @@ export function createApp() {
   app.use('/api/v1/students', studentRoutes);
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/agent', agentRoutes);
+  app.use('/api/v1/leave-requests', leaveRoutes);
   app.use('/api/attendance', attendanceRoutes);
 
   // Serve frontend static files in production

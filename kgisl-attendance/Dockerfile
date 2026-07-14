@@ -40,5 +40,6 @@ ENV NODE_ENV=production
 ENV PORT=4000
 
 WORKDIR /app/backend
-# Keep the Render database schema and idempotent seed data ready before boot.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run prisma:seed && npm start"]
+# Apply schema changes on every release. Seed is intentionally NOT run here:
+# it contains initial credentials and must never reset user passwords on redeploy.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]

@@ -8,10 +8,9 @@ import QRPanel from '../components/QRPanel.jsx';
 import RecentScans from '../components/RecentScans.jsx';
 import ValidationStrip from '../components/ValidationStrip.jsx';
 import StatTile from '../components/StatTile.jsx';
-import AgentChat from '../components/AgentChat.jsx';
 import ManualAttendance from '../components/ManualAttendance.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { startSession, endSession, getActiveSession, getSessionStats, listAllocations } from '../services/api.js';
+import { startSession, endSession, pauseSession, resumeSession, getActiveSession, getSessionStats, listAllocations } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
 
 export default function FacultyDashboard() {
@@ -33,6 +32,7 @@ export default function FacultyDashboard() {
   const [timeLabel, setTimeLabel] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
   const [sessionActive, setSessionActive] = useState(false);
+  const [sessionPaused, setSessionPaused] = useState(false);
   const [starting, setStarting] = useState(false);
   const [sessionMeta, setSessionMeta] = useState(null);
   const [qr, setQr] = useState(null);
@@ -75,6 +75,7 @@ export default function FacultyDashboard() {
       currentSessionIdRef.current = session.sessionId;
       setSessionMeta({ sessionId: session.sessionId, startedBy: user.name, startedAt: new Date(session.startedAt).toLocaleTimeString(), subject: session.subject?.name, batch: session.batch?.name, room: session.room?.name });
       setSessionActive(true);
+      setSessionPaused(session.status === 'PAUSED');
       const currentStats = await getSessionStats(session.sessionId);
       setStats(currentStats.data);
       socketRef.current?.emit('join_session', session.sessionId);
@@ -96,6 +97,7 @@ export default function FacultyDashboard() {
         }
 
         setSessionActive(true);
+        setSessionPaused(session.status === 'PAUSED');
         if (currentSessionIdRef.current !== session.sessionId) {
           currentSessionIdRef.current = session.sessionId;
           setSessionMeta({
@@ -186,8 +188,14 @@ export default function FacultyDashboard() {
 
     socket.on('session_ended', () => {
       setSessionActive(false);
+      setSessionPaused(false);
       setQr(null);
       currentSessionIdRef.current = null;
+    });
+
+    socket.on('session_paused', () => {
+      setSessionPaused(true);
+      setQr(null);
     });
 
     return () => {
@@ -213,6 +221,7 @@ export default function FacultyDashboard() {
         startedAt: new Date(session.startedAt).toLocaleTimeString(),
       });
       setSessionActive(true);
+      setSessionPaused(false);
       setQr(session.initialQr ?? null);
       if (session.initialQr?.stats) setStats(session.initialQr.stats);
       setScans([]);
@@ -232,11 +241,35 @@ export default function FacultyDashboard() {
     try {
       await endSession(sessionMeta.sessionId);
       setSessionActive(false);
+      setSessionPaused(false);
       setSessionMeta(null);
       setQr(null);
       currentSessionIdRef.current = null;
     } catch (err) {
       alert(err.message || 'Could not end session');
+    }
+  }
+
+  async function handlePause() {
+    if (!sessionMeta?.sessionId) return;
+    try {
+      await pauseSession(sessionMeta.sessionId);
+      setSessionPaused(true);
+      setQr(null);
+    } catch (err) {
+      alert(err.message || 'Could not pause session');
+    }
+  }
+
+  async function handleResume() {
+    if (!sessionMeta?.sessionId) return;
+    try {
+      const { data: session } = await resumeSession(sessionMeta.sessionId);
+      setSessionPaused(false);
+      setQr(session.initialQr ?? null);
+      if (session.initialQr?.stats) setStats(session.initialQr.stats);
+    } catch (err) {
+      alert(err.message || 'Could not resume session');
     }
   }
 
@@ -268,9 +301,12 @@ export default function FacultyDashboard() {
           loadingCatalog={loadingCatalog}
           timeLabel={timeLabel}
           sessionActive={sessionActive}
+          sessionPaused={sessionPaused}
           starting={starting}
           onStart={handleStart}
           onEnd={handleEnd}
+          onPause={handlePause}
+          onResume={handleResume}
           dayAllocations={allocations.filter((allocation) => String(allocation.dayOfWeek) === selectedDay).sort((a, b) => a.startTime.localeCompare(b.startTime))}
         />
 
@@ -280,7 +316,7 @@ export default function FacultyDashboard() {
               <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Session Status</h3>
               <span className="flex items-center gap-1.5 text-[11px] text-signal-green">
                 <span className="h-1.5 w-1.5 rounded-full bg-signal-green status-dot" />
-                {sessionActive ? 'Active' : 'Idle'}
+                {sessionPaused ? 'Paused' : sessionActive ? 'Active' : 'Idle'}
               </span>
             </div>
 
@@ -346,8 +382,6 @@ export default function FacultyDashboard() {
         </div>
       </main>
 
-      {/* Global AI Agent for the Dashboard */}
-      <AgentChat />
     </div>
   );
 }

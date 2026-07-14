@@ -4,6 +4,7 @@ import { GraduationCap, User, KeyRound, Eye, EyeOff, ArrowRight } from 'lucide-r
 import { loginStudent } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Loader from '../components/Loader.jsx';
+import ForgotPasswordModal from '../components/ForgotPasswordModal.jsx';
 
 export default function StudentLogin() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export default function StudentLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSuccessLoading, setIsSuccessLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -119,9 +121,9 @@ export default function StudentLogin() {
                 <input type="checkbox" className="w-3.5 h-3.5 accent-signal-blue rounded-sm border-slate-300" />
                 Remember me
               </label>
-              <a href="#" className="font-medium text-signal-blue hover:text-blue-700 underline-offset-2 hover:underline transition-all">
+              <button type="button" onClick={() => setShowForgot(true)} className="font-medium text-signal-blue hover:text-blue-700 underline-offset-2 hover:underline transition-all">
                 Forgot Password?
-              </a>
+              </button>
             </div>
 
             {error && (
@@ -143,6 +145,7 @@ export default function StudentLogin() {
           <Loader />
         </div>
       )}
+      {showForgot && <ForgotPasswordModal role="STUDENT" initialEmail={email} onClose={() => setShowForgot(false)}/>}
     </div>
   );
 }

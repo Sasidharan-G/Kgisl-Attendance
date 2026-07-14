@@ -110,3 +110,22 @@ export async function revokeFamily(familyId: string) {
   }
   await redis.del(refreshFamilyKey(familyId));
 }
+
+/** Rare security operation used after a password reset/change. Scans refresh
+ * records and revokes every device family belonging to the account. */
+export async function revokeAllUserSessions(sub: string, role: RedisRtRecord['role']) {
+  const families = new Set<string>();
+  let cursor = '0';
+  do {
+    const [next, keys] = await redis.scan(cursor, 'MATCH', 'attendance:rt:*', 'COUNT', 200);
+    cursor = next;
+    if (keys.length) {
+      const values = await redis.mget(keys);
+      values.forEach((raw) => {
+        if (!raw) return;
+        try { const record = JSON.parse(raw) as RedisRtRecord; if (record.sub === sub && record.role === role) families.add(record.familyId); } catch { /* ignore malformed/expired entries */ }
+      });
+    }
+  } while (cursor !== '0');
+  await Promise.all([...families].map(revokeFamily));
+}

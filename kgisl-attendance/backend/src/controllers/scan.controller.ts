@@ -12,7 +12,7 @@ const scanSchema = z.object({
     lat: z.number().min(-90).max(90),
     lng: z.number().min(-180).max(180),
     // accuracy in metres — optional but used for quality checks when present
-    accuracy: z.number().positive().optional(),
+    accuracy: z.number().positive(),
   }),
   // Wi-Fi fields accepted but not enforced (browsers cannot reliably read SSID)
   wifi: z
@@ -56,7 +56,7 @@ export async function scanHandler(req: Request, res: Response, next: NextFunctio
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: {
-        gps: { lat: body.gps.lat, lng: body.gps.lng },
+        gps: { lat: body.gps.lat, lng: body.gps.lng, accuracy: body.gps.accuracy },
         distanceMeters: result.distanceMeters,
       },
     });
@@ -75,6 +75,7 @@ export async function scanHandler(req: Request, res: Response, next: NextFunctio
         status: result.record.status,
         markedAt: result.record.scanTime.toISOString(),
         distanceMeters: Math.round(result.distanceMeters),
+        gpsAccuracy: body.gps.accuracy,
       },
     });
   } catch (err) {

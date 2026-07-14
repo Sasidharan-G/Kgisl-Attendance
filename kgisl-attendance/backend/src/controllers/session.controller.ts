@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { startSession, endSession, getSessionStats, getSessionPublicInfo, getActiveSession } from '../services/session.service';
+import { startSession, startExtraSession, endSession, getSessionStats, getSessionPublicInfo, getActiveSession, pauseSession, resumeSession } from '../services/session.service';
 import { writeAuditLog, requestContext } from '../services/audit.service';
 
 const startSchema = z.object({
@@ -8,6 +8,14 @@ const startSchema = z.object({
   subjectId: z.string().uuid(),
   roomId: z.string().uuid(),
   batchId: z.string().uuid(),
+});
+
+const extraSessionSchema = z.object({
+  subjectId: z.string().uuid(),
+  roomId: z.string().uuid(),
+  batchId: z.string().uuid(),
+  durationMinutes: z.number().int().min(15).max(180),
+  reason: z.string().trim().min(3).max(200),
 });
 
 export async function startSessionHandler(req: Request, res: Response, next: NextFunction) {
@@ -32,6 +40,16 @@ export async function startSessionHandler(req: Request, res: Response, next: Nex
   } catch (err) {
     next(err);
   }
+}
+
+export async function startExtraSessionHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const body = extraSessionSchema.parse(req.body);
+    const session = await startExtraSession({ facultyId: req.auth!.sub, ...body });
+    const ctx = requestContext(req);
+    await writeAuditLog({ actorId: req.auth!.sub, actorType: 'FACULTY', action: 'EXTRA_SESSION_STARTED', sessionId: session.sessionId, ip: ctx.ip, userAgent: ctx.userAgent, metadata: { durationMinutes: body.durationMinutes, reason: body.reason } });
+    res.status(201).json({ success: true, data: session });
+  } catch (err) { next(err); }
 }
 
 export async function getActiveSessionHandler(req: Request, res: Response, next: NextFunction) {
@@ -132,7 +150,25 @@ export async function manualAttendanceHandler(req: Request, res: Response, next:
   }
 }
 
-const correctionSchema = z.object({ rollNo: z.string().min(1), status: z.enum(['PRESENT', 'ABSENT']), reason: z.string().trim().min(3).max(200) });
+export async function pauseSessionHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const session = await pauseSession(req.params.sessionId, req.auth!.sub);
+    res.json({ success: true, data: session });
+  } catch (err) { next(err); }
+}
+
+export async function resumeSessionHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const session = await resumeSession(req.params.sessionId, req.auth!.sub);
+    res.json({ success: true, data: session });
+  } catch (err) { next(err); }
+}
+
+const correctionSchema = z.object({
+  rollNo: z.string().min(1),
+  status: z.enum(['PRESENT', 'ABSENT', 'LATE', 'ON_DUTY', 'LEAVE']),
+  reason: z.string().trim().min(3).max(200),
+});
 
 export async function correctAttendanceHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -142,12 +178,20 @@ export async function correctAttendanceHandler(req: Request, res: Response, next
     if (!session) { res.status(404).json({ success: false, message: 'Session not found' }); return; }
     const student = await prisma.student.findFirst({ where: { rollNo: input.rollNo, batchId: session.batchId } });
     if (!student) { res.status(404).json({ success: false, message: 'Student is not enrolled in this section' }); return; }
-    if (input.status === 'ABSENT') {
-      await prisma.attendanceRecord.deleteMany({ where: { sessionId, studentId: student.id, status: 'PRESENT' } });
-    } else {
-      const existing = await prisma.attendanceRecord.findFirst({ where: { sessionId, studentId: student.id, status: 'PRESENT' } });
-      if (!existing) await markManualAttendance({ sessionId, rollNo: student.rollNo, facultyId: req.auth!.sub });
-    }
+    await prisma.attendanceRecord.upsert({
+      where: { uq_student_session: { sessionId, studentId: student.id } },
+      update: { status: input.status },
+      create: {
+        sessionId,
+        studentId: student.id,
+        status: input.status,
+        gpsLat: 0,
+        gpsLng: 0,
+        deviceId: 'FACULTY_CORRECTION',
+        locationVerificationStatus: 'FACULTY_VERIFIED',
+        locationVerified: false,
+      },
+    });
     const ctx = requestContext(req);
     await writeAuditLog({ actorId: req.auth!.sub, actorType: 'FACULTY', action: 'ATTENDANCE_CORRECTED', sessionId, ip: ctx.ip, userAgent: ctx.userAgent, metadata: { rollNo: student.rollNo, status: input.status, reason: input.reason } });
     res.json({ success: true, message: `Attendance changed to ${input.status}` });

@@ -12,11 +12,13 @@ const createFacultySchema = z.object({
 export async function listFacultyHandler(_req: Request, res: Response, next: NextFunction) {
   try {
     const faculties = await prisma.faculty.findMany({
+      where: { isActive: true },
       select: {
         id: true,
         name: true,
         email: true,
         createdAt: true,
+        isActive: true,
       },
       orderBy: { name: 'asc' },
     });
@@ -49,6 +51,7 @@ export async function createFacultyHandler(req: Request, res: Response, next: Ne
         name: true,
         email: true,
         createdAt: true,
+        isActive: true,
       },
     });
 
@@ -62,19 +65,27 @@ export async function deleteFacultyHandler(req: Request, res: Response, next: Ne
   try {
     const faculty = await prisma.faculty.findUnique({
       where: { id: req.params.id },
-      select: { id: true, _count: { select: { sessions: true } } },
+      select: { id: true },
     });
     if (!faculty) {
       res.status(404).json({ success: false, message: 'Faculty does not exist' });
       return;
     }
-    if (faculty._count.sessions > 0) {
-      res.status(409).json({ success: false, message: 'Faculty has attendance history and cannot be removed' });
-      return;
-    }
-    await prisma.faculty.delete({ where: { id: faculty.id } });
-    res.json({ success: true });
+    await prisma.faculty.update({ where: { id: faculty.id }, data: { isActive: false } });
+    res.json({ success: true, message: 'Faculty account deactivated; attendance history was preserved.' });
   } catch (err) {
     next(err);
   }
+}
+
+export async function setFacultyStatusHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { isActive } = z.object({ isActive: z.boolean() }).parse(req.body);
+    const faculty = await prisma.faculty.update({
+      where: { id: req.params.id },
+      data: { isActive },
+      select: { id: true, name: true, email: true, isActive: true, createdAt: true },
+    });
+    res.json({ success: true, data: faculty });
+  } catch (err) { next(err); }
 }

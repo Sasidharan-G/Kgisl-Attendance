@@ -5,6 +5,7 @@ services:
     rootDir: kgisl-attendance
     plan: free
     region: singapore
+    healthCheckPath: /health/ready
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -20,11 +21,25 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: QR_HMAC_SECRET
-        value: "a3f8c2d1e4b7906f5a2c8d3e1b4f7a0c9d2e5b8f1a4c7d0e3b6f9a2c5d8e1b4f"
+        sync: false
       - key: FRONTEND_ORIGINS
-        value: "https://kgisl-attendance-app.onrender.com"
+        value: "https://kgisl-attendance-1.onrender.com"
       - key: NODE_ENV
         value: production
+      - key: EMAIL_FROM
+        sync: false
+      - key: PASSWORD_RESET_TTL_SECONDS
+        value: "600"
+      - key: SMTP_HOST
+        value: "smtp.gmail.com"
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        value: "25mca95@kgisliim.ac.in"
+      - key: SMTP_PASS
+        sync: false
 
   - type: redis
     name: kgisl-attendance-redis

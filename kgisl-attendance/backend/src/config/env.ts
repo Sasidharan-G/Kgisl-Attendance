@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config({ override: true });
+// Deployment/runtime environment variables must win over a local .env file.
+dotenv.config();
 
 const envSchema = z.object({
   PORT: z.string().default('4000'),
@@ -39,6 +40,24 @@ const envSchema = z.object({
   // Comma-separated list of allowed frontend origins, e.g.
   // "http://localhost:5173,https://attendance.kgisl-iim.ac.in"
   FRONTEND_ORIGINS: z.string().default('http://localhost:5173'),
+
+  // Transactional email (Resend). Required in production for self-service password reset.
+  RESEND_API_KEY: z.string().default(''),
+  EMAIL_FROM: z.string().default('KGiSL Attendance <onboarding@resend.dev>'),
+  PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().min(300).max(1800).default(600),
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_SECURE: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+}).superRefine((value, ctx) => {
+  const emailConfigured = Boolean(value.RESEND_API_KEY || (value.SMTP_HOST && value.SMTP_USER && value.SMTP_PASS));
+  if (value.NODE_ENV === 'production' && !emailConfigured) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_PASS'], message: 'Resend or SMTP email credentials are required in production' });
+  }
+  if (value.NODE_ENV === 'production' && (!value.EMAIL_FROM || value.EMAIL_FROM.includes('onboarding@resend.dev'))) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['EMAIL_FROM'], message: 'A verified production EMAIL_FROM is required' });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);

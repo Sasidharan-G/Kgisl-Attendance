@@ -1,0 +1,13 @@
+{
+  "name": "KGiSL-IIM Smart Attendance",
+  "short_name": "KGiSL Attendance",
+  "description": "Secure QR and GPS enabled attendance portal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "225x225", "type": "image/png", "purpose": "any" },
+    { "src": "/custom-logo.png", "sizes": "500x500", "type": "image/png", "purpose": "any" }
+  ]
+}

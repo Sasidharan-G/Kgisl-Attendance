@@ -10,7 +10,9 @@ export function getSocket() {
   socket = io('/', {
     path: '/socket.io',
     auth: { token },
-    transports: ['websocket'],
+    // Start with long-polling and upgrade to WebSocket. Some free hosting
+    // proxies temporarily reject WebSocket upgrades during wake-up/redeploy.
+    transports: ['polling', 'websocket'],
     reconnection: true,
     reconnectionDelay: 1000,
   });

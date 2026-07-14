@@ -79,6 +79,10 @@ export function broadcastSessionEnded(sessionId: string) {
   io?.to(sessionRoom(sessionId)).emit('session_ended', { sessionId });
 }
 
+export function broadcastSessionPaused(sessionId: string) {
+  io?.to(sessionRoom(sessionId)).emit('session_paused', { sessionId });
+}
+
 export function broadcastGeofenceViolation(
   sessionId: string,
   data: { studentId: string; studentName: string; studentRoll: string; scanTime: string; distance: number }

@@ -24,12 +24,15 @@ const FACULTY_NAV = [
   { icon: CalendarDays, label: 'Timetable', path: '/faculty/timetable' },
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
   { icon: FileClock, label: 'Logs', path: '/faculty/logs' },
+  { icon: Bell, label: 'Leave / On Duty', path: '/faculty/leave' },
 ];
 const ADMIN_NAV = [
-  { icon: CalendarDays, label: 'Class Schedule', path: '/admin/timetable' },
+  { icon: BookOpen, label: 'Academic Setup', path: '/admin/academic' },
+  { icon: CalendarDays, label: 'Upload Timetable', path: '/admin/timetable' },
   { icon: Users, label: 'Students', path: '/admin/students' },
   { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },
   { icon: BarChart3, label: 'Attendance Reports', path: '/admin/analytics' },
+  { icon: Bell, label: 'Leave / On Duty', path: '/admin/leave' },
 ];
 
 export default function Sidebar() {

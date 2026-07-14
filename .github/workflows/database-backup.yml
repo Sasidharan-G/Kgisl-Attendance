@@ -1,0 +1,28 @@
+name: Daily database backup
+
+on:
+  schedule:
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Create compressed PostgreSQL backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          test -n "$DATABASE_URL"
+          pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --file=kgisl-attendance.dump
+      - name: Upload private workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kgisl-attendance-db-${{ github.run_id }}
+          path: kgisl-attendance.dump
+          retention-days: 7
+          if-no-files-found: error
