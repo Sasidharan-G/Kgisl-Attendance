@@ -76,11 +76,8 @@ export default function StudentLogin() {
       <div className="relative w-full max-w-sm px-2">
         
         <div className="relative z-10 flex flex-col items-center">
-          <div className="w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center mb-4">
-            <GraduationCap size={28} className="text-signal-blue" strokeWidth={2.5} />
-          </div>
-          <h2 className="text-2xl font-bold text-white tracking-wide">Student Portal</h2>
-          <p className="text-xs text-slate-400 font-medium mb-8">Sign in to mark your attendance</p>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Welcome Back</h2>
+          <p className="mt-1 text-xs text-slate-300 font-medium mb-8">Sign in to continue as Student</p>
 
           <form onSubmit={handleSubmit} className="w-full space-y-5">
             <div className="relative overflow-hidden rounded-[1rem]">
@@ -93,7 +90,7 @@ export default function StudentLogin() {
                 className="w-full py-3.5 pl-11 pr-4 custom-input text-sm font-medium"
               />
               <User size={18} className="absolute left-4 top-[15px] text-slate-400 pointer-events-none" strokeWidth={2.5} />
-              <label className="custom-label">Username / Email</label>
+              <label className="custom-label">Email Address</label>
             </div>
 
             <div className="relative overflow-hidden rounded-[1rem]">
