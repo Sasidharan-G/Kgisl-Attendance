@@ -42,17 +42,17 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
     <div className="w-full flex flex-col items-center justify-center p-4">
       <style>{`
         .custom-input {
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          color: #0f172a;
+          background: rgba(255,255,255,0.055);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: #ffffff;
           border-radius: 1rem;
           transition: all 0.3s ease;
         }
         .custom-input:focus {
           outline: none;
-          background: #ffffff;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+          background: rgba(255,255,255,0.09);
+          border-color: #0A84FF;
+          box-shadow: 0 0 0 3px rgba(10,132,255,0.3), 0 0 28px rgba(10,132,255,0.14);
         }
         .custom-input::placeholder {
           color: transparent;
@@ -66,7 +66,7 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
           font-size: 0.875rem;
           user-select: none;
           pointer-events: none;
-          color: #64748b;
+          color: #94a3b8;
         }
         .custom-input:focus ~ .custom-label,
         .custom-input:not(:placeholder-shown) ~ .custom-label {
@@ -79,10 +79,10 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
         
         <div className="relative z-10 flex flex-col items-center">
           <div className="w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center mb-4">
-            <ShieldCheck size={28} className="text-black" strokeWidth={2.5} />
+            <ShieldCheck size={28} className="text-signal-blue" strokeWidth={2.5} />
           </div>
-          <h2 className="text-2xl font-bold text-black tracking-wide">{portal === 'ADMIN' ? 'Admin' : 'Faculty'} Portal</h2>
-          <p className="text-xs text-black/70 font-medium mb-6">
+          <h2 className="text-2xl font-bold text-white tracking-wide">{portal === 'ADMIN' ? 'Admin' : 'Faculty'} Portal</h2>
+          <p className="text-xs text-slate-400 font-medium mb-6">
             {portal === 'ADMIN' ? 'Full administration access' : 'Access assigned classes and attendance'}
           </p>
 
