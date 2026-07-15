@@ -14,11 +14,11 @@ export default {
           border: '#484575', // Border (Muted Lavender Grey)
         },
         signal: {
-          red: '#e0293f',
+          red: '#FF453A',
           redDim: '#7a1a26',
-          green: '#2fd97a',
+          green: '#32D74B',
           amber: '#f2b544',
-          blue: '#3d8bff',
+          blue: '#0A84FF',
         },
         theme: {
           bg: '#272465',
@@ -35,8 +35,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Space Grotesk"', 'sans-serif'],
-        body: ['"Inter"', 'sans-serif'],
+        display: ['"SF Pro Display"', '-apple-system', 'BlinkMacSystemFont', '"Inter"', 'sans-serif'],
+        body: ['"SF Pro Text"', '-apple-system', 'BlinkMacSystemFont', '"Inter"', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {

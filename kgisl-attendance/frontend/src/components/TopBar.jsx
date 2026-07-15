@@ -1,4 +1,4 @@
-import { Wifi, MapPin, ShieldCheck, Bell } from 'lucide-react';
+import { Wifi, MapPin, ShieldCheck, Search } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 function StatusPill({ icon: Icon, label, value, tone = 'green' }) {
@@ -44,6 +44,10 @@ export default function TopBar({ connected, sessionActive = false }) {
       </div>
 
       <div className="hidden items-center gap-3 sm:flex">
+        <label className="relative hidden lg:block">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+          <input type="search" aria-label="Search dashboard" placeholder="Search dashboard" className="w-44 rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-500 xl:w-56"/>
+        </label>
         <StatusPill icon={Wifi} label="Live Connection" value={connected ? 'Connected' : 'Offline'} tone={connected ? 'green' : 'blue'} />
         <StatusPill icon={MapPin} label="Geofence" value={sessionActive ? 'Enforced' : 'Standby'} tone={sessionActive ? 'green' : 'blue'} />
         <StatusPill
