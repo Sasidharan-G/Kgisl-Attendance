@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { loginAdmin, loginFaculty, loginStudent } from '../services/auth.service';
+import { loginAdmin, loginFaculty, loginStudent, loginWithGoogle } from '../services/auth.service';
+import { OAuth2Client } from 'google-auth-library';
+import { AppError } from '../utils/AppError';
 import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
 import { revokeAllUserSessions } from '../services/refreshToken.service';
 import { requestContext } from '../services/audit.service';
@@ -25,6 +27,26 @@ const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8).regex(/[A-Z]/, 'New password needs an uppercase letter').regex(/[a-z]/, 'New password needs a lowercase letter').regex(/[0-9]/, 'New password needs a number'),
 });
+
+const googleLoginSchema = z.object({
+  credential: z.string().min(20),
+  role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']),
+});
+
+export function googleAuthConfigHandler(_req: Request, res: Response) {
+  res.json({ success: true, data: { enabled: Boolean(env.GOOGLE_CLIENT_ID), clientId: env.GOOGLE_CLIENT_ID || null } });
+}
+
+export async function googleLoginHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!env.GOOGLE_CLIENT_ID) throw new AppError('GOOGLE_AUTH_NOT_CONFIGURED', 'Google sign-in is not configured yet.', 503);
+    const { credential, role } = googleLoginSchema.parse(req.body);
+    const ticket = await new OAuth2Client(env.GOOGLE_CLIENT_ID).verifyIdToken({ idToken: credential, audience: env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.email_verified) throw new AppError('INVALID_GOOGLE_TOKEN', 'Google account verification failed.', 401);
+    res.json(await loginWithGoogle(payload.email, role, requestContext(req)));
+  } catch (err) { next(err); }
+}
 
 import { prisma } from '../config/prisma';
 import bcrypt from 'bcryptjs';

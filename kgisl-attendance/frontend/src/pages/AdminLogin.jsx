@@ -5,8 +5,9 @@ import { loginAdmin, loginFaculty } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Loader from '../components/Loader.jsx';
 import ForgotPasswordModal from '../components/ForgotPasswordModal.jsx';
+import GoogleSignIn from '../components/GoogleSignIn.jsx';
 
-export default function AdminLogin({ portal = 'ADMIN' }) {
+export default function AdminLogin({ portal = 'ADMIN', active = true }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -109,8 +110,6 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
               <label className="custom-label">Email Address</label>
             </div>
 
-            {portal === 'FACULTY' && <div className="text-right"><button type="button" onClick={() => setShowForgot(true)} className="text-xs font-semibold text-signal-blue hover:underline">Forgot Password?</button></div>}
-
             <div className="relative overflow-hidden rounded-[1rem]">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -131,6 +130,8 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
               </button>
             </div>
 
+            {portal === 'FACULTY' && <div className="text-right"><button type="button" onClick={() => setShowForgot(true)} className="text-xs font-semibold text-signal-blue hover:underline">Forgot Password?</button></div>}
+
             {error && (
               <div className="w-full bg-red-500/20 border border-red-500/50 rounded-lg p-2 text-center text-xs font-semibold text-red-200">
                 {error}
@@ -142,6 +143,7 @@ export default function AdminLogin({ portal = 'ADMIN' }) {
               {!loading && <ArrowRight size={16} strokeWidth={2.5} />}
             </button>
           </form>
+          {active && <><div className="login-divider"><span>or</span></div><GoogleSignIn role={portal} onError={setError}/></>}
         </div>
       </div>
       

@@ -5,8 +5,9 @@ import { loginStudent } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Loader from '../components/Loader.jsx';
 import ForgotPasswordModal from '../components/ForgotPasswordModal.jsx';
+import GoogleSignIn from '../components/GoogleSignIn.jsx';
 
-export default function StudentLogin() {
+export default function StudentLogin({ active = true }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -134,6 +135,7 @@ export default function StudentLogin() {
               {!loading && <ArrowRight size={16} strokeWidth={2.5} />}
             </button>
           </form>
+          {active && <><div className="login-divider"><span>or</span></div><GoogleSignIn role="STUDENT" onError={setError}/></>}
         </div>
       </div>
       

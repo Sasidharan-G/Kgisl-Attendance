@@ -42,6 +42,8 @@ services:
         value: "25mca95@kgisliim.ac.in"
       - key: SMTP_PASS
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
 
   - type: redis
     name: kgisl-attendance-redis

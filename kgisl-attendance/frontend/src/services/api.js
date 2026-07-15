@@ -79,6 +79,10 @@ export const loginAdmin = (email, password) =>
 
 export const loginStudent = (email, password) =>
   api.post('/auth/student/login', { email, password }).then((r) => r.data);
+export const getGoogleAuthConfig = () =>
+  api.get('/auth/google/config').then((r) => r.data.data);
+export const loginGoogle = (credential, role) =>
+  api.post('/auth/google', { credential, role }).then((r) => r.data);
 
 export const logoutRequest = (refreshToken) =>
   api.post('/auth/logout', { refreshToken }).then((r) => r.data);
