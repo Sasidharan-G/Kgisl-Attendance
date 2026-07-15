@@ -51,6 +51,8 @@ const envSchema = z.object({
   SMTP_SECURE: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
+  // Public OAuth audience used to verify Google Identity Services ID tokens.
+  GOOGLE_CLIENT_ID: z.string().default(''),
 }).superRefine((value, ctx) => {
   const emailConfigured = Boolean(value.BREVO_API_KEY || value.RESEND_API_KEY || (value.SMTP_HOST && value.SMTP_USER && value.SMTP_PASS));
   if (value.NODE_ENV === 'production' && !emailConfigured) {

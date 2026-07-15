@@ -10,6 +10,8 @@ import {
   createPasswordResetCodeHandler,
   confirmPasswordResetHandler,
   requestPasswordResetHandler,
+  googleAuthConfigHandler,
+  googleLoginHandler,
 } from '../controllers/auth.controller';
 import { authRateLimiter } from '../middleware/rateLimiter.middleware';
 import { requireAuth } from '../middleware/auth.middleware';
@@ -20,6 +22,8 @@ router.post('/faculty/register', requireAuth('ADMIN'), authRateLimiter, register
 router.post('/faculty/login', authRateLimiter, facultyLoginHandler);
 router.post('/admin/login', authRateLimiter, adminLoginHandler);
 router.post('/student/login', authRateLimiter, studentLoginHandler);
+router.get('/google/config', googleAuthConfigHandler);
+router.post('/google', authRateLimiter, googleLoginHandler);
 router.post('/refresh', authRateLimiter, refreshHandler);
 router.post('/logout', logoutHandler);
 router.post('/change-password', requireAuth('ADMIN', 'FACULTY', 'STUDENT'), authRateLimiter, changePasswordHandler);

@@ -14,6 +14,7 @@ Configure these in the Render web service before deployment. Never commit real v
 - `EMAIL_FROM` - for example `KGiSL Attendance <noreply@attendance.yourdomain.com>`
 - `BREVO_API_KEY` - Brevo transactional email API key (recommended for Render free services)
 - `PASSWORD_RESET_TTL_SECONDS` - `600`
+- `GOOGLE_CLIENT_ID` - Google OAuth 2.0 Web application Client ID used by the login page and backend ID-token verification
 - `SMTP_HOST` - `smtp.gmail.com`
 - `SMTP_PORT` - `465`
 - `SMTP_SECURE` - `true`
@@ -41,6 +42,14 @@ Until a domain is verified, Resend test-mode recipient restrictions may apply.
 This project is configured to use Google Workspace SMTP. Set `EMAIL_FROM` to `KGiSL Attendance <25mca95@kgisliim.ac.in>` and store the Google App Password only in Render as `SMTP_PASS`. Do not put it in Git, `.env.example`, screenshots, or chat. Gmail/Workspace sending limits apply.
 
 Render free web services block outbound SMTP ports. For a free Render deployment, verify `25mca95@kgisliim.ac.in` as a Brevo sender and set `BREVO_API_KEY`; the application prioritizes Brevo's HTTPS API over SMTP. SMTP remains available for local or paid-host testing and fails fast instead of hanging requests.
+
+## 2A. Google Sign-In
+
+1. In Google Cloud Console, configure the OAuth consent screen.
+2. Create an OAuth 2.0 Client ID with application type `Web application`.
+3. Add `https://kgisl-attendance-1.onrender.com` under Authorized JavaScript origins.
+4. Add the resulting public Client ID to Render as `GOOGLE_CLIENT_ID`; never add or expose a Google client secret because this flow does not use one.
+5. Redeploy and verify Google sign-in separately for an existing Student, Faculty, and Admin email. Google login never auto-creates accounts; the verified Google email must already exist under the selected role.
 
 ## 3. Database
 

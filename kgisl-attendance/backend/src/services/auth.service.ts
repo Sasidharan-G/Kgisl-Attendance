@@ -9,6 +9,38 @@ export interface LoginContext {
   userAgent: string | null;
 }
 
+export type LoginRole = 'ADMIN' | 'FACULTY' | 'STUDENT';
+
+export async function loginWithGoogle(email: string, role: LoginRole, ctx: LoginContext) {
+  const normalizedEmail = email.toLowerCase();
+  const account = role === 'ADMIN'
+    ? await prisma.admin.findUnique({ where: { email: normalizedEmail } })
+    : role === 'FACULTY'
+      ? await prisma.faculty.findUnique({ where: { email: normalizedEmail } })
+      : await prisma.student.findUnique({ where: { email: normalizedEmail } });
+
+  if (!account) {
+    await writeAuditLog({ actorType: role, action: 'GOOGLE_LOGIN_FAILED', success: false, reasonCode: 'ACCOUNT_NOT_FOUND', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { email: normalizedEmail } });
+    throw Errors.INVALID_CREDENTIALS();
+  }
+  if (!account.isActive) throw Errors.ACCOUNT_INACTIVE();
+
+  const { accessToken, refreshToken, expiresIn } = await issueTokenPair(account.id, role);
+  await writeAuditLog({ actorId: account.id, actorType: role, action: 'GOOGLE_LOGIN_SUCCESS', ip: ctx.ip, userAgent: ctx.userAgent });
+  return {
+    token: accessToken,
+    refreshToken,
+    expiresIn,
+    user: {
+      id: account.id,
+      name: account.name,
+      email: account.email,
+      role,
+      ...(role === 'STUDENT' && 'rollNo' in account ? { rollNo: account.rollNo } : {}),
+    },
+  };
+}
+
 export async function loginAdmin(email: string, password: string, ctx: LoginContext) {
   const admin = await prisma.admin.findUnique({ where: { email } });
   if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
