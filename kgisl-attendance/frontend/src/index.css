@@ -403,3 +403,141 @@ body:has(aside) ::-webkit-scrollbar-thumb:hover { background-color: rgba(56, 189
   body:has(aside)::after { animation: none; }
   body:has(aside) * { scroll-behavior: auto !important; }
 }
+
+/* Pool-water liquid glass authentication portal. */
+.water-portal {
+  position:relative;
+  isolation:isolate;
+  min-height:100dvh;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1.8rem;
+  padding:2.5rem 1.25rem 3.3rem;
+  color:#fff;
+  background:
+    linear-gradient(135deg,rgba(0,49,66,.24),rgba(0,103,121,.06) 46%,rgba(1,36,48,.27)),
+    url('/pool-caustics.jpg') center/cover fixed;
+}
+.water-portal::before {
+  content:'';
+  position:fixed;
+  z-index:-1;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 50% 38%,transparent 20%,rgba(0,21,28,.22) 100%);
+}
+.water-vignette { position:absolute; z-index:-1; inset:0; pointer-events:none; background:linear-gradient(180deg,rgba(1,25,34,.13),transparent 34%,rgba(0,26,35,.18)); }
+.water-glass-dock,
+.water-login-panel {
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(235,255,255,.72);
+  background:linear-gradient(130deg,rgba(226,255,255,.45),rgba(146,230,231,.25) 48%,rgba(229,255,255,.38));
+  box-shadow:inset 2px 2px 1px rgba(255,255,255,.62), inset -1px -1px 1px rgba(255,255,255,.46), 0 18px 45px rgba(0,32,42,.36), 0 4px 9px rgba(0,25,32,.24);
+  -webkit-backdrop-filter:blur(14px) saturate(155%);
+  backdrop-filter:blur(14px) saturate(155%);
+}
+.water-glass-dock {
+  z-index:2;
+  display:flex;
+  align-items:center;
+  gap:.8rem;
+  width:min(39rem,calc(100vw - 2.5rem));
+  padding:.58rem;
+  border-radius:2rem;
+}
+.water-glass-dock::before,
+.water-login-panel::before {
+  content:'';
+  position:absolute;
+  pointer-events:none;
+  inset:-30% 38% 40% -28%;
+  background:radial-gradient(ellipse,rgba(255,255,255,.65),transparent 66%);
+  filter:blur(9px);
+}
+.water-logo-tile {
+  position:relative;
+  z-index:1;
+  display:grid;
+  place-items:center;
+  flex:0 0 6.8rem;
+  height:4.7rem;
+  padding:.48rem;
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:1.4rem;
+  background:rgba(245,255,255,.58);
+  box-shadow:inset 0 1px rgba(255,255,255,.9),0 4px 10px rgba(0,54,66,.18);
+}
+.water-logo-tile img { width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(13,30,56,.12)); }
+.water-dock-divider { position:relative; z-index:1; width:1px; height:3.3rem; background:linear-gradient(transparent,rgba(0,60,72,.28),transparent); }
+.water-role-switch { position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); gap:.4rem; flex:1; }
+.water-role-switch button {
+  display:flex;
+  min-height:4.7rem;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:.27rem;
+  border:1px solid transparent;
+  border-radius:1.35rem;
+  color:rgba(0,45,59,.78);
+  font-size:.68rem;
+  font-weight:800;
+  letter-spacing:.01em;
+  text-shadow:0 1px rgba(255,255,255,.45);
+  transition:transform .24s cubic-bezier(.2,.8,.2,1),background .24s ease,box-shadow .24s ease,color .24s ease;
+}
+.water-role-switch button svg { width:1.38rem; height:1.38rem; stroke-width:2.1; }
+.water-role-switch button:hover { transform:translateY(-2px) scale(1.025); background:rgba(255,255,255,.25); }
+.water-role-switch button.active { color:#fff; border-color:rgba(255,255,255,.72); background:linear-gradient(155deg,#0a90a8,#006a85); box-shadow:inset 0 1px rgba(255,255,255,.5),0 7px 15px rgba(0,66,83,.32); text-shadow:0 1px rgba(0,40,50,.3); }
+.water-login-panel { z-index:1; width:min(27.2rem,calc(100vw - 2.5rem)); border-radius:2rem; }
+.water-panel-light { position:absolute; inset:0; pointer-events:none; background:linear-gradient(135deg,rgba(255,255,255,.25),transparent 38%,rgba(0,80,97,.16) 100%); }
+.water-panel-content { position:relative; z-index:2; padding:1.1rem 1.1rem .85rem; }
+.water-panel-kicker { margin:0; text-align:center; color:rgba(0,42,54,.74); font-size:.62rem; font-weight:850; letter-spacing:.13em; text-transform:uppercase; text-shadow:0 1px rgba(255,255,255,.65); }
+.water-login-stage { min-height:31.2rem; perspective:1200px; }
+.water-login-flip { display:grid; transform-style:preserve-3d; transition:transform .65s cubic-bezier(.2,.8,.2,1); }
+.water-login-flip.flipped { transform:rotateY(180deg); }
+.water-login-face { grid-area:1/1; backface-visibility:hidden; }
+.water-login-back { transform:rotateY(180deg); }
+.water-login-face.inactive { pointer-events:none; }
+.water-login-panel .w-full.flex.flex-col.items-center.justify-center.p-4 { padding:.85rem .15rem .2rem; }
+.water-login-panel .custom-input { border-color:rgba(255,255,255,.58); background:rgba(0,54,67,.35); box-shadow:inset 0 1px rgba(255,255,255,.18); }
+.water-login-panel .custom-input:focus { border-color:#fff; background:rgba(0,54,67,.47); box-shadow:0 0 0 3px rgba(218,255,255,.34),0 9px 25px rgba(0,66,81,.23); }
+.water-login-panel .custom-label,.water-login-panel .text-slate-400 { color:rgba(236,255,255,.8); }
+.water-login-panel h2 { font-size:1.85rem; text-shadow:0 2px 9px rgba(0,50,61,.34); }
+.water-login-panel .text-slate-300 { color:rgba(237,255,255,.86); }
+.water-login-panel form > button[type='submit'] { border:1px solid rgba(255,255,255,.5); border-radius:1rem; background:linear-gradient(150deg,#0d9ab0,#006d88); box-shadow:inset 0 1px rgba(255,255,255,.45),0 10px 20px rgba(0,63,78,.3); }
+.water-login-panel form > button[type='submit']:hover { filter:brightness(1.08); }
+.water-login-panel .text-signal-blue { color:#e5ffff; text-shadow:0 1px 5px rgba(0,39,50,.35); }
+.water-login-panel .login-divider { color:rgba(237,255,255,.78); }
+.water-login-panel .google-login-disabled { border-color:rgba(255,255,255,.55); background:rgba(245,255,255,.37); color:#073b49; }
+.water-login-panel .google-login-placeholder { border-color:rgba(255,255,255,.55); }
+.water-security { display:flex; align-items:center; justify-content:center; gap:.35rem; margin:.1rem 0 0; color:rgba(0,43,54,.73); font-size:.61rem; font-weight:750; letter-spacing:.03em; text-shadow:0 1px rgba(255,255,255,.55); }
+.water-portal footer { position:fixed; z-index:1; bottom:.85rem; color:rgba(237,255,255,.84); font-size:.6rem; font-weight:650; letter-spacing:.04em; text-shadow:0 1px 5px rgba(0,35,44,.4); }
+.water-loading { position:relative; min-height:100dvh; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(130deg,#006a79,#0ca1b1 48%,#075365); color:#eaffff; }
+.water-loading::before { content:''; position:absolute; inset:0; opacity:.62; background:url('/pool-caustics.jpg') center/cover; mix-blend-mode:screen; }
+.water-loading-glass { position:absolute; width:min(31rem,84vw); height:13rem; border:1px solid rgba(255,255,255,.55); border-radius:2.5rem; background:rgba(221,255,255,.2); box-shadow:inset 1px 1px rgba(255,255,255,.55),0 24px 70px rgba(0,26,33,.35); backdrop-filter:blur(18px); }
+.water-loading img,.water-loading p { position:relative; z-index:1; }
+.water-loading img { width:min(24rem,70vw); max-height:9rem; object-fit:contain; animation:water-reveal 1s cubic-bezier(.16,1,.3,1) both; }
+.water-loading p { margin:.45rem 0 0; font-size:.65rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase; animation:water-reveal 1s .2s both; }
+@keyframes water-reveal { from { opacity:0; transform:translateY(12px) scale(.94); filter:blur(8px); } to { opacity:1; transform:none; filter:none; } }
+@media (max-width:520px) {
+  .water-portal { justify-content:flex-start; gap:1.05rem; padding:1rem .7rem 2.5rem; background-attachment:scroll; }
+  .water-glass-dock,.water-login-panel { width:min(100%,26rem); }
+  .water-glass-dock { gap:.38rem; padding:.38rem; border-radius:1.55rem; }
+  .water-logo-tile { flex-basis:4.25rem; height:3.8rem; padding:.32rem; border-radius:1.1rem; }
+  .water-dock-divider { display:none; }
+  .water-role-switch { gap:.22rem; }
+  .water-role-switch button { min-height:3.8rem; border-radius:1.05rem; font-size:.57rem; }
+  .water-role-switch button svg { width:1.15rem; height:1.15rem; }
+  .water-login-panel { border-radius:1.6rem; }
+  .water-panel-content { padding:.8rem .7rem .65rem; }
+  .water-login-stage { min-height:30.2rem; }
+  .water-login-panel .w-full.flex.flex-col.items-center.justify-center.p-4 { padding:.7rem 0 .15rem; }
+  .water-login-panel h2 { font-size:1.6rem; }
+  .water-portal footer { position:static; margin-top:auto; }
+}
+@media (prefers-reduced-motion:reduce) { .water-login-flip,.water-loading img,.water-loading p { transition:none; animation:none; } }
