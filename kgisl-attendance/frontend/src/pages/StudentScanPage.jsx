@@ -11,10 +11,13 @@ import {
   ShieldAlert,
   History,
   CalendarCheck,
+  Waves,
+  QrCode,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { submitScan, getSessionPublicInfo } from '../services/api.js';
+import StudentAcousticPanel from '../components/StudentAcousticPanel';
 
 /**
  * Stable per-browser device fingerprint (persisted in localStorage).
@@ -119,6 +122,7 @@ export default function StudentScanPage() {
   const [message, setMessage] = useState('');
   const [successData, setSuccessData] = useState(null); // from backend response
   const [errorCode, setErrorCode] = useState('');
+  const [attendanceMode, setAttendanceMode] = useState('alpha');
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) {
@@ -261,6 +265,17 @@ export default function StudentScanPage() {
     startScanning();
   }
 
+  function selectAttendanceMode(mode) {
+    stopCamera();
+    setAttendanceMode(mode);
+    setStatus('idle');
+    setCameraError('');
+    setMessage('');
+    setErrorCode('');
+    setSuccessData(null);
+    isSubmittingRef.current = false;
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-10">
       <div className="w-full max-w-sm">
@@ -280,7 +295,19 @@ export default function StudentScanPage() {
 
         <div className="mt-8 rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6">
           <h1 className="font-display text-xl font-semibold text-white">Mark Attendance</h1>
-          <p className="mt-1 text-sm text-slate-400">Scan the live QR shown by your faculty.</p>
+          <p className="mt-1 text-sm text-slate-400">Alpha sound-a listen pannunga; work aagala na Beta QR use pannunga.</p>
+
+          <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-ink-border bg-ink-900 p-1">
+            <button type="button" onClick={() => selectAttendanceMode('alpha')} className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition ${attendanceMode === 'alpha' ? 'bg-cyan-500/20 text-cyan-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Waves size={14}/>Alpha · Sound</button>
+            <button type="button" onClick={() => selectAttendanceMode('beta')} className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition ${attendanceMode === 'beta' ? 'bg-red-500/20 text-red-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><QrCode size={14}/>Beta · QR</button>
+          </div>
+
+          {attendanceMode === 'alpha' ? (
+            <div className="mt-4">
+              <StudentAcousticPanel onUseQr={() => selectAttendanceMode('beta')} />
+            </div>
+          ) : (
+            <>
 
           {/* QR Viewfinder */}
           <div className="mt-6 scan-frame relative mx-auto w-full aspect-square max-w-[280px] overflow-hidden rounded-2xl bg-black">
@@ -380,6 +407,8 @@ export default function StudentScanPage() {
                 </button>
               )}
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

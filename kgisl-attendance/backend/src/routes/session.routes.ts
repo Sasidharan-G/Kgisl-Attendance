@@ -12,6 +12,10 @@ import {
   resumeSessionHandler,
   startExtraSessionHandler,
 } from '../controllers/session.controller';
+import {
+  issueAcousticTokenHandler,
+  revokeAcousticTokenHandler,
+} from '../controllers/acoustic.controller';
 
 const router = Router();
 
@@ -21,6 +25,8 @@ router.get('/active/mine', requireAuth('FACULTY'), getActiveSessionHandler);
 router.post('/:sessionId/end', requireAuth('FACULTY'), endSessionHandler);
 router.post('/:sessionId/pause', requireAuth('FACULTY'), pauseSessionHandler);
 router.post('/:sessionId/resume', requireAuth('FACULTY'), resumeSessionHandler);
+router.post('/:sessionId/acoustic-token', requireAuth('FACULTY'), issueAcousticTokenHandler);
+router.delete('/:sessionId/acoustic-token', requireAuth('FACULTY'), revokeAcousticTokenHandler);
 router.post('/:sessionId/manual-attendance', requireAuth('FACULTY'), manualAttendanceHandler);
 router.patch('/:sessionId/attendance', requireAuth('FACULTY'), correctAttendanceHandler);
 router.get('/:sessionId/stats', requireAuth('FACULTY', 'STUDENT'), getSessionStatsHandler);

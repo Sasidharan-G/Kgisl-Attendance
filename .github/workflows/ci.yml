@@ -1,7 +1,13 @@
-name: Pull request checks
+name: CI
 
 on:
   pull_request:
+    paths:
+      - 'kgisl-attendance/**'
+      - '.github/workflows/ci.yml'
+  push:
+    branches:
+      - main
     paths:
       - 'kgisl-attendance/**'
       - '.github/workflows/ci.yml'
@@ -16,8 +22,9 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend build and tests
+    name: Backend generate, build and tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://test:test@localhost:5432/test
@@ -25,6 +32,8 @@ jobs:
       JWT_ACCESS_SECRET: ci-only-access-secret-at-least-32-characters
       JWT_REFRESH_SECRET: ci-only-refresh-secret-at-least-32-characters
       QR_HMAC_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      ACOUSTIC_TOKEN_PEPPER: ci-only-acoustic-token-pepper-at-least-32-characters
+      ACOUSTIC_TOKEN_TTL_SECONDS: '30'
     defaults:
       run:
         working-directory: kgisl-attendance/backend
@@ -35,12 +44,19 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: kgisl-attendance/backend/package-lock.json
-      - run: npm ci
-      - run: npm test
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: TypeScript build
+        run: npm run build
+      - name: Backend tests
+        run: npm test
 
   frontend:
-    name: Frontend production build
+    name: Frontend typecheck and production build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: kgisl-attendance/frontend
@@ -51,5 +67,91 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: kgisl-attendance/frontend/package-lock.json
-      - run: npm ci
-      - run: npm run build
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Frontend tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+  container:
+    name: Docker build and readiness smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: kgisl_attendance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d kgisl_attendance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./kgisl-attendance
+          file: ./kgisl-attendance/Dockerfile
+          load: true
+          push: false
+          tags: kgisl-attendance:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start production image
+        run: >-
+          docker run --detach --name kgisl-attendance-ci --network host
+          --env NODE_ENV=production
+          --env PORT=4000
+          --env DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/kgisl_attendance
+          --env REDIS_URL=redis://127.0.0.1:6379
+          --env JWT_ACCESS_SECRET=ci-only-access-secret-at-least-32-characters
+          --env JWT_REFRESH_SECRET=ci-only-refresh-secret-at-least-32-characters
+          --env QR_HMAC_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          --env ACOUSTIC_TOKEN_PEPPER=ci-only-acoustic-token-pepper-at-least-32-characters
+          --env ACOUSTIC_TOKEN_TTL_SECONDS=30
+          --env FRONTEND_ORIGINS=http://localhost:5173
+          --env BREVO_API_KEY=ci-only-not-used
+          --env EMAIL_FROM=ci@example.invalid
+          kgisl-attendance:ci
+      - name: Wait for migrations and readiness
+        shell: bash
+        run: |
+          for _ in {1..45}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4000/health/ready; then
+              exit 0
+            fi
+            if ! docker inspect --format='{{.State.Running}}' kgisl-attendance-ci | grep -q true; then
+              docker logs kgisl-attendance-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs kgisl-attendance-ci
+          exit 1
+      - name: Verify frontend is served
+        run: curl --fail --silent --show-error http://127.0.0.1:4000/ > /dev/null
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs kgisl-attendance-ci
+      - name: Stop smoke-test container
+        if: always()
+        run: docker rm --force kgisl-attendance-ci || true

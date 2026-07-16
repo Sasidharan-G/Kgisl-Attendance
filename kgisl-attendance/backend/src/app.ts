@@ -10,7 +10,6 @@ import facultyRoutes from './routes/faculty.routes';
 import timetableRoutes from './routes/timetable.routes';
 import studentRoutes from './routes/student.routes';
 import historyRoutes from './routes/history.routes';
-import attendanceRoutes from './routes/attendance.routes';
 import agentRoutes from './routes/agent.routes';
 import leaveRoutes from './routes/leave.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
@@ -72,7 +71,6 @@ export function createApp() {
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/agent', agentRoutes);
   app.use('/api/v1/leave-requests', leaveRoutes);
-  app.use('/api/attendance', attendanceRoutes);
 
   // Serve frontend static files in production
   if (process.env.NODE_ENV === 'production') {

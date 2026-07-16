@@ -4,6 +4,8 @@ import { z } from 'zod';
 // Deployment/runtime environment variables must win over a local .env file.
 dotenv.config();
 
+const DEVELOPMENT_ACOUSTIC_PEPPER = 'development-only-acoustic-pepper-do-not-use-in-production';
+
 const envSchema = z.object({
   PORT: z.string().default('4000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
@@ -28,6 +30,11 @@ const envSchema = z.object({
 
   QR_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
   QR_CLOCK_SKEW_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(2),
+
+  // Pepper for short acoustic bearer tokens. This must be independent from
+  // the QR signing key so compromise of one channel does not expose the other.
+  ACOUSTIC_TOKEN_PEPPER: z.string().min(32, 'ACOUSTIC_TOKEN_PEPPER must be at least 32 chars').optional(),
+  ACOUSTIC_TOKEN_TTL_SECONDS: z.coerce.number().int().min(15).max(60).default(30),
 
   // Geofence / GPS settings
   DEFAULT_GEOFENCE_RADIUS_M: z.coerce.number().int().positive().default(120),
@@ -61,6 +68,9 @@ const envSchema = z.object({
   if (value.NODE_ENV === 'production' && (!value.EMAIL_FROM || value.EMAIL_FROM.includes('onboarding@resend.dev'))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['EMAIL_FROM'], message: 'A verified production EMAIL_FROM is required' });
   }
+  if (value.NODE_ENV === 'production' && !value.ACOUSTIC_TOKEN_PEPPER) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['ACOUSTIC_TOKEN_PEPPER'], message: 'ACOUSTIC_TOKEN_PEPPER is required in production' });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -72,6 +82,11 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data;
+export const env = {
+  ...parsed.data,
+  // Local development stays zero-setup; production is rejected above unless
+  // it supplies an independent secret.
+  ACOUSTIC_TOKEN_PEPPER: parsed.data.ACOUSTIC_TOKEN_PEPPER ?? DEVELOPMENT_ACOUSTIC_PEPPER,
+};
 
 export const allowedOrigins = env.FRONTEND_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);

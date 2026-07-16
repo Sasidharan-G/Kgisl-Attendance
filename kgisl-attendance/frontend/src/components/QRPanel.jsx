@@ -33,7 +33,10 @@ export default function QRPanel({ qr, sessionMeta }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">
       <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-2 sm:mb-6">
-        <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Scan to Mark Attendance</h3>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-red-300/30 bg-red-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-red-200">Beta</span>
+          <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">QR Fallback</h3>
+        </div>
         <div className="flex items-center gap-1.5 rounded-md border border-ink-border bg-ink-900 px-2.5 py-1 text-[11px] text-slate-400">
           <RefreshCcw size={11} className={secondsLeft <= 3 ? 'animate-spin' : ''} />
           Auto refresh in {secondsLeft}s

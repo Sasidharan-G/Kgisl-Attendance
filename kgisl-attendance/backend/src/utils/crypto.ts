@@ -30,6 +30,35 @@ export function sha256Hex(input: string): string {
   return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
+// Crockford Base32 deliberately omits I, L, O and U, which reduces decoding
+// ambiguity when a noisy acoustic receiver reconstructs a short token.
+export const ACOUSTIC_TOKEN_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+export const ACOUSTIC_TOKEN_LENGTH = 8;
+
+/** Generates an 8-character, 40-bit Crockford Base32 acoustic token. */
+export function generateAcousticToken(): string {
+  const bytes = crypto.randomBytes(ACOUSTIC_TOKEN_LENGTH);
+  let token = '';
+  for (const byte of bytes) token += ACOUSTIC_TOKEN_ALPHABET[byte & 31];
+  return token;
+}
+
+/** Canonical form accepted from the decoder; malformed symbols are rejected by the route schema. */
+export function normalizeAcousticToken(token: string): string {
+  return token.trim().toUpperCase();
+}
+
+/**
+ * Keyed digest used for Redis lookup. The raw short token is returned to the
+ * faculty once, but is never durably persisted or written to logs.
+ */
+export function acousticTokenDigest(token: string): string {
+  return crypto
+    .createHmac('sha256', Buffer.from(env.ACOUSTIC_TOKEN_PEPPER, 'utf8'))
+    .update(`kgisl-acoustic-v1\0${normalizeAcousticToken(token)}`, 'utf8')
+    .digest('hex');
+}
+
 /**
  * Canonical, order-stable serialization of the QR payload fields that get signed.
  * Signing a canonical string (rather than JSON.stringify on an object) avoids

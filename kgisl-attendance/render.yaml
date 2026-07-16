@@ -3,6 +3,8 @@ services:
     name: kgisl-attendance-app
     env: docker
     rootDir: kgisl-attendance
+    branch: main
+    autoDeployTrigger: checksPass
     plan: free
     region: singapore
     healthCheckPath: /health/ready
@@ -22,10 +24,20 @@ services:
         generateValue: true
       - key: QR_HMAC_SECRET
         sync: false
+      - key: ACOUSTIC_TOKEN_PEPPER
+        generateValue: true
+      - key: ACOUSTIC_TOKEN_TTL_SECONDS
+        value: "30"
       - key: FRONTEND_ORIGINS
         value: "https://kgisl-attendance-1.onrender.com"
       - key: NODE_ENV
         value: production
+      - key: QR_REFRESH_INTERVAL_SECONDS
+        value: "10"
+      - key: MAX_GPS_ACCURACY_METERS
+        value: "50"
+      - key: DEFAULT_GEOFENCE_RADIUS_M
+        value: "120"
       - key: EMAIL_FROM
         sync: false
       - key: BREVO_API_KEY

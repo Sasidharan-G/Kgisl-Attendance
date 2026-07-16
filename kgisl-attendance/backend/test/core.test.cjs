@@ -8,6 +8,9 @@ const {
   sha256Hex,
   signQrPayload,
   verifyQrSignature,
+  acousticTokenDigest,
+  generateAcousticToken,
+  normalizeAcousticToken,
 } = require('../dist/utils/crypto.js');
 const { signAccessToken } = require('../dist/middleware/auth.middleware.js');
 const jwt = require('jsonwebtoken');
@@ -49,4 +52,19 @@ test('access token preserves identity and role claims', () => {
   assert.equal(decoded.sub, 'student-id');
   assert.equal(decoded.role, 'STUDENT');
   assert.ok(decoded.exp > decoded.iat);
+});
+
+test('acoustic tokens are 8-character Crockford Base32 with 40 bits of entropy', () => {
+  const tokens = new Set(Array.from({ length: 128 }, () => generateAcousticToken()));
+  assert.equal(tokens.size, 128);
+  for (const token of tokens) assert.match(token, /^[0-9A-HJKMNP-TV-Z]{8}$/);
+});
+
+test('acoustic token lookup uses a normalized keyed digest', () => {
+  const token = generateAcousticToken();
+  const digest = acousticTokenDigest(token);
+  assert.match(digest, /^[0-9a-f]{64}$/);
+  assert.equal(acousticTokenDigest(`  ${token.toLowerCase()}  `), digest);
+  assert.equal(normalizeAcousticToken(` ${token.toLowerCase()} `), token);
+  assert.notEqual(digest, sha256Hex(token));
 });

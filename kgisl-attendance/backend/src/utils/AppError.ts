@@ -33,6 +33,12 @@ export const Errors = {
     new AppError('TOKEN_REVOKED', 'This QR token has been revoked.', 410),
   TOKEN_ALREADY_USED: () =>
     new AppError('TOKEN_ALREADY_USED', 'This QR code has already been used.', 409),
+  ACOUSTIC_TOKEN_INVALID: () =>
+    new AppError('ACOUSTIC_TOKEN_INVALID_OR_EXPIRED', 'The acoustic token is invalid or has expired.', 410),
+  ACOUSTIC_TOKEN_ISSUE_FAILED: () =>
+    new AppError('ACOUSTIC_TOKEN_ISSUE_FAILED', 'Could not issue an acoustic token. Try again.', 503),
+  SESSION_ACCESS_DENIED: () =>
+    new AppError('SESSION_ACCESS_DENIED', 'You are not allowed to manage this attendance session.', 403),
 
   // Student-session checks
   BATCH_MISMATCH: () =>

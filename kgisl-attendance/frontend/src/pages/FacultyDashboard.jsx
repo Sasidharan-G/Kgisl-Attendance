@@ -8,7 +8,8 @@ import QRPanel from '../components/QRPanel.jsx';
 import RecentScans from '../components/RecentScans.jsx';
 import ValidationStrip from '../components/ValidationStrip.jsx';
 import StatTile from '../components/StatTile.jsx';
-import ManualAttendance from '../components/ManualAttendance.jsx';
+import ManualAttendance from '../components/ManualAttendance';
+import AcousticBroadcastPanel from '../components/AcousticBroadcastPanel';
 import { useAuth } from '../context/AuthContext.jsx';
 import { startSession, endSession, pauseSession, resumeSession, getActiveSession, getSessionStats, listAllocations } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
@@ -181,6 +182,14 @@ export default function FacultyDashboard() {
       setScans((prev) => [data, ...prev].slice(0, 50));
     });
 
+    socket.on('attendance_corrected', (data) => {
+      setScans((prev) => [{ ...data, scanTime: data.updatedAt, isCorrection: true }, ...prev].slice(0, 50));
+      const sessionId = currentSessionIdRef.current;
+      if (sessionId) {
+        getSessionStats(sessionId).then((currentStats) => setStats(currentStats.data)).catch(() => void 0);
+      }
+    });
+
     socket.on('geofence_violation', (data) => {
       setViolations((prev) => prev + 1);
       setScans((prev) => [{ ...data, isViolation: true }, ...prev].slice(0, 50));
@@ -273,6 +282,17 @@ export default function FacultyDashboard() {
     }
   }
 
+  async function handleManualUpdated() {
+    if (!sessionMeta?.sessionId) return;
+    try {
+      const currentStats = await getSessionStats(sessionMeta.sessionId);
+      setStats(currentStats.data);
+    } catch {
+      // The websocket remains the primary live update path. A temporary stats
+      // refresh failure must not hide the successfully saved manual override.
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-ink-950">
       <Sidebar />
@@ -357,8 +377,13 @@ export default function FacultyDashboard() {
           </div>
 
           <div className="flex flex-col h-full gap-6">
+            <AcousticBroadcastPanel
+              sessionId={sessionMeta?.sessionId}
+              sessionActive={sessionActive}
+              sessionPaused={sessionPaused}
+            />
             <QRPanel qr={qr} sessionMeta={sessionMeta} />
-            {sessionActive && <ManualAttendance sessionId={sessionMeta?.sessionId} />}
+            {sessionActive && <ManualAttendance sessionId={sessionMeta?.sessionId} onUpdated={handleManualUpdated} />}
           </div>
 
           <RecentScans scans={scans} />

@@ -25,7 +25,7 @@ export async function listSessionHistoryHandler(req: Request, res: Response, nex
             }
           }
         },
-        records: { select: { status: true } }
+        records: { select: { status: true, method: true } }
       },
       orderBy: { startedAt: 'desc' },
     });
@@ -34,6 +34,10 @@ export async function listSessionHistoryHandler(req: Request, res: Response, nex
       const totalStudents = session.batch._count.students;
       const statusCounts = session.records.reduce<Record<string, number>>((counts, record) => {
         counts[record.status] = (counts[record.status] || 0) + 1;
+        return counts;
+      }, {});
+      const methodCounts = session.records.reduce<Record<string, number>>((counts, record) => {
+        counts[record.method] = (counts[record.method] || 0) + 1;
         return counts;
       }, {});
       const present = (statusCounts.PRESENT || 0) + (statusCounts.LATE || 0) + (statusCounts.ON_DUTY || 0);
@@ -54,6 +58,7 @@ export async function listSessionHistoryHandler(req: Request, res: Response, nex
         absent,
         totalStudents,
         statusCounts,
+        methodCounts,
         attendancePercentage: totalStudents ? Math.round((present / totalStudents) * 10000) / 100 : 0,
         sessionType: session.sessionType,
       };
@@ -88,6 +93,10 @@ export async function getSessionAttendanceHandler(req: Request, res: Response, n
             scanTime: true,
             locationVerified: true,
             distanceFromCampus: true,
+            method: true,
+            markedByFacultyId: true,
+            overrideReason: true,
+            updatedAt: true,
           },
         },
       },
@@ -110,6 +119,10 @@ export async function getSessionAttendanceHandler(req: Request, res: Response, n
         scanTime: record?.scanTime ?? null,
         locationVerified: record?.locationVerified ?? false,
         distanceFromCampus: record?.distanceFromCampus ?? null,
+        attendanceMethod: record?.method ?? null,
+        markedByFacultyId: record?.markedByFacultyId ?? null,
+        overrideReason: record?.overrideReason ?? null,
+        updatedAt: record?.updatedAt ?? null,
       };
     });
 

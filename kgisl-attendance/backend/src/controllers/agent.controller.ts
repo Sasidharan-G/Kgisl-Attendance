@@ -4,7 +4,7 @@ import { redis } from '../config/redis';
 import { logger } from '../utils/logger';
 import { requestContext, writeAuditLog } from '../services/audit.service';
 import { endSession, getActiveSession, pauseSession, resumeSession, startSession } from '../services/session.service';
-import { markManualAttendance } from '../services/attendance.service';
+import { overrideAttendance } from '../services/attendance.service';
 
 type Draft = {
   facultyId?: string; facultyName?: string;
@@ -101,7 +101,16 @@ async function executePendingOperation(req: Request, res: Response, op: PendingO
   if (op.type === 'RESUME_SESSION') { await resumeSession(op.sessionId!, req.auth!.sub); reply = 'Your attendance session was resumed and a fresh QR was generated.'; }
   if (op.type === 'END_SESSION') { await endSession(op.sessionId!, req.auth!.sub); reply = 'Your attendance session was ended.'; }
   if (op.type === 'START_SESSION') { await startSession({ facultyId: req.auth!.sub, allocationId: op.allocationId!, subjectId: op.subjectId!, roomId: op.roomId!, batchId: op.batchId! }); reply = 'Your assigned attendance session was started and the QR is ready.'; }
-  if (op.type === 'MANUAL_ATTENDANCE') { await markManualAttendance({ sessionId: op.sessionId!, rollNo: op.rollNo!, facultyId: req.auth!.sub }); reply = `Attendance was marked for ${op.rollNo}.`; }
+  if (op.type === 'MANUAL_ATTENDANCE') {
+    await overrideAttendance({
+      sessionId: op.sessionId!,
+      rollNo: op.rollNo!,
+      facultyId: req.auth!.sub,
+      status: 'PRESENT',
+      reason: 'Faculty confirmed through the operations agent',
+    });
+    reply = `Attendance was marked for ${op.rollNo}.`;
+  }
   if (op.type === 'REVIEW_LEAVE') {
     const leave = await prisma.leaveRequest.findUnique({ where: { id: op.targetId! }, include: { student: true } });
     if (!leave || leave.status !== 'PENDING') throw new Error('Leave request is no longer pending.');
@@ -114,7 +123,7 @@ async function executePendingOperation(req: Request, res: Response, op: PendingO
       const end = new Date(leave.toDate); end.setHours(23, 59, 59, 999);
       const sessions = await prisma.attendanceSession.findMany({ where: { batchId: leave.student.batchId, startedAt: { gte: leave.fromDate, lte: end } }, select: { sessionId: true } });
       const attendanceStatus = leave.type === 'ON_DUTY' ? 'ON_DUTY' : 'LEAVE';
-      for (const session of sessions) await prisma.attendanceRecord.upsert({ where: { uq_student_session: { studentId: leave.studentId, sessionId: session.sessionId } }, update: { status: attendanceStatus }, create: { studentId: leave.studentId, sessionId: session.sessionId, status: attendanceStatus, gpsLat: 0, gpsLng: 0, deviceId: 'AGENT_APPROVED_REQUEST', locationVerificationStatus: 'APPROVED_REQUEST' } });
+      for (const session of sessions) await prisma.attendanceRecord.upsert({ where: { uq_student_session: { studentId: leave.studentId, sessionId: session.sessionId } }, update: { status: attendanceStatus, markedByFacultyId: req.auth!.sub, overrideReason: 'Approved leave request through operations agent' }, create: { studentId: leave.studentId, sessionId: session.sessionId, status: attendanceStatus, method: 'FACULTY_MANUAL', gpsLat: null, gpsLng: null, deviceId: null, locationVerificationStatus: 'APPROVED_REQUEST', markedByFacultyId: req.auth!.sub, overrideReason: 'Approved leave request through operations agent' } });
     }
     reply = `${op.targetName}'s request was ${op.status!.toLowerCase()}.`;
   }

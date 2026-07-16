@@ -79,6 +79,21 @@ security feature working as designed, not a bug. Update the lat/lng values
 in `backend/prisma/seed.ts` to your actual location before testing, or widen
 `geofenceRadiusM` temporarily.
 
+## Production deployment (Render)
+
+This repository is a monorepo whose Git root is one level above this application directory. Render must use `kgisl-attendance/render.yaml` as the Blueprint path; the web service intentionally keeps `rootDir: kgisl-attendance` so the existing Docker build context remains correct.
+
+The production release path is:
+
+1. Open a pull request and let GitHub Actions validate the backend, frontend, and production Docker image.
+2. Merge into the protected `main` branch only after all checks pass.
+3. Render's `autoDeployTrigger: checksPass` then builds and deploys that exact commit automatically.
+4. The container applies committed Prisma migrations, starts the API, and must pass `/health/ready` before Render sends traffic to it.
+
+Before the first deployment, sync the Blueprint and enter every `sync: false` secret in Render. Confirm that `ACOUSTIC_TOKEN_PEPPER` exists (the Blueprint can generate it), `ACOUSTIC_TOKEN_TTL_SECONDS` is `30`, and the deployed HTTPS origin exactly matches `FRONTEND_ORIGINS`. Microphone access for acoustic attendance requires HTTPS on physical mobile devices.
+
+Do not use `prisma db push` or automatic seeding in production. Render application rollback does not undo database migrations, so use backward-compatible expand/contract migrations and take a verified database backup before destructive schema changes. The complete release, smoke-test, backup, and rollback procedure is in [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md).
+
 ## What's still a stub
 
 - No admin UI for managing students/subjects/rooms/batches (only read-only
