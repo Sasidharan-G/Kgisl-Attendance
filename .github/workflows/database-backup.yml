@@ -8,21 +8,41 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: production-database-backup
+  cancel-in-progress: false
+
 jobs:
   backup:
+    name: Create and verify PostgreSQL backup
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Create compressed PostgreSQL backup
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PGCONNECT_TIMEOUT: '15'
         run: |
           test -n "$DATABASE_URL"
-          pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --file=kgisl-attendance.dump
+          docker run --rm \
+            --env DATABASE_URL \
+            --env PGCONNECT_TIMEOUT \
+            --volume "$PWD:/backup" \
+            postgres:18-alpine \
+            sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --file=/backup/kgisl-attendance.dump'
+      - name: Verify backup can be read
+        run: |
+          docker run --rm \
+            --volume "$PWD:/backup:ro" \
+            postgres:18-alpine \
+            pg_restore --list /backup/kgisl-attendance.dump > /dev/null
+          sha256sum kgisl-attendance.dump > kgisl-attendance.dump.sha256
       - name: Upload private workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: kgisl-attendance-db-${{ github.run_id }}
-          path: kgisl-attendance.dump
+          path: |
+            kgisl-attendance.dump
+            kgisl-attendance.dump.sha256
           retention-days: 7
           if-no-files-found: error

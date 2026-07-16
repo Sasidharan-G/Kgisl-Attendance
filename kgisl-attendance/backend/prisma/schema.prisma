@@ -17,14 +17,14 @@ datasource db {
 // ------------------------------------------------------------
 
 model Faculty {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
   passwordHash String
-  createdAt DateTime @default(now())
-  isActive  Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now())
+  isActive     Boolean  @default(true) @map("is_active")
 
-  sessions AttendanceSession[]
+  sessions    AttendanceSession[]
   allocations TimetableAllocation[]
 
   @@map("faculty")
@@ -42,57 +42,57 @@ model Admin {
 }
 
 model Student {
-  id            String   @id @default(uuid())
-  name          String
-  rollNo        String   @unique @map("roll_no")
-  regNo         String   @unique @map("reg_no")
-  batchId       String   @map("batch_id")
-  email         String   @unique
-  passwordHash  String
-  deviceId      String?  @map("device_id") // bound device for anti-sharing checks
-  createdAt     DateTime @default(now())
-  isActive      Boolean  @default(true) @map("is_active")
+  id           String   @id @default(uuid())
+  name         String
+  rollNo       String   @unique @map("roll_no")
+  regNo        String   @unique @map("reg_no")
+  batchId      String   @map("batch_id")
+  email        String   @unique
+  passwordHash String
+  deviceId     String?  @map("device_id") // bound device for anti-sharing checks
+  createdAt    DateTime @default(now())
+  isActive     Boolean  @default(true) @map("is_active")
 
-  batch   Batch @relation(fields: [batchId], references: [id])
-  records AttendanceRecord[]
+  batch         Batch              @relation(fields: [batchId], references: [id])
+  records       AttendanceRecord[]
   leaveRequests LeaveRequest[]
 
   @@map("student")
 }
 
 model Batch {
-  id       String @id @default(uuid())
-  name     String @unique // e.g. "MCA - II Year A"
-  department   String @default("Computer Applications")
-  programme    String @default("MCA")
-  semester     Int    @default(1)
-  academicYear String @default("2026-2027") @map("academic_year")
-  students Student[]
-  sessions AttendanceSession[]
-  allocations TimetableAllocation[]
+  id           String                @id @default(uuid())
+  name         String                @unique // e.g. "MCA - II Year A"
+  department   String                @default("Computer Applications")
+  programme    String                @default("MCA")
+  semester     Int                   @default(1)
+  academicYear String                @default("2026-2027") @map("academic_year")
+  students     Student[]
+  sessions     AttendanceSession[]
+  allocations  TimetableAllocation[]
 
   @@map("batch")
 }
 
 model Subject {
-  id       String @id @default(uuid())
-  name     String
-  code     String @unique
-  sessions AttendanceSession[]
+  id          String                @id @default(uuid())
+  name        String
+  code        String                @unique
+  sessions    AttendanceSession[]
   allocations TimetableAllocation[]
 
   @@map("subject")
 }
 
 model Room {
-  id                String  @id @default(uuid())
-  name              String  @unique // e.g. "302 - MCA Lab"
-  latitude          Float
-  longitude         Float
-  geofenceRadiusM   Int     @default(120) @map("geofence_radius_m")
-  wifiBssidWhitelist String[] @map("wifi_bssid_whitelist")
-  sessions          AttendanceSession[]
-  allocations       TimetableAllocation[]
+  id                 String                @id @default(uuid())
+  name               String                @unique // e.g. "302 - MCA Lab"
+  latitude           Float
+  longitude          Float
+  geofenceRadiusM    Int                   @default(120) @map("geofence_radius_m")
+  wifiBssidWhitelist String[]              @map("wifi_bssid_whitelist")
+  sessions           AttendanceSession[]
+  allocations        TimetableAllocation[]
 
   @@map("room")
 }
@@ -130,28 +130,28 @@ enum SessionStatus {
 }
 
 model AttendanceSession {
-  sessionId         String        @id @default(uuid()) @map("session_id")
-  facultyId         String        @map("faculty_id")
-  subjectId         String        @map("subject_id")
-  roomId            String        @map("room_id")
-  batchId           String        @map("batch_id")
-  status            SessionStatus @default(ACTIVE)
-  startedAt         DateTime      @default(now()) @map("started_at")
-  endedAt           DateTime?     @map("ended_at")
-  scheduledEndAt    DateTime?     @map("scheduled_end_at")
-  sessionType       String        @default("SCHEDULED") @map("session_type")
-  notes             String?
+  sessionId      String        @id @default(uuid()) @map("session_id")
+  facultyId      String        @map("faculty_id")
+  subjectId      String        @map("subject_id")
+  roomId         String        @map("room_id")
+  batchId        String        @map("batch_id")
+  status         SessionStatus @default(ACTIVE)
+  startedAt      DateTime      @default(now()) @map("started_at")
+  endedAt        DateTime?     @map("ended_at")
+  scheduledEndAt DateTime?     @map("scheduled_end_at")
+  sessionType    String        @default("SCHEDULED") @map("session_type")
+  notes          String?
 
   // Only a HASH of the currently active token is ever persisted.
-  currentQrTokenHash String?      @map("current_qr_token_hash")
-  currentQrExpiry    DateTime?    @map("current_qr_expiry")
+  currentQrTokenHash String?   @map("current_qr_token_hash")
+  currentQrExpiry    DateTime? @map("current_qr_expiry")
 
-  createdAt         DateTime      @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  faculty  Faculty @relation(fields: [facultyId], references: [id])
-  subject  Subject @relation(fields: [subjectId], references: [id])
-  room     Room    @relation(fields: [roomId], references: [id])
-  batch    Batch   @relation(fields: [batchId], references: [id])
+  faculty Faculty @relation(fields: [facultyId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  room    Room    @relation(fields: [roomId], references: [id])
+  batch   Batch   @relation(fields: [batchId], references: [id])
 
   qrHistory AttendanceQrHistory[]
   records   AttendanceRecord[]
@@ -161,16 +161,16 @@ model AttendanceSession {
 }
 
 model AttendanceQrHistory {
-  id           String    @id @default(uuid())
-  sessionId    String    @map("session_id")
-  tokenHash    String    @map("token_hash") // SHA-256 hash — raw token NEVER stored
-  nonce        String
-  generatedAt  DateTime  @default(now()) @map("generated_at")
-  expiresAt    DateTime  @map("expires_at")
-  isExpired    Boolean   @default(false) @map("is_expired")
-  revoked      Boolean   @default(false)
-  usedAt       DateTime? @map("used_at") // set on first successful scan (replay prevention)
-  usedByStudentId String? @map("used_by_student_id")
+  id              String    @id @default(uuid())
+  sessionId       String    @map("session_id")
+  tokenHash       String    @map("token_hash") // SHA-256 hash — raw token NEVER stored
+  nonce           String
+  generatedAt     DateTime  @default(now()) @map("generated_at")
+  expiresAt       DateTime  @map("expires_at")
+  isExpired       Boolean   @default(false) @map("is_expired")
+  revoked         Boolean   @default(false)
+  usedAt          DateTime? @map("used_at") // set on first successful scan (replay prevention)
+  usedByStudentId String?   @map("used_by_student_id")
 
   session AttendanceSession @relation(fields: [sessionId], references: [sessionId])
 
@@ -191,21 +191,31 @@ enum AttendanceStatus {
   REJECTED_INVALID_SIGNATURE
 }
 
+enum AttendanceMethod {
+  QR
+  ACOUSTIC
+  FACULTY_MANUAL
+}
+
 model AttendanceRecord {
-  id         String           @id @default(uuid())
-  studentId  String           @map("student_id")
-  sessionId  String           @map("session_id")
-  scanTime   DateTime         @default(now()) @map("scan_time")
-  gpsLat     Float            @map("gps_lat")
-  gpsLng     Float            @map("gps_lng")
-  gpsAccuracy Float?          @map("gps_accuracy")
-  distanceFromCampus Float?   @map("distance_from_campus")
-  locationVerified Boolean    @default(false) @map("location_verified")
-  locationVerificationStatus String? @map("location_verification_status")
-  locationVerifiedAt DateTime? @map("location_verified_at")
-  status     AttendanceStatus @default(PRESENT)
-  deviceId   String           @map("device_id")
-  createdAt  DateTime         @default(now()) @map("created_at")
+  id                         String           @id @default(uuid())
+  studentId                  String           @map("student_id")
+  sessionId                  String           @map("session_id")
+  scanTime                   DateTime         @default(now()) @map("scan_time")
+  gpsLat                     Float?           @map("gps_lat")
+  gpsLng                     Float?           @map("gps_lng")
+  gpsAccuracy                Float?           @map("gps_accuracy")
+  distanceFromCampus         Float?           @map("distance_from_campus")
+  locationVerified           Boolean          @default(false) @map("location_verified")
+  locationVerificationStatus String?          @map("location_verification_status")
+  locationVerifiedAt         DateTime?        @map("location_verified_at")
+  status                     AttendanceStatus @default(PRESENT)
+  method                     AttendanceMethod @default(QR)
+  deviceId                   String?          @map("device_id")
+  markedByFacultyId          String?          @map("marked_by_faculty_id")
+  overrideReason             String?          @map("override_reason")
+  createdAt                  DateTime         @default(now()) @map("created_at")
+  updatedAt                  DateTime         @updatedAt @map("updated_at")
 
   student Student           @relation(fields: [studentId], references: [id])
   session AttendanceSession @relation(fields: [sessionId], references: [sessionId])
@@ -213,6 +223,7 @@ model AttendanceRecord {
   // A student can only ever have ONE successful PRESENT record per session.
   @@unique([studentId, sessionId], name: "uq_student_session")
   @@index([sessionId])
+  @@index([method])
   @@map("attendance_record")
 }
 
@@ -228,18 +239,18 @@ enum LeaveRequestStatus {
 }
 
 model LeaveRequest {
-  id          String             @id @default(uuid())
-  studentId   String             @map("student_id")
-  type        LeaveRequestType
-  fromDate    DateTime           @map("from_date")
-  toDate      DateTime           @map("to_date")
-  reason      String
-  status      LeaveRequestStatus @default(PENDING)
-  reviewNote  String?            @map("review_note")
-  reviewedBy  String?            @map("reviewed_by")
-  reviewedAt  DateTime?          @map("reviewed_at")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
+  id         String             @id @default(uuid())
+  studentId  String             @map("student_id")
+  type       LeaveRequestType
+  fromDate   DateTime           @map("from_date")
+  toDate     DateTime           @map("to_date")
+  reason     String
+  status     LeaveRequestStatus @default(PENDING)
+  reviewNote String?            @map("review_note")
+  reviewedBy String?            @map("reviewed_by")
+  reviewedAt DateTime?          @map("reviewed_at")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
 
   student Student @relation(fields: [studentId], references: [id])
 
@@ -268,13 +279,13 @@ model AuditLog {
   id         String    @id @default(uuid())
   actorId    String?   @map("actor_id") // null for pre-auth events e.g. failed login by unknown email
   actorType  ActorType @map("actor_type")
-  action     String    // e.g. "LOGIN_SUCCESS", "LOGIN_FAILED", "SCAN_ACCEPTED", "SCAN_REJECTED", "SESSION_STARTED"
+  action     String // e.g. "LOGIN_SUCCESS", "LOGIN_FAILED", "SCAN_ACCEPTED", "SCAN_REJECTED", "SESSION_STARTED"
   success    Boolean   @default(true)
   reasonCode String?   @map("reason_code") // e.g. AppError.code on failure
   sessionId  String?   @map("session_id") // attendance session, if applicable
   ip         String?
   userAgent  String?   @map("user_agent")
-  metadata   Json?     // small structured extra context (never secrets/tokens)
+  metadata   Json? // small structured extra context (never secrets/tokens)
   createdAt  DateTime  @default(now()) @map("created_at")
 
   @@index([actorId, createdAt])
@@ -282,4 +293,3 @@ model AuditLog {
   @@index([sessionId])
   @@map("audit_log")
 }
-

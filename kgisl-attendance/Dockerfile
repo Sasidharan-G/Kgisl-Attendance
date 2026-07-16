@@ -1,5 +1,5 @@
 # Build stage for frontend
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
@@ -7,7 +7,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Build stage for backend
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 WORKDIR /app/backend
 RUN apk add --no-cache openssl
 COPY backend/package*.json ./
@@ -18,7 +18,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production runtime image
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 RUN apk add --no-cache openssl
 
@@ -39,7 +39,10 @@ EXPOSE 4000
 ENV NODE_ENV=production
 ENV PORT=4000
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider "http://127.0.0.1:${PORT}/health/ready" || exit 1
+
 WORKDIR /app/backend
 # Apply schema changes on every release. Seed is intentionally NOT run here:
 # it contains initial credentials and must never reset user passwords on redeploy.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node dist/server.js"]

@@ -75,6 +75,21 @@ export function broadcastAttendanceMarked(
   io?.to(sessionRoom(sessionId)).emit('attendance_marked', data);
 }
 
+/** Faculty overrides are a distinct event so clients can update present/absent state correctly. */
+export function broadcastAttendanceCorrected(
+  sessionId: string,
+  data: {
+    studentId: string;
+    studentName: string;
+    studentRoll: string;
+    status: string;
+    method: string;
+    updatedAt: string;
+  }
+) {
+  io?.to(sessionRoom(sessionId)).emit('attendance_corrected', data);
+}
+
 export function broadcastSessionEnded(sessionId: string) {
   io?.to(sessionRoom(sessionId)).emit('session_ended', { sessionId });
 }

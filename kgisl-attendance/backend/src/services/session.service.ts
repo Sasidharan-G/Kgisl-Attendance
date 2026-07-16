@@ -5,6 +5,7 @@ import { generateNewQr } from './qr.service';
 import { broadcastQrUpdate, broadcastSessionEnded, broadcastSessionPaused } from '../websocket/socket';
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
+import { revokeAcousticToken } from './acoustic.service';
 
 // In-memory registry of active refresh timers, keyed by sessionId.
 // (For a multi-instance deployment, promote this to a Redis-backed leader-election
@@ -101,7 +102,7 @@ export async function pauseSession(sessionId: string, facultyId: string) {
   if (session.facultyId !== facultyId || session.status !== 'ACTIVE') throw Errors.SESSION_NOT_ACTIVE();
 
   clearRefresh(sessionId);
-  await redis.del(qrRedisKey(sessionId));
+  await Promise.all([redis.del(qrRedisKey(sessionId)), revokeAcousticToken(sessionId)]);
   await prisma.attendanceQrHistory.updateMany({
     where: { sessionId, isExpired: false },
     data: { isExpired: true, revoked: true },
@@ -194,7 +195,7 @@ async function autoEndSession(sessionId: string) {
   if (!session || !['ACTIVE', 'PAUSED'].includes(session.status)) return;
   clearRefresh(sessionId);
   clearAutoEnd(sessionId);
-  await redis.del(qrRedisKey(sessionId));
+  await Promise.all([redis.del(qrRedisKey(sessionId)), revokeAcousticToken(sessionId)]);
   await prisma.$transaction([
     prisma.attendanceSession.update({ where: { sessionId }, data: { status: 'EXPIRED', endedAt: new Date(), currentQrTokenHash: null, currentQrExpiry: null } }),
     prisma.attendanceQrHistory.updateMany({ where: { sessionId, isExpired: false }, data: { isExpired: true, revoked: true } }),
@@ -221,7 +222,7 @@ export async function endSession(sessionId: string, facultyId: string) {
   });
 
   // Immediately invalidate any lingering token.
-  await redis.del(qrRedisKey(sessionId));
+  await Promise.all([redis.del(qrRedisKey(sessionId)), revokeAcousticToken(sessionId)]);
   await prisma.attendanceQrHistory.updateMany({
     where: { sessionId, isExpired: false },
     data: { isExpired: true, revoked: true },

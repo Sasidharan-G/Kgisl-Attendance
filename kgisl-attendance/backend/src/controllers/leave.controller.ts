@@ -58,8 +58,23 @@ export async function reviewLeaveRequestHandler(req: Request, res: Response, nex
       for (const session of sessions) {
         await prisma.attendanceRecord.upsert({
           where: { uq_student_session: { studentId: request.studentId, sessionId: session.sessionId } },
-          update: { status: attendanceStatus },
-          create: { studentId: request.studentId, sessionId: session.sessionId, status: attendanceStatus, gpsLat: 0, gpsLng: 0, deviceId: 'APPROVED_REQUEST', locationVerificationStatus: 'APPROVED_REQUEST' },
+          update: {
+            status: attendanceStatus,
+            markedByFacultyId: req.auth!.sub,
+            overrideReason: input.reviewNote || 'Approved leave request',
+          },
+          create: {
+            studentId: request.studentId,
+            sessionId: session.sessionId,
+            status: attendanceStatus,
+            method: 'FACULTY_MANUAL',
+            gpsLat: null,
+            gpsLng: null,
+            deviceId: null,
+            locationVerificationStatus: 'APPROVED_REQUEST',
+            markedByFacultyId: req.auth!.sub,
+            overrideReason: input.reviewNote || 'Approved leave request',
+          },
         });
       }
     }

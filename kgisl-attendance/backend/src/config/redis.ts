@@ -21,6 +21,14 @@ export const qrRedisKey = (sessionId: string) => `attendance:session:${sessionId
 export const scanLockKey = (sessionId: string, studentId: string) =>
   `attendance:lock:${sessionId}:${studentId}`;
 
+/** Independent, ephemeral keys for the acoustic channel. Values never contain the raw token. */
+export const acousticSessionKey = (sessionId: string) =>
+  `attendance:acoustic:session:${sessionId}`;
+export const acousticTokenKey = (tokenDigest: string) =>
+  `attendance:acoustic:token:${tokenDigest}`;
+export const acousticClaimKey = (sessionId: string, studentId: string) =>
+  `attendance:acoustic:claim:${sessionId}:${studentId}`;
+
 /**
  * Refresh-token session storage (as required: Redis-backed sessions, not a DB table
  * on the hot path). Each individual refresh token gets its own key (`rt:{jti}`) so a
