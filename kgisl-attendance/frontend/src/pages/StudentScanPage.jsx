@@ -277,8 +277,8 @@ export default function StudentScanPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-6 py-10">
-      <div className="w-full max-w-sm">
+    <div className="student-workspace min-h-screen flex flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
+      <div className="w-full max-w-lg">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -293,7 +293,7 @@ export default function StudentScanPage() {
           </button></div>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6">
+        <div className="student-attendance-card mt-6 rounded-2xl p-5 shadow-card sm:p-7">
           <h1 className="font-display text-xl font-semibold text-white">Mark Attendance</h1>
           <p className="mt-1 text-sm text-slate-400">Alpha sound-a listen pannunga; work aagala na Beta QR use pannunga.</p>
 

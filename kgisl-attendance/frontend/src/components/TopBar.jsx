@@ -8,11 +8,11 @@ function StatusPill({ icon: Icon, label, value, tone = 'green' }) {
   }[tone];
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-ink-border bg-ink-850/60 px-3 py-1.5">
+    <div className="app-status-pill flex items-center gap-2 rounded-xl px-3 py-1.5">
       <Icon size={15} className={toneClasses} />
       <div className="leading-tight">
         <p className="text-[10px] text-slate-500">{label}</p>
-        <p className={`text-xs font-medium ${toneClasses}`}>{value}</p>
+        <p className="text-xs font-semibold text-slate-700">{value}</p>
       </div>
     </div>
   );
@@ -37,10 +37,10 @@ export default function TopBar({ connected, sessionActive = false }) {
   const title = TITLE_MAP[location.pathname] || 'Smart Attendance';
 
   return (
-    <header className="flex items-center justify-between gap-3 px-4 py-4 pl-16 sm:px-6 md:px-8 md:py-6 md:pl-8">
+    <header className="app-topbar flex items-center justify-between gap-3 px-4 py-4 pl-16 sm:px-6 md:px-8 md:py-5 md:pl-8">
       <div>
-        <h1 className="font-display text-xl font-bold text-white sm:text-2xl">{title}</h1>
-        <p className="hidden text-sm text-slate-500 sm:block">Smart. Secure. Seamless.</p>
+        <h1 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">{title}</h1>
+        <p className="hidden text-sm text-slate-500 sm:block">Manage your academic workspace</p>
       </div>
 
       <div className="hidden items-center gap-3 sm:flex">

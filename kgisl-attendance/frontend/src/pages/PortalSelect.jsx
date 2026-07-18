@@ -1,81 +1,83 @@
-import { useEffect, useState } from 'react';
-import { GraduationCap, ShieldCheck, UserRoundCog } from 'lucide-react';
+import { useState } from 'react';
+import { Building2, GraduationCap, ShieldCheck, Sparkles, UserRoundCog } from 'lucide-react';
 import AdminLogin from './AdminLogin.jsx';
 import StudentLogin from './StudentLogin.jsx';
-import LiquidGlassFilter from '../components/LiquidGlassFilter.jsx';
 
 const portals = [
-  { id: 'STUDENT', label: 'Student', Icon: GraduationCap },
-  { id: 'FACULTY', label: 'Faculty', Icon: UserRoundCog },
-  { id: 'ADMIN', label: 'Admin', Icon: ShieldCheck },
+  { id: 'STUDENT', label: 'Student', description: 'Mark attendance and view records', Icon: GraduationCap },
+  { id: 'FACULTY', label: 'Faculty', description: 'Manage classes and attendance', Icon: UserRoundCog },
+  { id: 'ADMIN', label: 'Admin', description: 'Configure and monitor the portal', Icon: ShieldCheck },
 ];
 
 export default function PortalSelect() {
-  const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('hasSeenLoadingScreen'));
   const [portal, setPortal] = useState('STUDENT');
+  const selectedPortal = portals.find((item) => item.id === portal);
 
-  useEffect(() => {
-    if (!isLoading) return undefined;
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      sessionStorage.setItem('hasSeenLoadingScreen', 'true');
-    }, 1400);
-    return () => clearTimeout(timer);
-  }, [isLoading]);
-
-  if (isLoading) {
-    return <div className="water-loading">
-      <div className="water-loading-glass" />
-      <img src="/loading-logo.png" alt="KGiSL-IIM" />
-      <p>Smart Attendance</p>
-    </div>;
-  }
-
-  return <main className="water-portal">
-    <LiquidGlassFilter />
-    <div className="water-vignette" aria-hidden="true" />
-
-    <section className="water-glass-dock" aria-label="KGiSL-IIM portal selection">
-      <div className="water-logo-tile">
-        <img src="/custom-logo.png" alt="KGiSL-IIM" />
-      </div>
-      <span className="water-dock-divider" aria-hidden="true" />
-      <div className="water-role-switch" role="tablist" aria-label="Choose portal">
-        {portals.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={portal === id}
-            className={portal === id ? 'active' : ''}
-            onClick={() => setPortal(id)}
-          >
-            <Icon aria-hidden="true" />
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-    </section>
-
-    <section className="water-login-panel" aria-label={`${portal.toLowerCase()} sign in`}>
-      <div className="liquid-glass-distortion" aria-hidden="true" />
-      <div className="water-panel-light" aria-hidden="true" />
-      <div className="water-panel-content">
-        <p className="water-panel-kicker">KGiSL-IIM · Smart Attendance</p>
-        <div className="water-login-stage">
-          <div className={`water-login-flip ${portal === 'STUDENT' ? '' : 'flipped'}`}>
-            <div className={`water-login-face ${portal !== 'STUDENT' ? 'inactive' : ''}`}>
-              <StudentLogin active={portal === 'STUDENT'} />
-            </div>
-            <div className={`water-login-face water-login-back ${portal === 'STUDENT' ? 'inactive' : ''}`}>
-              <AdminLogin portal={portal} active={portal !== 'STUDENT'} />
-            </div>
-          </div>
+  return (
+    <main className="calm-auth-shell">
+      <section className="calm-auth-brand" aria-label="KGiSL IIM Smart Attendance">
+        <div className="calm-brand-mark">
+          <img src="/custom-logo.png" alt="KGiSL-IIM" />
         </div>
-        <p className="water-security"><ShieldCheck size={13} />Encrypted campus access</p>
-      </div>
-    </section>
 
-    <footer>© {new Date().getFullYear()} KGiSL IIM</footer>
-  </main>;
+        <div className="calm-brand-copy">
+          <p className="calm-eyebrow"><Sparkles size={14} /> Smart campus experience</p>
+          <h1>Attendance,<br />made effortless.</h1>
+          <p className="calm-intro">
+            A secure and reliable attendance workspace designed for the students,
+            faculty and administrators of KGiSL Institute of Information Management.
+          </p>
+        </div>
+
+        <div className="calm-trust-row">
+          <span><ShieldCheck size={17} /> Secure access</span>
+          <span><Building2 size={17} /> MCA Department</span>
+        </div>
+        <p className="calm-brand-footer">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
+      </section>
+
+      <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
+        <div className="calm-auth-card">
+          <header className="calm-card-header">
+            <div>
+              <p className="calm-card-kicker">Welcome to the portal</p>
+              <h2>Sign in to your account</h2>
+              <p>Select your role and enter your credentials.</p>
+            </div>
+            <div className="calm-mobile-logo"><img src="/custom-logo.png" alt="KGiSL-IIM" /></div>
+          </header>
+
+          <div className="calm-role-switch" role="tablist" aria-label="Choose your role">
+            {portals.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={portal === id}
+                className={portal === id ? 'active' : ''}
+                onClick={() => setPortal(id)}
+              >
+                <Icon aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="calm-role-context">
+            <selectedPortal.Icon size={18} />
+            <div><strong>{selectedPortal.label} access</strong><span>{selectedPortal.description}</span></div>
+          </div>
+
+          <div className="calm-login-stage">
+            {portal === 'STUDENT'
+              ? <StudentLogin active />
+              : <AdminLogin key={portal} portal={portal} active />}
+          </div>
+
+          <p className="calm-security"><ShieldCheck size={14} /> Your connection is encrypted and protected</p>
+        </div>
+        <p className="calm-help">Need help signing in? Contact your department administrator.</p>
+      </section>
+    </main>
+  );
 }
