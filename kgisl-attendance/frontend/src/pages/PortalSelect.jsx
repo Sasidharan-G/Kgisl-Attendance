@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Building2, GraduationCap, ShieldCheck, Sparkles, UserRoundCog } from 'lucide-react';
 import AdminLogin from './AdminLogin.jsx';
 import StudentLogin from './StudentLogin.jsx';
@@ -11,10 +11,32 @@ const portals = [
 
 export default function PortalSelect() {
   const [portal, setPortal] = useState('STUDENT');
+  const [showEntrance, setShowEntrance] = useState(true);
   const selectedPortal = portals.find((item) => item.id === portal);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setShowEntrance(false), 5200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <main className="calm-auth-shell">
+    <>
+    {showEntrance && (
+      <section className="brand-entrance" aria-label="KGiSL-IIM" onClick={() => setShowEntrance(false)}>
+        <div className="brand-entrance-aura" />
+        <div className="brand-entrance-particles" />
+        <div className="brand-entrance-lockup">
+          <img className="brand-entrance-emblem" src="/entrance-emblem.png" alt="" />
+          <div className="brand-entrance-wordmark-mask">
+            <img className="brand-entrance-wordmark" src="/entrance-wordmark.png" alt="KGiSL-IIM" />
+          </div>
+          <span className="brand-entrance-sweep" />
+        </div>
+        <p className="brand-entrance-caption">Smart attendance · secure campus</p>
+        <button type="button" className="brand-entrance-skip" onClick={() => setShowEntrance(false)}>Skip intro</button>
+      </section>
+    )}
+    <main className={`calm-auth-shell ${showEntrance ? 'entrance-waiting' : 'entrance-ready'}`}>
       <section className="calm-auth-brand" aria-label="KGiSL IIM Smart Attendance">
         <div className="calm-brand-mark">
           <img src="/custom-logo.png" alt="KGiSL-IIM" />
@@ -79,5 +101,6 @@ export default function PortalSelect() {
         <p className="calm-help">Need help signing in? Contact your department administrator.</p>
       </section>
     </main>
+    </>
   );
 }
