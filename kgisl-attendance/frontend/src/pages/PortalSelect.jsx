@@ -9,37 +9,50 @@ const portals = [
   { id: 'ADMIN', label: 'Admin', description: 'Configure and monitor the portal', Icon: ShieldCheck },
 ];
 
+function LoginBrandLockup() {
+  return (
+    <div className="login-brand-lockup" aria-label="KGiSL-IIM — KGiSL Institute of Information Management">
+      <div className="login-brand-words">
+        <strong>{Array.from('KGiSL-IIM').map((letter, index) => <span key={`${letter}-${index}`}>{letter}</span>)}</strong>
+        <small>KGiSL Institute of Information Management</small>
+      </div>
+      <img src="/entrance-emblem.png" alt="" />
+    </div>
+  );
+}
+
 export default function PortalSelect() {
   const [portal, setPortal] = useState('STUDENT');
   const [showEntrance, setShowEntrance] = useState(true);
   const selectedPortal = portals.find((item) => item.id === portal);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowEntrance(false), 5200);
+    // Safety fallback in case the browser cannot finish loading the intro video.
+    const timer = setTimeout(() => setShowEntrance(false), 15000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
     {showEntrance && (
-      <section className="brand-entrance" aria-label="KGiSL-IIM" onClick={() => setShowEntrance(false)}>
-        <div className="brand-entrance-aura" />
-        <div className="brand-entrance-particles" />
-        <div className="brand-entrance-lockup">
-          <img className="brand-entrance-emblem" src="/entrance-emblem.png" alt="" />
-          <div className="brand-entrance-wordmark-mask">
-            <img className="brand-entrance-wordmark" src="/entrance-wordmark.png" alt="KGiSL-IIM" />
-          </div>
-          <span className="brand-entrance-sweep" />
-        </div>
-        <p className="brand-entrance-caption">Smart attendance · secure campus</p>
+      <section className="brand-entrance brand-entrance-video" aria-label="KGiSL-IIM intro video">
+        <video
+          className="brand-intro-video"
+          src="/kgisl-intro.mp4"
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          onEnded={() => setShowEntrance(false)}
+          onError={() => setShowEntrance(false)}
+        />
         <button type="button" className="brand-entrance-skip" onClick={() => setShowEntrance(false)}>Skip intro</button>
       </section>
     )}
     <main className={`calm-auth-shell ${showEntrance ? 'entrance-waiting' : 'entrance-ready'}`}>
       <section className="calm-auth-brand" aria-label="KGiSL IIM Smart Attendance">
         <div className="calm-brand-mark">
-          <img src="/custom-logo.png" alt="KGiSL-IIM" />
+          <LoginBrandLockup />
         </div>
 
         <div className="calm-brand-copy">
@@ -66,7 +79,7 @@ export default function PortalSelect() {
               <h2>Sign in to your account</h2>
               <p>Select your role and enter your credentials.</p>
             </div>
-            <div className="calm-mobile-logo"><img src="/custom-logo.png" alt="KGiSL-IIM" /></div>
+            <div className="calm-mobile-logo"><LoginBrandLockup /></div>
           </header>
 
           <div className="calm-role-switch" role="tablist" aria-label="Choose your role">
