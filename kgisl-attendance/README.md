@@ -64,9 +64,10 @@ npm run dev                # http://localhost:5173
 
 Then open **http://localhost:5173**:
 
-- **Faculty**: `ravi.kumar@kgisl-iim.ac.in` / `Password@123` → Admin Portal →
+- **Admin**: `admin@kgisl.edu` / `Admin@123` → Admin Portal.
+- **Faculty**: `faculty@kgisl.edu` / `password123` → Faculty Portal →
   pick Subject/Batch/Room → Start Session → live QR appears.
-- **Student**: `mca24001@students.kgisl-iim.ac.in` / `Password@123` → Student
+- **Student**: `25mca01@kgisliim.ac.in` / `pass@001` → Student
   Portal → Start Scanning → point the camera at the faculty's QR (on a second
   device/browser window).
 
@@ -88,11 +89,11 @@ The production release path is:
 1. Open a pull request and let GitHub Actions validate the backend, frontend, and production Docker image.
 2. Merge into the protected `main` branch only after all checks pass.
 3. Render's `autoDeployTrigger: checksPass` then builds and deploys that exact commit automatically.
-4. The container applies committed Prisma migrations, starts the API, and must pass `/health/ready` before Render sends traffic to it.
+4. The container applies committed Prisma migrations, idempotently creates any missing catalog/users without overwriting existing passwords, starts the API, and must pass `/health/ready` before Render sends traffic to it.
 
 Before the first deployment, sync the Blueprint and enter every `sync: false` secret in Render. Confirm that `ACOUSTIC_TOKEN_PEPPER` exists (the Blueprint can generate it), `ACOUSTIC_TOKEN_TTL_SECONDS` is `30`, and the deployed HTTPS origin exactly matches `FRONTEND_ORIGINS`. Microphone access for acoustic attendance requires HTTPS on physical mobile devices.
 
-Do not use `prisma db push` or automatic seeding in production. Render application rollback does not undo database migrations, so use backward-compatible expand/contract migrations and take a verified database backup before destructive schema changes. The complete release, smoke-test, backup, and rollback procedure is in [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md).
+Do not use `prisma db push` in production. The release bootstrap is intentionally idempotent and preserves existing password hashes. Render application rollback does not undo database migrations, so use backward-compatible expand/contract migrations and take a verified database backup before destructive schema changes. The complete release, smoke-test, backup, and rollback procedure is in [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md).
 
 ## What's still a stub
 
