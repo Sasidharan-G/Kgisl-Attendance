@@ -136,6 +136,7 @@ async function main() {
     { name: 'Saranya S', email: 'saranya.s@kgisl.edu' },
     { name: 'Yamunarani K', email: 'yamunarani.k@kgisl.edu' },
     { name: 'Chithra M', email: 'chithra.m@kgisl.edu' },
+    { name: 'Rajesh R', email: 'rajesh.r@kgisl.edu' },
   ];
   for (const faculty of timetableFaculty) {
     await prisma.faculty.upsert({
