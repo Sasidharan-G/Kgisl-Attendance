@@ -17,7 +17,7 @@ class AcousticTransmitterProcessor extends AudioWorkletProcessor {
 
   constructor(options?: TransmitterOptions) {
     super();
-    this.frequencies = options?.processorOptions?.frequencies ?? [15_200, 15_700, 16_200, 16_700];
+    this.frequencies = options?.processorOptions?.frequencies ?? [4_800, 5_400, 6_000, 6_600];
     this.samplesPerSymbol = Math.max(1, Math.round((options?.processorOptions?.symbolSeconds ?? 0.035) * sampleRate));
     this.edgeSamples = Math.max(1, Math.round(0.0015 * sampleRate));
     this.port.onmessage = (event: MessageEvent<{ type: string; symbols?: number[] }>) => {

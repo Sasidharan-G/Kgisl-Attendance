@@ -130,7 +130,7 @@ export default function AcousticBroadcastPanel({
             <span className="rounded-full border border-violet-300/30 bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-violet-200">Alpha</span>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Acoustic Broadcast</h3>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">Nearby students can detect the high-frequency signal and mark attendance without line-of-sight.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">Start a session, then broadcast the audible digital tone for nearby students.</p>
         </div>
         <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] ${broadcasting ? 'border-violet-300/40 bg-violet-400/10 text-violet-200' : 'border-ink-border bg-ink-900 text-slate-500'}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${broadcasting ? 'animate-pulse bg-violet-300' : 'bg-slate-600'}`} />
@@ -148,7 +148,7 @@ export default function AcousticBroadcastPanel({
       {broadcasting && (
         <div className="mb-4 flex items-center justify-center gap-2 rounded-lg border border-violet-300/20 bg-violet-400/5 px-3 py-2 text-[10px] text-violet-200">
           <Volume2 size={13}/>
-          Secure token refresh in {secondsLeft}s · generation {tokenMeta?.generationId?.slice(0, 6) ?? '—'}
+          Audible tone active · secure token refresh in {secondsLeft}s · generation {tokenMeta?.generationId?.slice(0, 6) ?? '—'}
         </div>
       )}
 

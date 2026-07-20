@@ -13,7 +13,7 @@ class AcousticReceiverProcessor extends AudioWorkletProcessor {
 
   constructor(options?: ReceiverOptions) {
     super();
-    this.frequencies = options?.processorOptions?.frequencies ?? [18_200, 18_600, 19_000, 19_400];
+    this.frequencies = options?.processorOptions?.frequencies ?? [4_800, 5_400, 6_000, 6_600];
     this.samplesPerObservation = Math.max(128, Math.round((options?.processorOptions?.observationSeconds ?? 0.007) * sampleRate));
     this.buffer = new Float32Array(this.samplesPerObservation);
   }

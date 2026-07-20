@@ -113,7 +113,11 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
 
   const dist = distanceMeters(gps.lat, gps.lng, session.room.latitude, session.room.longitude);
   const allowedRadius = session.room.geofenceRadiusM ?? env.DEFAULT_GEOFENCE_RADIUS_M;
-  if (dist > allowedRadius) {
+  // Conservative boundary: the complete GPS uncertainty circle must fit inside
+  // the geofence. A 190 m reading with ±20 m accuracy is therefore rejected
+  // instead of potentially accepting a student who is actually 210 m away.
+  const boundaryDistance = dist + gps.accuracy;
+  if (boundaryDistance > allowedRadius) {
     broadcastGeofenceViolation(session.sessionId, {
       studentId: student.id,
       studentName: student.name,
