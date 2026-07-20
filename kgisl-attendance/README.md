@@ -64,9 +64,10 @@ npm run dev                # http://localhost:5173
 
 Then open **http://localhost:5173**:
 
-- **Faculty**: `ravi.kumar@kgisl-iim.ac.in` / `Password@123` → Admin Portal →
+- **Admin**: `admin@kgisl.edu` / `Admin@123` → Admin Portal.
+- **Faculty**: `faculty@kgisl.edu` / `password123` → Faculty Portal →
   pick Subject/Batch/Room → Start Session → live QR appears.
-- **Student**: `mca24001@students.kgisl-iim.ac.in` / `Password@123` → Student
+- **Student**: `25mca01@kgisliim.ac.in` / `pass@001` → Student
   Portal → Start Scanning → point the camera at the faculty's QR (on a second
   device/browser window).
 
