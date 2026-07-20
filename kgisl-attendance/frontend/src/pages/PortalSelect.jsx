@@ -27,25 +27,36 @@ export default function PortalSelect() {
   const selectedPortal = portals.find((item) => item.id === portal);
 
   useEffect(() => {
-    // Safety fallback in case the browser cannot finish loading the intro video.
-    const timer = setTimeout(() => setShowEntrance(false), 15000);
+    const timer = setTimeout(() => setShowEntrance(false), 6800);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
     {showEntrance && (
-      <section className="brand-entrance brand-entrance-video" aria-label="KGiSL-IIM intro video">
-        <video
-          className="brand-intro-video"
-          src="/kgisl-intro.mp4"
-          autoPlay
-          muted
-          playsInline
-          preload="auto"
-          onEnded={() => setShowEntrance(false)}
-          onError={() => setShowEntrance(false)}
-        />
+      <section className="brand-entrance" aria-label="KGiSL-IIM" onClick={() => setShowEntrance(false)}>
+        <div className="brand-entrance-aura" />
+        <div className="brand-entrance-particles" />
+        <div className="brand-entrance-lockup">
+          <img className="brand-entrance-emblem" src="/entrance-emblem.png" alt="" />
+          <div className="brand-entrance-wordmark-mask">
+            <h2 className="brand-entrance-title" aria-label="KGiSL-IIM">
+              {Array.from('KGiSL-IIM').map((letter, index) => (
+                <span key={`${letter}-${index}`} style={{ '--letter': index }}>{letter}</span>
+              ))}
+            </h2>
+            <p className="brand-entrance-institute">KGiSL Institute of Information Management</p>
+          </div>
+          <div className="brand-entrance-speed-lines" aria-hidden="true"><i /><i /><i /></div>
+          <span className="brand-entrance-sweep" />
+        </div>
+        <div className="brand-entrance-copy">
+          <span className="brand-entrance-copy-line" aria-hidden="true" />
+          <div>
+            <p>KGiSL Institute of Information Management</p>
+            <strong>Smart Attendance <b>&middot;</b> Secure Campus</strong>
+          </div>
+        </div>
         <button type="button" className="brand-entrance-skip" onClick={() => setShowEntrance(false)}>Skip intro</button>
       </section>
     )}
