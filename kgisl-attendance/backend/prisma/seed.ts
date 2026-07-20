@@ -95,7 +95,9 @@ async function main() {
     const studentPasswordHash = await bcrypt.hash(s.initialPassword, 10);
     await prisma.student.upsert({
       where: { rollNo: s.rollNo },
-      update: { name: s.name, regNo: s.regNo, email: s.email, passwordHash: studentPasswordHash, batchId: sectionBatches.get(s.section)! },
+      // Keep an existing student's password intact. This makes the bootstrap
+      // safe to run during every production release without resetting users.
+      update: { name: s.name, regNo: s.regNo, email: s.email, batchId: sectionBatches.get(s.section)! },
       create: {
         name: s.name,
         rollNo: s.rollNo,
