@@ -1,4 +1,5 @@
-import { Wifi, MapPin, ShieldCheck, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Wifi, MapPin, ShieldCheck, Search, Moon, Sun } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 function StatusPill({ icon: Icon, label, value, tone = 'green' }) {
@@ -35,6 +36,13 @@ const TITLE_MAP = {
 export default function TopBar({ connected, sessionActive = false }) {
   const location = useLocation();
   const title = TITLE_MAP[location.pathname] || 'Smart Attendance';
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('kgisl_workspace_theme') !== 'light');
+
+  useEffect(() => {
+    document.body.classList.toggle('workspace-dark', darkMode);
+    localStorage.setItem('kgisl_workspace_theme', darkMode ? 'dark' : 'light');
+    return () => document.body.classList.remove('workspace-dark');
+  }, [darkMode]);
 
   return (
     <header className="app-topbar flex items-center justify-between gap-3 px-4 py-4 pl-16 sm:px-6 md:px-8 md:py-5 md:pl-8">
@@ -56,6 +64,15 @@ export default function TopBar({ connected, sessionActive = false }) {
           value={connected ? 'Active' : 'Reconnecting…'}
           tone={connected ? 'green' : 'blue'}
         />
+        <button
+          type="button"
+          onClick={() => setDarkMode((current) => !current)}
+          className="app-theme-toggle grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm"
+          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={darkMode ? 'Light mode' : 'Dark mode'}
+        >
+          {darkMode ? <Sun size={17}/> : <Moon size={17}/>}
+        </button>
       </div>
     </header>
   );

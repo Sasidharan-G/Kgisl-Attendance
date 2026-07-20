@@ -92,7 +92,7 @@ export default function AcousticBroadcastPanel({
       await refreshToken(runId, transmitter);
     } catch (startError) {
       if (runIdRef.current !== runId) return;
-      setError(startError instanceof Error ? startError.message : 'Acoustic broadcast start panna mudiyala.');
+      setError(startError instanceof Error ? startError.message : 'Unable to start the acoustic broadcast.');
       setState('error');
       await transmitter.stop();
       transmitterRef.current = null;
@@ -130,7 +130,7 @@ export default function AcousticBroadcastPanel({
             <span className="rounded-full border border-violet-300/30 bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-violet-200">Alpha</span>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Acoustic Broadcast</h3>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">Nearby students can listen and mark attendance without line-of-sight.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">Nearby students can detect the high-frequency signal and mark attendance without line-of-sight.</p>
         </div>
         <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] ${broadcasting ? 'border-violet-300/40 bg-violet-400/10 text-violet-200' : 'border-ink-border bg-ink-900 text-slate-500'}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${broadcasting ? 'animate-pulse bg-violet-300' : 'bg-slate-600'}`} />

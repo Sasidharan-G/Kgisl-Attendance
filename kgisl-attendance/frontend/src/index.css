@@ -229,6 +229,43 @@ body:has(aside) main h2 {
 body:has(aside) header { color: #272465; }
 body:has(aside) header > div:first-child p { color: #64748b; }
 
+/* Admin/faculty workspace theme. Dark is the default saved preference; the
+   top-bar toggle can return to the existing light workspace at any time. */
+body.workspace-dark:has(aside) {
+  color-scheme: dark;
+  background-color: #070b16;
+  background-image:
+    radial-gradient(circle at 72% 12%, rgba(37,99,235,.14), transparent 34%),
+    radial-gradient(circle at 18% 86%, rgba(76,29,149,.12), transparent 32%),
+    radial-gradient(circle, rgba(148,163,184,.09) 1px, transparent 1.2px);
+  background-size: 100% 100%, 100% 100%, 24px 24px;
+}
+body.workspace-dark:has(aside) main,
+body.workspace-dark:has(aside) header { background: transparent !important; }
+body.workspace-dark:has(aside) header { color: #e5e7eb; border-color: rgba(255,255,255,.08) !important; }
+body.workspace-dark:has(aside) header h1 { background: none; color: #f8fafc; -webkit-text-fill-color: initial; }
+body.workspace-dark:has(aside) header > div:first-child p { color: #94a3b8; }
+body.workspace-dark:has(aside) .app-status-pill,
+body.workspace-dark:has(aside) .app-theme-toggle { background: rgba(15,23,42,.76) !important; border: 1px solid rgba(255,255,255,.1) !important; color: #cbd5e1 !important; }
+body.workspace-dark:has(aside) .app-status-pill p:last-child { color: #e2e8f0; }
+body.workspace-dark:has(aside) main [class*='bg-white'],
+body.workspace-dark:has(aside) main [class*='bg-slate-50'],
+body.workspace-dark:has(aside) main [class*='bg-slate-100'] { background-color: rgba(10,16,31,.88) !important; }
+body.workspace-dark:has(aside) main .shadow-card,
+body.workspace-dark:has(aside) main section,
+body.workspace-dark:has(aside) main article { border-color: rgba(148,163,184,.14) !important; }
+body.workspace-dark:has(aside) main .text-slate-900,
+body.workspace-dark:has(aside) main .text-slate-800,
+body.workspace-dark:has(aside) main .text-slate-700 { color: #e2e8f0 !important; }
+body.workspace-dark:has(aside) main .text-slate-600,
+body.workspace-dark:has(aside) main .text-slate-500 { color: #94a3b8 !important; }
+body.workspace-dark:has(aside) main table { color: #cbd5e1; }
+body.workspace-dark:has(aside) main tbody tr { border-color: rgba(148,163,184,.12) !important; }
+body.workspace-dark:has(aside) main input,
+body.workspace-dark:has(aside) main select,
+body.workspace-dark:has(aside) main textarea { color: #f1f5f9 !important; }
+body.workspace-dark:has(aside) main select option { color: #f1f5f9; background: #0f172a; }
+
 /* Public portal — premium split-screen Apple glass treatment. */
 .portal-shell { min-height: 100dvh; position: relative; overflow-x: hidden; display: grid; grid-template-columns: minmax(0,1.05fr) minmax(380px,.95fr); background:#f8fafc; color:#0f172a; padding:clamp(1.25rem,4vw,4rem); gap:clamp(2rem,6vw,7rem); align-items:center; }
 .portal-grid { position:absolute; inset:0; pointer-events:none; background-image:radial-gradient(circle,#d5dde8 1.2px,transparent 1.3px); background-size:20px 30px; mask-image:radial-gradient(ellipse at center,#000 16%,transparent 74%); opacity:.82; }

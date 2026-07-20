@@ -36,14 +36,17 @@ export class AcousticTransmitter {
         },
       });
       const gain = context.createGain();
-      // Conservative output level: enough for nearby classroom reception while
-      // avoiding unnecessarily loud energy near the edge of human hearing.
-      gain.gain.value = 0.14;
+      // Strong enough for ordinary laptop speakers and nearby phone microphones
+      // without driving the output close to clipping.
+      gain.gain.value = 0.24;
       node.connect(gain).connect(context.destination);
       this.context = context;
       this.node = node;
       this.gain = gain;
       await context.resume();
+      if (context.state !== 'running') {
+        throw new AcousticError('AUDIO_UNSUPPORTED', 'The browser blocked audio output. Allow sound for this site and try again.');
+      }
     } catch (error) {
       await context.close().catch(() => undefined);
       throw error;

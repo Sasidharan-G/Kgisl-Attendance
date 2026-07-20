@@ -25,11 +25,11 @@ export function toAcousticError(error: unknown): AcousticError {
       return new AcousticError('MIC_PERMISSION_DENIED', 'Microphone permission denied. Use Beta QR attendance instead.');
     }
     if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-      return new AcousticError('MIC_NOT_FOUND', 'Indha device-la working microphone kandupidikka mudiyala.');
+      return new AcousticError('MIC_NOT_FOUND', 'No working microphone was found on this device.');
     }
     if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-      return new AcousticError('MIC_BUSY', 'Microphone vera app use pannudhu. Andha app-a close pannitu retry pannunga.');
+      return new AcousticError('MIC_BUSY', 'Another application is using the microphone. Close it and try again.');
     }
   }
-  return new AcousticError('AUDIO_UNSUPPORTED', error instanceof Error ? error.message : 'Acoustic audio start panna mudiyala.');
+  return new AcousticError('AUDIO_UNSUPPORTED', error instanceof Error ? error.message : 'Unable to start acoustic audio.');
 }
