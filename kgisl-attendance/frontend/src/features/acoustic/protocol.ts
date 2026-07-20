@@ -1,9 +1,8 @@
 export type AcousticSymbol = 0 | 1 | 2 | 3;
 
-// Keep the carrier below the aggressive 17-18 kHz low-pass filters used by
-// many laptop speakers and phone microphones. It remains high-frequency and
-// unobtrusive while working across substantially more classroom devices.
-export const ACOUSTIC_FREQUENCIES_HZ = [15_200, 15_700, 16_200, 16_700] as const;
+// Audible FSK frequencies that ordinary laptop speakers and phone microphones
+// can reproduce reliably; near-ultrasonic carriers were filtered by some devices.
+export const ACOUSTIC_FREQUENCIES_HZ = [4_800, 5_400, 6_000, 6_600] as const;
 export const SYMBOL_SECONDS = 0.035;
 export const OBSERVATION_SECONDS = 0.007;
 export const OBSERVATIONS_PER_SYMBOL = Math.round(SYMBOL_SECONDS / OBSERVATION_SECONDS);

@@ -38,7 +38,7 @@ export class AcousticTransmitter {
       const gain = context.createGain();
       // Strong enough for ordinary laptop speakers and nearby phone microphones
       // without driving the output close to clipping.
-      gain.gain.value = 0.24;
+      gain.gain.value = 0.20;
       node.connect(gain).connect(context.destination);
       this.context = context;
       this.node = node;
