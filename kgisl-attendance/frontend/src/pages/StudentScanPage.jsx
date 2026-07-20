@@ -58,7 +58,7 @@ function getAccurateLocation(onProgress) {
     const timeoutId = setTimeout(() => {
       if (best) finish(best);
       else finish(null, { code: 'GPS_REQUIRED', message: 'Could not get your location. Turn on precise location and try again.' });
-    }, 9000);
+    }, 5000);
 
     watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -70,14 +70,14 @@ function getAccurateLocation(onProgress) {
         };
         if (!best || reading.accuracy < best.accuracy) best = reading;
         onProgress?.(best.accuracy, samples);
-        if (samples >= 2 && best.accuracy <= 25) finish(best);
+        if (best.accuracy <= 40) finish(best);
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
           finish(null, { code: 'GPS_REQUIRED', message: 'Precise location permission is required to mark attendance.' });
         }
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 4500, maximumAge: 1500 }
     );
   });
 }
@@ -174,13 +174,16 @@ export default function StudentScanPage() {
         setStatus('locating');
         setMessage('Looking up session…');
 
-        const { data: sessionInfo } = await getSessionPublicInfo(qrPayload.sessionId);
+        // Fetch session metadata and GPS together so network latency does not
+        // add extra waiting time after the QR has already been decoded.
+        const sessionInfoPromise = getSessionPublicInfo(qrPayload.sessionId);
 
-        // Step B: obtain GPS coordinates
+        // Step B: obtain GPS coordinates in parallel
         setMessage('Verifying your location…');
-        const gps = await getAccurateLocation((accuracy, samples) => {
+        const locationPromise = getAccurateLocation((accuracy, samples) => {
           setMessage(`Improving location accuracy… ${Math.round(accuracy)} m · sample ${samples}`);
         });
+        const [{ data: sessionInfo }, gps] = await Promise.all([sessionInfoPromise, locationPromise]);
 
         // Step C: submit attendance
         setStatus('submitting');
@@ -295,7 +298,7 @@ export default function StudentScanPage() {
 
         <div className="student-attendance-card mt-6 rounded-2xl p-5 shadow-card sm:p-7">
           <h1 className="font-display text-xl font-semibold text-white">Mark Attendance</h1>
-          <p className="mt-1 text-sm text-slate-400">Alpha sound-a listen pannunga; work aagala na Beta QR use pannunga.</p>
+          <p className="mt-1 text-sm text-slate-400">Listen for the Alpha sound. If it is unavailable, use the Beta QR scanner.</p>
 
           <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-ink-border bg-ink-900 p-1">
             <button type="button" onClick={() => selectAttendanceMode('alpha')} className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition ${attendanceMode === 'alpha' ? 'bg-cyan-500/20 text-cyan-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Waves size={14}/>Alpha · Sound</button>

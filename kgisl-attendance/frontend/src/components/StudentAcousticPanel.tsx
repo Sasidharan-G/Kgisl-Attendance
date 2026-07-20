@@ -18,16 +18,16 @@ type ApiLikeError = {
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
-  ACOUSTIC_TOKEN_EXPIRED: 'Signal token expire aayiduchu. Faculty active broadcast pakkathula retry pannunga.',
-  ACOUSTIC_TOKEN_INVALID: 'Valid classroom acoustic signal decode aagala.',
-  ACOUSTIC_TOKEN_INVALID_OR_EXPIRED: 'Signal token invalid illa expire aayiduchu. Active Alpha broadcast-a retry pannunga.',
-  ATTENDANCE_ALREADY_MARKED: 'Ungal attendance already mark aayiduchu.',
-  OUTSIDE_ALLOWED_LOCATION: 'Neenga allowed classroom location-ku veliya irukeenga.',
-  GPS_ACCURACY_TOO_LOW: 'GPS accuracy low-aa irukku. Precise location on pannitu retry pannunga.',
-  GPS_REQUIRED: 'Attendance mark panna precise location permission mandatory.',
-  DEVICE_NOT_AUTHORIZED: 'Indha device unga account-ku authorised illa. Faculty/admin-a contact pannunga.',
-  SESSION_NOT_ACTIVE: 'Active attendance session illa. Faculty-kitta check pannunga.',
-  RATE_LIMITED: 'Too many attempts. Konjam wait pannitu retry pannunga.',
+  ACOUSTIC_TOKEN_EXPIRED: 'The signal token has expired. Move closer to the active faculty broadcast and try again.',
+  ACOUSTIC_TOKEN_INVALID: 'A valid classroom acoustic signal could not be decoded.',
+  ACOUSTIC_TOKEN_INVALID_OR_EXPIRED: 'The signal token is invalid or expired. Retry with the active Alpha broadcast.',
+  ATTENDANCE_ALREADY_MARKED: 'Your attendance has already been marked.',
+  OUTSIDE_ALLOWED_LOCATION: 'You are outside the permitted classroom location.',
+  GPS_ACCURACY_TOO_LOW: 'GPS accuracy is too low. Enable precise location and try again.',
+  GPS_REQUIRED: 'Precise location permission is required to mark attendance.',
+  DEVICE_NOT_AUTHORIZED: 'This device is not authorised for your account. Contact a faculty member or administrator.',
+  SESSION_NOT_ACTIVE: 'There is no active attendance session. Check with your faculty member.',
+  RATE_LIMITED: 'Too many attempts. Wait briefly and try again.',
 };
 
 function readableError(error: unknown): { code: string; message: string } {
@@ -35,7 +35,7 @@ function readableError(error: unknown): { code: string; message: string } {
   const code = typed.code ?? typed.response?.data?.code ?? '';
   return {
     code,
-    message: ERROR_MESSAGES[code] ?? typed.message ?? typed.response?.data?.message ?? 'Alpha attendance complete panna mudiyala.',
+    message: ERROR_MESSAGES[code] ?? typed.message ?? typed.response?.data?.message ?? 'Unable to complete Alpha attendance.',
   };
 }
 
@@ -82,14 +82,14 @@ export default function StudentAcousticPanel({ onUseQr }: StudentAcousticPanelPr
     submissionLockedRef.current = true;
     clearTimer();
     setState('decoded');
-    setMessage('Signal decoded. GPS verify aagudhu…');
+    setMessage('Signal decoded. Verifying GPS location…');
     void receiverRef.current?.stop();
     receiverRef.current = null;
     try {
       const gps = await locationRef.current.promise;
       if (!mountedRef.current) return;
       setState('submitting');
-      setMessage('Secure-aa attendance mark panrom…');
+      setMessage('Securely marking attendance…');
       const attendance = await submitAcousticAttendance({ token, deviceId: getStableDeviceId(), gps });
       if (!mountedRef.current) return;
       locationRef.current = null;
@@ -112,7 +112,7 @@ export default function StudentAcousticPanel({ onUseQr }: StudentAcousticPanelPr
     submissionLockedRef.current = false;
     setResult(null);
     setErrorCode('');
-    setMessage('Microphone and GPS ready panrom…');
+    setMessage('Preparing microphone and GPS…');
     setLocationText('GPS starting');
     setState('requesting');
 
@@ -136,9 +136,9 @@ export default function StudentAcousticPanel({ onUseQr }: StudentAcousticPanelPr
       });
       if (!mountedRef.current || receiverRef.current !== receiver) return;
       setState('listening');
-      setMessage('Faculty Alpha signal-a listen panrom…');
+      setMessage('Listening for the faculty Alpha signal…');
       timeoutRef.current = window.setTimeout(() => {
-        fail({ code: 'DECODE_TIMEOUT', message: '15 seconds-la signal kidaikala. Faculty speaker pakkathula retry pannunga illa Beta QR use pannunga.' });
+        fail({ code: 'DECODE_TIMEOUT', message: 'No signal was detected within 15 seconds. Move closer to the faculty speaker or use Beta QR.' });
       }, 15_000);
     } catch (error) {
       fail(error);
@@ -200,7 +200,7 @@ export default function StudentAcousticPanel({ onUseQr }: StudentAcousticPanelPr
 
       {state === 'idle' && (
         <div className="text-center">
-          <p className="text-sm text-slate-400">Faculty device pakkathula irundhu inaudible Alpha signal-a listen pannunga.</p>
+          <p className="text-sm text-slate-400">Stay near the faculty device while Alpha detects the high-frequency signal.</p>
           <button type="button" disabled={!capability.supported} onClick={() => void startListening()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-950/20 transition hover:brightness-110 disabled:opacity-40"><Waves size={18}/>Listen & Mark Present</button>
         </div>
       )}
@@ -215,7 +215,7 @@ export default function StudentAcousticPanel({ onUseQr }: StudentAcousticPanelPr
             {capability.supported && <button type="button" onClick={() => void startListening()} className="flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/5 py-2 text-xs text-white"><RotateCcw size={13}/>Retry Alpha</button>}
             <button type="button" onClick={() => { cleanup(true); onUseQr(); }} className={`${capability.supported ? '' : 'col-span-2'} flex items-center justify-center gap-1.5 rounded-lg bg-signal-red py-2 text-xs font-semibold text-white`}><QrCode size={13}/>Use Beta QR</button>
           </div>
-          {errorCode === 'MIC_PERMISSION_DENIED' && <p className="mt-3 text-[10px] text-slate-500">Browser settings-la microphone permission allow pannina Alpha retry pannalaam.</p>}
+          {errorCode === 'MIC_PERMISSION_DENIED' && <p className="mt-3 text-[10px] text-slate-500">Allow microphone access in your browser settings, then retry Alpha.</p>}
         </div>
       )}
     </div>

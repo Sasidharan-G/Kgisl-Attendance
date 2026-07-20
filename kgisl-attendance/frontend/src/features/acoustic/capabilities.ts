@@ -4,7 +4,7 @@ export type AcousticCapability = { supported: true } | { supported: false; reaso
 
 function baseAudioCapability(): AcousticCapability {
   if (typeof window === 'undefined' || typeof window.AudioContext === 'undefined' || typeof window.AudioWorkletNode === 'undefined') {
-    return { supported: false, reason: 'Indha browser Web Audio AudioWorklet-a support pannala.' };
+    return { supported: false, reason: 'This browser does not support the Web Audio AudioWorklet.' };
   }
   return { supported: true };
 }
@@ -16,10 +16,10 @@ export function getReceiverCapability(): AcousticCapability {
   const base = baseAudioCapability();
   if (!base.supported) return base;
   if (!window.isSecureContext) {
-    return { supported: false, reason: 'Microphone-ku HTTPS secure connection thevai. Beta QR-a use pannunga.' };
+    return { supported: false, reason: 'Microphone access requires a secure HTTPS connection. Use Beta QR instead.' };
   }
   if (!navigator.mediaDevices?.getUserMedia) {
-    return { supported: false, reason: 'Indha browser microphone capture-a support pannala.' };
+    return { supported: false, reason: 'This browser does not support microphone capture.' };
   }
   return { supported: true };
 }
@@ -27,6 +27,6 @@ export function getReceiverCapability(): AcousticCapability {
 export function assertUltrasoundSampleRate(sampleRate: number): void {
   const highestFrequency = ACOUSTIC_FREQUENCIES_HZ[ACOUSTIC_FREQUENCIES_HZ.length - 1];
   if (sampleRate / 2 < highestFrequency + 500) {
-    throw new Error(`Audio sample rate ${sampleRate} Hz ultrasound-ku podhathu.`);
+    throw new Error(`The ${sampleRate} Hz audio sample rate is too low for high-frequency signalling.`);
   }
 }

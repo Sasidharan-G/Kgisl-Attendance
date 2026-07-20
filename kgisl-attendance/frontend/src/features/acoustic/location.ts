@@ -34,13 +34,13 @@ export function startAccurateLocation(onProgress?: (progress: LocationProgress) 
     };
 
     if (!navigator.geolocation) {
-      finish(undefined, new AcousticError('GPS_REQUIRED', 'Indha browser location support pannala.'));
+      finish(undefined, new AcousticError('GPS_REQUIRED', 'This browser does not support location services.'));
       return;
     }
 
     timerId = window.setTimeout(() => {
       if (best) finish(best);
-      else finish(undefined, new AcousticError('GPS_REQUIRED', 'Precise location kidaikala. GPS on pannitu retry pannunga.'));
+      else finish(undefined, new AcousticError('GPS_REQUIRED', 'A precise location could not be obtained. Enable GPS and try again.'));
     }, 10_000);
 
     watchId = navigator.geolocation.watchPosition(
