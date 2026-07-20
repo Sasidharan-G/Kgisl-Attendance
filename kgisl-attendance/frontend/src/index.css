@@ -762,22 +762,28 @@ body:has(.app-sidebar) main [class*='text-signal-green'] { color:#338064!importa
 body:has(.app-sidebar) main [class*='text-signal-red'] { color:#b24754!important; }
 
 /* Dark workspace overrides must follow the professional light theme. */
-body.workspace-dark:has(.app-sidebar) { color:#dbe5f3; background:#070b16; background-image:radial-gradient(circle at 78% 8%,rgba(37,99,235,.14),transparent 34%),radial-gradient(circle at 18% 88%,rgba(76,29,149,.12),transparent 30%); }
-body.workspace-dark:has(.app-sidebar) .bg-ink-950 { background:#070b16!important; }
-body.workspace-dark:has(.app-sidebar) .app-topbar { border-color:rgba(148,163,184,.14); background:rgba(7,11,22,.9); }
-body.workspace-dark:has(.app-sidebar) header h1 { color:#f8fafc; }
-body.workspace-dark:has(.app-sidebar) main { color:#dbe5f3; }
-body.workspace-dark:has(.app-sidebar) main [class*='bg-ink-850'],body.workspace-dark:has(.app-sidebar) main .shadow-card { border-color:rgba(148,163,184,.16)!important; background:#101827!important; box-shadow:0 14px 38px -24px rgba(0,0,0,.9)!important; }
-body.workspace-dark:has(.app-sidebar) main [class*='bg-ink-900'] { background:#0b1220!important; }
-body.workspace-dark:has(.app-sidebar) main [class*='border-ink-border'] { border-color:rgba(148,163,184,.16)!important; }
-body.workspace-dark:has(.app-sidebar) main h2,body.workspace-dark:has(.app-sidebar) main h3,body.workspace-dark:has(.app-sidebar) main .text-white { color:#f1f5f9!important; }
-body.workspace-dark:has(.app-sidebar) main .text-slate-200,body.workspace-dark:has(.app-sidebar) main .text-slate-300 { color:#d5deeb!important; }
-body.workspace-dark:has(.app-sidebar) main .text-slate-400 { color:#a7b4c7!important; }
-body.workspace-dark:has(.app-sidebar) main .text-slate-500 { color:#8796ab!important; }
-body.workspace-dark:has(.app-sidebar) main input,body.workspace-dark:has(.app-sidebar) main select,body.workspace-dark:has(.app-sidebar) main textarea { color:#f1f5f9!important; border-color:rgba(148,163,184,.2)!important; background:#0b1220!important; }
-body.workspace-dark:has(.app-sidebar) main thead { color:#b9c5d5; background:#0b1220!important; }
-body.workspace-dark:has(.app-sidebar) main tbody tr:hover { background:#152238!important; }
-body.workspace-dark:has(.app-sidebar) .app-status-pill,body.workspace-dark:has(.app-sidebar) .app-theme-toggle { color:#dbe5f3!important; border-color:rgba(148,163,184,.18)!important; background:#111a2b!important; }
+body.workspace-dark:has(.app-sidebar) { color:#d7dee8; background:#151b26; background-image:none; }
+body.workspace-dark:has(.app-sidebar) .bg-ink-950 { background:#151b26!important; }
+body.workspace-dark:has(.app-sidebar) .app-sidebar { background:linear-gradient(180deg,#1c2940,#22334f)!important; box-shadow:8px 0 28px rgba(15,23,42,.16); }
+body.workspace-dark:has(.app-sidebar) .app-topbar { border-color:#303b4d; background:rgba(21,27,38,.96); box-shadow:0 4px 18px rgba(15,23,42,.1); }
+body.workspace-dark:has(.app-sidebar) header h1 { color:#eef2f7; }
+body.workspace-dark:has(.app-sidebar) header > div:first-child p { color:#8f9bad; }
+body.workspace-dark:has(.app-sidebar) main { color:#d7dee8; }
+body.workspace-dark:has(.app-sidebar) main [class*='bg-ink-850'],body.workspace-dark:has(.app-sidebar) main .shadow-card { border-color:#344052!important; background:#202938!important; box-shadow:0 8px 24px -18px rgba(0,0,0,.52)!important; }
+body.workspace-dark:has(.app-sidebar) main [class*='bg-ink-900'] { background:#1a2230!important; }
+body.workspace-dark:has(.app-sidebar) main [class*='border-ink-border'] { border-color:#344052!important; }
+body.workspace-dark:has(.app-sidebar) main h2,body.workspace-dark:has(.app-sidebar) main h3,body.workspace-dark:has(.app-sidebar) main .text-white { color:#edf1f6!important; }
+body.workspace-dark:has(.app-sidebar) main .text-slate-200,body.workspace-dark:has(.app-sidebar) main .text-slate-300 { color:#cbd3df!important; }
+body.workspace-dark:has(.app-sidebar) main .text-slate-400 { color:#9da9ba!important; }
+body.workspace-dark:has(.app-sidebar) main .text-slate-500 { color:#8290a3!important; }
+body.workspace-dark:has(.app-sidebar) main input,body.workspace-dark:has(.app-sidebar) main select,body.workspace-dark:has(.app-sidebar) main textarea { color:#e7ecf3!important; border-color:#3a4659!important; background:#1a2230!important; }
+body.workspace-dark:has(.app-sidebar) main input:focus,body.workspace-dark:has(.app-sidebar) main select:focus,body.workspace-dark:has(.app-sidebar) main textarea:focus { border-color:#708baa!important; background:#1d2736!important; box-shadow:0 0 0 3px rgba(112,139,170,.12); }
+body.workspace-dark:has(.app-sidebar) main thead { color:#aeb9c8; background:#1a2230!important; }
+body.workspace-dark:has(.app-sidebar) main tbody tr:hover { background:#273244!important; box-shadow:inset 3px 0 #708baa; }
+body.workspace-dark:has(.app-sidebar) .app-status-pill,body.workspace-dark:has(.app-sidebar) .app-theme-toggle { color:#cfd7e2!important; border-color:#3a4659!important; background:#202938!important; box-shadow:none; }
+body.workspace-dark:has(.app-sidebar) main .acoustic-panel { background-image:linear-gradient(145deg,#252d3d,#222b3b); }
+body.workspace-dark:has(.app-sidebar) main [class*='bg-signal-green'] { background-color:#5c9b7f!important; }
+body.workspace-dark:has(.app-sidebar) main [class*='bg-signal-blue'] { background-color:#587da8!important; }
 
 /* Student attendance workspace */
 .student-workspace { color:#26364d; background:linear-gradient(145deg,#f6f8fb,#edf2f8); }
