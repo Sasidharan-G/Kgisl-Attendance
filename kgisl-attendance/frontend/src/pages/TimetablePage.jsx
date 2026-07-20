@@ -14,7 +14,7 @@ const MCA_C_TEMPLATE = [
   [4,'09:10','10:50','CC','KY'],[4,'11:10','12:00','AIML','DS'],[4,'12:00','12:50','CC','KY'],[4,'13:40','14:30','PLAC',''],[4,'14:30','15:20','TECH',''],[4,'15:30','16:20','TECH',''],
   [5,'09:10','10:50','OSC-LAB','MC'],[5,'11:10','12:00','OSC-LAB','MC'],[5,'12:00','12:50','NSC','SS'],[5,'13:40','14:30','PLAC',''],[5,'14:30','15:20','PLAC',''],[5,'15:30','16:20','TECH',''],
 ].map(([dayOfWeek,startTime,endTime,subjectCode,facultyCode]) => ({ dayOfWeek,startTime,endTime,subjectCode,facultyCode }));
-const FACULTY_NAMES = { DS: 'Surendhran D', RG: 'Gomathi R', SS: 'Saranya S', KY: 'Yamunarani K', MC: 'Chithra M' };
+const FACULTY_NAMES = { DS: 'Surendhran D', RG: 'Gomathi R', SS: 'Saranya S', KY: 'Yamunarani K', MC: 'Chithra M', RR: 'Rajesh R' };
 const WEEK_SLOTS = [
   { label: '1', start: '09:10', end: '10:00' },
   { label: '2', start: '10:00', end: '10:50' },
