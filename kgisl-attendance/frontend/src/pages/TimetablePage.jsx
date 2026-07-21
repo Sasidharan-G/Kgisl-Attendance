@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CalendarDays, FileUp, Plus, Trash2 } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
@@ -30,6 +31,7 @@ const WEEK_SLOTS = [
 
 export default function TimetablePage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const admin = user?.role === 'ADMIN';
   const [rows, setRows] = useState([]);
   const [catalog, setCatalog] = useState({ faculty: [], subjects: [], batches: [], rooms: [] });
@@ -41,6 +43,7 @@ export default function TimetablePage() {
   const [importRoomId, setImportRoomId] = useState('');
   const [facultyMap, setFacultyMap] = useState({});
   const [importing, setImporting] = useState(false);
+  const query = (searchParams.get('search') || '').trim().toLowerCase();
 
   async function load() {
     const allocations = await listAllocations(admin ? undefined : 'section');
@@ -87,10 +90,12 @@ export default function TimetablePage() {
     finally { setImporting(false); }
   }
   const field = (key, options) => <select value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{options.map((x) => <option key={x.id} value={x.id}>{x.name || x.code}</option>)}</select>;
+  const filteredRows = rows.filter((row) => !query || [DAYS[row.dayOfWeek - 1], row.startTime, row.endTime, row.faculty?.name, row.subject?.code, row.subject?.name, row.batch?.name, row.room?.name].filter(Boolean).join(' ').toLowerCase().includes(query));
 
   return <div className="flex min-h-screen bg-ink-950"><Sidebar /><main className="flex-1 min-w-0 pb-10"><TopBar connected />
     <div className="px-8 mt-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><CalendarDays className="text-signal-amber" /><div><h2 className="text-xl font-bold text-white">{admin ? 'Timetable Upload & Assignment' : 'My Assigned Timetable'}</h2><p className="text-sm text-slate-400">{admin ? 'Upload a timetable to automatically assign faculty sessions, or add a class manually' : 'Only these assigned classes can start attendance sessions'}</p></div></div>{admin && <button type="button" onClick={() => document.getElementById('timetable-import')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="flex items-center gap-2 rounded-lg bg-signal-blue px-4 py-2 text-sm font-semibold text-white"><FileUp size={16}/>Upload Timetable</button>}</div>
+      {query && <p className="mb-4 rounded-lg border border-signal-blue/30 bg-signal-blue/10 px-3 py-2 text-xs text-signal-blue">Showing {filteredRows.length} matching timetable {filteredRows.length === 1 ? 'entry' : 'entries'} for “{searchParams.get('search')}”.</p>}
       {admin && <form onSubmit={submit} className="mb-6 grid grid-cols-2 xl:grid-cols-4 gap-3 rounded-2xl border border-ink-border bg-ink-850/60 p-5">
         {field('facultyId', catalog.faculty)}{field('subjectId', catalog.subjects)}{field('batchId', catalog.batches)}
         <select value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{DAYS.map((d, i) => <option key={d} value={i + 1}>{d}</option>)}</select>
@@ -117,10 +122,10 @@ export default function TimetablePage() {
         <div className="mb-5"><h3 className="text-base font-bold text-white">Weekly Class Timetable</h3><p className="mt-1 text-xs text-slate-400">Full section schedule with all periods, breaks and lunch.</p></div>
         <div className="overflow-x-auto rounded-xl border border-ink-border"><table className="min-w-[1180px] w-full border-collapse text-center text-xs"><thead><tr className="bg-ink-900/70"><th className="border-r border-ink-border px-4 py-4 text-left text-slate-300">Day</th>{WEEK_SLOTS.map((slot, index) => <th key={`${slot.label}-${index}`} className={`border-r border-ink-border px-3 py-3 ${slot.break || slot.lunch ? 'bg-signal-blue/5 text-signal-blue' : 'text-slate-300'}`}><span className="block font-bold">{slot.label}</span><span className="mt-1 block text-[9px] font-normal text-slate-500">{slot.time || `${slot.start}–${slot.end}`}</span></th>)}</tr></thead><tbody>{DAYS.slice(0, 5).map((day, dayIndex) => <tr key={day} className="border-t border-ink-border"><th className="border-r border-ink-border bg-ink-900/45 px-4 py-5 text-left font-bold text-white">{day}</th>{WEEK_SLOTS.map((slot, slotIndex) => {
           if (slot.break || slot.lunch) return <td key={slotIndex} className="border-r border-ink-border bg-signal-blue/5 px-2 py-4 font-semibold uppercase tracking-wider text-signal-blue [writing-mode:vertical-rl]">{slot.label}</td>;
-          const allocation = rows.find((row) => row.dayOfWeek === dayIndex + 1 && row.startTime <= slot.start && row.endTime >= slot.end);
+          const allocation = filteredRows.find((row) => row.dayOfWeek === dayIndex + 1 && row.startTime <= slot.start && row.endTime >= slot.end);
           return <td key={slotIndex} className="border-r border-ink-border px-2 py-3">{allocation ? <div className="rounded-lg border border-signal-blue/15 bg-signal-blue/5 p-2"><p className="font-bold text-white">{allocation.subject.code}</p><p className="mt-1 text-[9px] text-slate-400">{allocation.faculty.name}</p><p className="mt-1 text-[9px] font-semibold text-signal-blue">{allocation.batch.name}</p></div> : <span className="text-slate-700">—</span>}</td>;
         })}</tr>)}</tbody></table></div>{!rows.length && <p className="p-6 text-center text-sm text-slate-500">The full timetable will appear here after the administrator confirms the import.</p>}
       </section>}
-      {admin && <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60"><table className="w-full text-sm"><thead className="bg-ink-900 text-slate-400"><tr>{['Day','Time','Faculty','Subject','Class / Section','Room',''].map((x) => <th key={x} className="px-4 py-3 text-left">{x}</th>)}</tr></thead><tbody>{rows.map((r) => <tr key={r.id} className="border-t border-ink-border text-slate-200"><td className="px-4 py-3">{DAYS[r.dayOfWeek - 1]}</td><td className="px-4 py-3">{r.startTime} – {r.endTime}</td><td className="px-4 py-3">{r.faculty.name}</td><td className="px-4 py-3">{r.subject.code} · {r.subject.name}</td><td className="px-4 py-3">{r.batch.name}</td><td className="px-4 py-3">{r.room.name}</td><td><button onClick={() => remove(r.id)} className="text-red-400"><Trash2 size={16}/></button></td></tr>)}</tbody></table>{!rows.length && <p className="p-8 text-center text-slate-500">No class schedules assigned yet.</p>}</div>}
+      {admin && <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60"><table className="w-full text-sm"><thead className="bg-ink-900 text-slate-400"><tr>{['Day','Time','Faculty','Subject','Class / Section','Room',''].map((x) => <th key={x} className="px-4 py-3 text-left">{x}</th>)}</tr></thead><tbody>{filteredRows.map((r) => <tr key={r.id} className="border-t border-ink-border text-slate-200"><td className="px-4 py-3">{DAYS[r.dayOfWeek - 1]}</td><td className="px-4 py-3">{r.startTime} – {r.endTime}</td><td className="px-4 py-3">{r.faculty.name}</td><td className="px-4 py-3">{r.subject.code} · {r.subject.name}</td><td className="px-4 py-3">{r.batch.name}</td><td className="px-4 py-3">{r.room.name}</td><td><button onClick={() => remove(r.id)} className="text-red-400"><Trash2 size={16}/></button></td></tr>)}</tbody></table>{!rows.length && <p className="p-8 text-center text-slate-500">No class schedules assigned yet.</p>}{query && !filteredRows.length && <p className="p-8 text-center text-slate-500">No class schedules match your search.</p>}</div>}
     </div></main></div>;
 }
