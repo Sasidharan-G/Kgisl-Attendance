@@ -23,7 +23,7 @@ export default function StudentLogin({ active = true }) {
     try {
       const { token, refreshToken, user } = await loginStudent(email, password);
       login(token, refreshToken, user); setIsSuccessLoading(true);
-      setTimeout(() => { setIsSuccessLoading(false); navigate('/student/scan'); }, 2000);
+      setTimeout(() => { setIsSuccessLoading(false); navigate('/student/dashboard'); }, 2000);
     } catch (err) { setError(err.message || 'Login failed'); }
     finally { setLoading(false); }
   }
