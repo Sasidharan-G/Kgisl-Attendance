@@ -60,6 +60,12 @@ const envSchema = z.object({
   SMTP_PASS: z.string().default(''),
   // Public OAuth audience used to verify Google Identity Services ID tokens.
   GOOGLE_CLIENT_ID: z.string().default(''),
+
+  // Online AI assistant. Keep disabled until an API key is configured.
+  OPENAI_API_KEY: z.string().default(''),
+  OPENAI_MODEL: z.string().min(1).default('gpt-5.6-luna'),
+  AI_AGENT_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
+
 }).superRefine((value, ctx) => {
   const emailConfigured = Boolean(value.BREVO_API_KEY || value.RESEND_API_KEY || (value.SMTP_HOST && value.SMTP_USER && value.SMTP_PASS));
   if (value.NODE_ENV === 'production' && !emailConfigured) {

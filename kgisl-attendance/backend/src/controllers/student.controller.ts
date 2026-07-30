@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { requestContext, writeAuditLog } from '../services/audit.service';
 
 const createStudentSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -10,6 +11,10 @@ const createStudentSchema = z.object({
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
   password: z.string().min(6),
   batchId: z.string().uuid(),
+});
+const bulkStudentSchema = z.object({
+  batchId: z.string().uuid(),
+  students: z.array(createStudentSchema.omit({ batchId: true })).min(1).max(500),
 });
 
 export async function createStudentHandler(req: Request, res: Response, next: NextFunction) {
@@ -64,6 +69,30 @@ export async function createStudentHandler(req: Request, res: Response, next: Ne
   }
 }
 
+/** Imports a validated, user-reviewed CSV payload.  The API deliberately
+ * rejects the whole file when any identity collides, avoiding partial batches. */
+export async function bulkCreateStudentsHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = bulkStudentSchema.parse(req.body);
+    const batch = await prisma.batch.findUnique({ where: { id: input.batchId }, select: { id: true, name: true } });
+    if (!batch) { res.status(404).json({ success: false, message: 'Selected section does not exist' }); return; }
+    const seen = new Set<string>();
+    for (const student of input.students) {
+      for (const value of [student.rollNo, student.regNo, student.email]) {
+        const key = value.toLowerCase();
+        if (seen.has(key)) { res.status(400).json({ success: false, message: `Duplicate value in import: ${value}` }); return; }
+        seen.add(key);
+      }
+    }
+    const identityValues = input.students.flatMap((s) => [s.rollNo, s.regNo, s.email]);
+    const existing = await prisma.student.findFirst({ where: { OR: [{ rollNo: { in: identityValues } }, { regNo: { in: identityValues } }, { email: { in: identityValues.map((v) => v.toLowerCase()) } }] }, select: { rollNo: true } });
+    if (existing) { res.status(409).json({ success: false, message: `Import stopped: ${existing.rollNo} or another identity already exists` }); return; }
+    const passwordHashes = await Promise.all(input.students.map((student) => bcrypt.hash(student.password, 10)));
+    await prisma.student.createMany({ data: input.students.map((student, index) => ({ ...student, email: student.email.toLowerCase(), batchId: batch.id, passwordHash: passwordHashes[index] })) });
+    res.status(201).json({ success: true, data: { created: input.students.length, batchName: batch.name } });
+  } catch (err) { next(err); }
+}
+
 export async function deleteStudentHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const student = await prisma.student.findUnique({
@@ -90,6 +119,17 @@ export async function setStudentStatusHandler(req: Request, res: Response, next:
       select: { id: true, isActive: true },
     });
     res.json({ success: true, data: student });
+  } catch (err) { next(err); }
+}
+
+/** Clears a lost/replaced phone binding. The next successful in-class scan
+ * securely binds the student's new device; the reset itself is audit logged. */
+export async function resetStudentDeviceHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const student = await prisma.student.update({ where: { id: req.params.id }, data: { deviceId: null }, select: { id: true, name: true, rollNo: true } });
+    const ctx = requestContext(req);
+    await writeAuditLog({ actorId: req.auth!.sub, actorType: 'ADMIN', action: 'STUDENT_DEVICE_RESET', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { studentId: student.id, rollNo: student.rollNo } });
+    res.json({ success: true, data: student, message: `Device reset for ${student.name}. The next verified scan will bind the new phone.` });
   } catch (err) { next(err); }
 }
 

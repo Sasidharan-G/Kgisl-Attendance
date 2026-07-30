@@ -12,6 +12,7 @@ import {
   UserPlus,
   Menu,
   X,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -25,6 +26,7 @@ const FACULTY_NAV = [
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
   { icon: FileClock, label: 'Logs', path: '/faculty/logs' },
   { icon: Bell, label: 'Leave / On Duty', path: '/faculty/leave' },
+  { icon: ClipboardCheck, label: 'Corrections', path: '/faculty/corrections' },
 ];
 const ADMIN_NAV = [
   { icon: BookOpen, label: 'Academic Setup', path: '/admin/academic' },
@@ -33,6 +35,7 @@ const ADMIN_NAV = [
   { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },
   { icon: BarChart3, label: 'Attendance Reports', path: '/admin/analytics' },
   { icon: Bell, label: 'Leave / On Duty', path: '/admin/leave' },
+  { icon: ClipboardCheck, label: 'Corrections', path: '/admin/corrections' },
 ];
 
 export default function Sidebar() {

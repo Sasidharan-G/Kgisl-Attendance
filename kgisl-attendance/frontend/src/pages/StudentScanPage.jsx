@@ -122,7 +122,11 @@ export default function StudentScanPage() {
   const [message, setMessage] = useState('');
   const [successData, setSuccessData] = useState(null); // from backend response
   const [errorCode, setErrorCode] = useState('');
-  const [attendanceMode, setAttendanceMode] = useState('alpha');
+  // QR is the privacy-safe default: neither camera nor microphone starts until
+  // the student explicitly taps the action and accepts the notice.
+  const [attendanceMode, setAttendanceMode] = useState('beta');
+  const [showConsent, setShowConsent] = useState(false);
+  const [pendingMode, setPendingMode] = useState(null);
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) {
@@ -233,6 +237,7 @@ export default function StudentScanPage() {
   }, [handleDecoded]);
 
   async function startScanning() {
+    if (localStorage.getItem('kgisl_attendance_consent_v1') !== 'accepted') { setShowConsent(true); return; }
     setStatus('scanning');
     setMessage('');
     setCameraError('');
@@ -269,6 +274,7 @@ export default function StudentScanPage() {
   }
 
   function selectAttendanceMode(mode) {
+    if (localStorage.getItem('kgisl_attendance_consent_v1') !== 'accepted') { setPendingMode(mode); setShowConsent(true); return; }
     stopCamera();
     setAttendanceMode(mode);
     setStatus('idle');
@@ -288,7 +294,7 @@ export default function StudentScanPage() {
             <p className="text-xs text-slate-500">Signed in as</p>
             <p className="text-sm font-medium text-slate-200">{user?.name}</p>
           </div>
-          <div className="flex items-center gap-3"><button onClick={() => navigate('/student/attendance')} className="flex items-center gap-1.5 text-xs text-signal-blue"><History size={13}/>History</button><button onClick={() => navigate('/student/leave')} className="flex items-center gap-1.5 text-xs text-signal-blue"><CalendarCheck size={13}/>Leave</button><button
+          <div className="flex items-center gap-3"><button onClick={() => navigate('/student/dashboard')} className="flex items-center gap-1.5 text-xs text-signal-blue">Home</button><button onClick={() => navigate('/student/attendance')} className="flex items-center gap-1.5 text-xs text-signal-blue"><History size={13}/>History</button><button onClick={() => navigate('/student/leave')} className="flex items-center gap-1.5 text-xs text-signal-blue"><CalendarCheck size={13}/>Leave</button><button
             onClick={logout}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300"
           >
@@ -415,6 +421,7 @@ export default function StudentScanPage() {
           )}
         </div>
       </div>
+      {showConsent && <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-4 sm:items-center sm:justify-center"><div role="dialog" aria-modal="true" aria-labelledby="privacy-title" className="w-full max-w-md rounded-2xl border border-ink-border bg-ink-850 p-6 shadow-2xl"><h2 id="privacy-title" className="text-lg font-bold text-white">Attendance permission notice</h2><p className="mt-3 text-sm leading-6 text-slate-300">Attendance mark pannumbodhu mattum camera (QR), microphone (Sound mode), precise location, and this browser device ID use pannuvom. Idhu class presence verify panna mattum; background location or recordings save panna maatom.</p><button onClick={() => navigate('/privacy')} className="mt-3 text-sm font-semibold text-signal-blue">Read Privacy Policy</button><div className="mt-5 flex gap-3"><button onClick={() => { setShowConsent(false); setPendingMode(null); }} className="flex-1 rounded-xl border border-ink-border px-4 py-2.5 text-sm text-slate-300">Cancel</button><button onClick={() => { localStorage.setItem('kgisl_attendance_consent_v1', 'accepted'); setShowConsent(false); if (pendingMode === 'alpha') setAttendanceMode('alpha'); else startScanning(); setPendingMode(null); }} className="flex-1 rounded-xl bg-signal-green px-4 py-2.5 text-sm font-bold text-ink-950">I understand</button></div></div></div>}
     </div>
   );
 }
