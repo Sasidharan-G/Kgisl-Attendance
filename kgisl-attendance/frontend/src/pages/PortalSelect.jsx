@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, GraduationCap, ShieldCheck, Sparkles, UserRoundCog } from 'lucide-react';
+import { BookOpen, CalendarDays, CheckCircle2, ClipboardCheck, GraduationCap, MapPin, ShieldCheck, UserRound, UserRoundCog } from 'lucide-react';
 import AdminLogin from './AdminLogin.jsx';
 import StudentLogin from './StudentLogin.jsx';
 
@@ -66,24 +66,24 @@ export default function PortalSelect() {
           <LoginBrandLockup />
         </div>
 
-        <div className="calm-brand-copy">
-          <p className="calm-eyebrow"><Sparkles size={14} /> Smart campus experience</p>
-          <h1>Attendance,<br />made effortless.</h1>
-          <p className="calm-intro">
-            A secure and reliable attendance workspace designed for the students,
-            faculty and administrators of KGiSL Institute of Information Management.
-          </p>
-        </div>
-
-        <div className="calm-trust-row">
-          <span><ShieldCheck size={17} /> Secure access</span>
-          <span><Building2 size={17} /> MCA Department</span>
+        <div className="notice-stats" aria-label="Attendance overview">
+          <article><span className="notice-icon"><CalendarDays size={23}/></span><div><b>Today</b><i>On schedule</i></div><CheckCircle2 size={19}/></article>
+          <article><span className="notice-icon"><BookOpen size={23}/></span><div><b>Classes</b><i>Ready to begin</i></div><CheckCircle2 size={19}/></article>
+          <article><span className="notice-icon"><UserRound size={23}/></span><div><b>Present</b><i>Attendance desk</i></div><CheckCircle2 size={19}/></article>
         </div>
         <p className="calm-brand-footer">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
       </section>
 
+      <section className="notice-board" aria-label="Attendance workspace overview">
+        <div className="notice-timetable"><span>Time table</span><div><i>MON</i><i>TUE</i><i>WED</i><i>THU</i><i>FRI</i></div></div>
+        <div className="notice-live-ticket"><span className="notice-qr" aria-hidden="true"/><div><b>Live class</b><small>10:20 AM · <em>Active</em></small></div></div>
+        <div className="notice-streak"><strong>92%</strong><span>Attendance<br/>streak</span></div>
+        <div className="notice-flow"><span><UserRound size={18}/><b>Check in</b></span><i/><span><CheckCircle2 size={18}/><b>Verified</b></span><i/><span><ClipboardCheck size={18}/><b>Recorded</b></span></div>
+        <div className="notice-map"><MapPin size={25}/><span/><span/><span/><span/></div>
+      </section>
+
       <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
-        <div className="calm-auth-card">
+        <div className={`calm-auth-card notice-login-card notice-login-${portal.toLowerCase()}`}>
           <header className="calm-card-header">
             <div>
               <p className="calm-card-kicker">Welcome to the portal</p>
@@ -121,6 +121,7 @@ export default function PortalSelect() {
           </div>
 
           <p className="calm-security"><ShieldCheck size={14} /> Your connection is encrypted and protected</p>
+          <p className="notice-login-footer">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
         </div>
         <p className="calm-help">Need help signing in? Contact your department administrator.</p>
       </section>
