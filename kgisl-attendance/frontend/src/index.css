@@ -921,6 +921,72 @@ body.workspace-dark:has(.app-sidebar) main [class*='bg-signal-blue'] { backgroun
 .student-workspace [class*='border-ink-border'] { border-color:#e0e6ee!important; }
 .student-attendance-card button.bg-signal-red { color:#fff!important; background:#315f98!important; }
 .student-attendance-card .scan-frame { box-shadow:0 12px 28px rgba(23,38,62,.14); }
+
+/* ========================================================================
+   KGiSL Horizon — unified, clean campus UI system.
+   A quiet white canvas, cobalt actions, and sky-tinted depth across every
+   public, student, faculty, and administrator experience.
+   ======================================================================== */
+:root { --horizon-blue:#155eef; --horizon-blue-deep:#0f46bb; --horizon-sky:#eef6ff; --horizon-ink:#16213a; --horizon-muted:#66758a; --horizon-line:#dce7f5; --horizon-card:#ffffff; --horizon-success:#16a46b; }
+body { color:var(--horizon-ink); background:#f5f9ff; }
+
+/* App workspaces */
+body:has(.app-sidebar), body:has(aside) { color:var(--horizon-ink); background-color:#f5f9ff; background-image:radial-gradient(circle at 82% 2%,rgba(65,144,255,.16),transparent 23rem),radial-gradient(circle at 16% 76%,rgba(155,205,255,.16),transparent 22rem); background-attachment:fixed; }
+body:has(.app-sidebar)::before, body:has(.app-sidebar)::after, body:has(aside)::before, body:has(aside)::after { display:none; }
+body:has(.app-sidebar) .bg-ink-950, body:has(aside) .bg-ink-950 { background:transparent!important; }
+body:has(.app-sidebar) aside, body:has(aside) aside { background:rgba(255,255,255,.95)!important; border-right:1px solid var(--horizon-line)!important; box-shadow:10px 0 34px rgba(34,83,145,.06)!important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+body:has(.app-sidebar) aside .text-white, body:has(.app-sidebar) aside .text-slate-200, body:has(.app-sidebar) aside .text-slate-300, body:has(aside) aside .text-white, body:has(aside) aside .text-slate-200, body:has(aside) aside .text-slate-300 { color:var(--horizon-ink)!important; }
+body:has(.app-sidebar) aside .text-slate-400, body:has(.app-sidebar) aside .text-slate-500, body:has(aside) aside .text-slate-400, body:has(aside) aside .text-slate-500 { color:#71829a!important; }
+body:has(.app-sidebar) .sidebar-menu-item, body:has(aside) .sidebar-menu-item { color:#5f6f86!important; border:1px solid transparent; }
+body:has(.app-sidebar) .sidebar-menu-item:hover, body:has(aside) .sidebar-menu-item:hover { color:var(--horizon-blue)!important; background:#eef5ff!important; border-color:#d8e8ff!important; transform:none!important; box-shadow:none!important; }
+body:has(.app-sidebar) .sidebar-menu-item[class*='bg'], body:has(aside) .sidebar-menu-item[class*='bg'] { color:var(--horizon-blue)!important; background:#e7f0ff!important; border-color:#c9ddff!important; box-shadow:inset 3px 0 var(--horizon-blue)!important; }
+body:has(.app-sidebar) header, body:has(aside) header { color:var(--horizon-ink)!important; background:rgba(255,255,255,.7)!important; border-color:rgba(220,231,245,.8)!important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+body:has(.app-sidebar) header h1, body:has(aside) header h1, body:has(.app-sidebar) main h2, body:has(aside) main h2 { color:var(--horizon-ink)!important; background:none!important; -webkit-text-fill-color:initial!important; }
+body:has(.app-sidebar) main .text-white, body:has(.app-sidebar) main .text-slate-200, body:has(.app-sidebar) main .text-slate-300, body:has(aside) main .text-white, body:has(aside) main .text-slate-200, body:has(aside) main .text-slate-300 { color:var(--horizon-ink)!important; }
+body:has(.app-sidebar) main .text-slate-400, body:has(.app-sidebar) main .text-slate-500, body:has(aside) main .text-slate-400, body:has(aside) main .text-slate-500 { color:var(--horizon-muted)!important; }
+body:has(.app-sidebar) main [class*='bg-ink-850'], body:has(.app-sidebar) main [class*='bg-ink-900'], body:has(.app-sidebar) main .shadow-card, body:has(aside) main [class*='bg-ink-850'], body:has(aside) main [class*='bg-ink-900'], body:has(aside) main .shadow-card { background:rgba(255,255,255,.94)!important; border-color:var(--horizon-line)!important; box-shadow:0 12px 28px rgba(37,84,143,.07)!important; }
+body:has(.app-sidebar) main [class*='bg-white'], body:has(.app-sidebar) main [class*='bg-slate-50'], body:has(.app-sidebar) main [class*='bg-slate-100'], body:has(aside) main [class*='bg-white'], body:has(aside) main [class*='bg-slate-50'], body:has(aside) main [class*='bg-slate-100'] { background-color:#fff!important; }
+body:has(.app-sidebar) main .rounded-2xl, body:has(aside) main .rounded-2xl { border-radius:1.15rem!important; }
+body:has(.app-sidebar) main input, body:has(.app-sidebar) main select, body:has(.app-sidebar) main textarea, body:has(aside) main input, body:has(aside) main select, body:has(aside) main textarea { color:var(--horizon-ink)!important; background:#fbfdff!important; border-color:#cfddef!important; box-shadow:none!important; }
+body:has(.app-sidebar) main input:focus, body:has(.app-sidebar) main select:focus, body:has(.app-sidebar) main textarea:focus, body:has(aside) main input:focus, body:has(aside) main select:focus, body:has(aside) main textarea:focus { border-color:#83b3ff!important; box-shadow:0 0 0 3px rgba(21,94,239,.11)!important; }
+body:has(.app-sidebar) main button.bg-signal-blue, body:has(.app-sidebar) main .bg-signal-blue, body:has(aside) main button.bg-signal-blue, body:has(aside) main .bg-signal-blue { background:var(--horizon-blue)!important; color:#fff!important; box-shadow:0 8px 16px rgba(21,94,239,.19)!important; }
+body:has(.app-sidebar) main button:not(:disabled):hover, body:has(aside) main button:not(:disabled):hover { transform:translateY(-1px); filter:none; }
+body:has(.app-sidebar) main thead, body:has(aside) main thead { background:#f3f7fc!important; }
+body:has(.app-sidebar) main tbody tr, body:has(aside) main tbody tr { border-color:#e5edf7!important; }
+body:has(.app-sidebar) main tbody tr:hover, body:has(aside) main tbody tr:hover { background:#f6faff!important; box-shadow:inset 3px 0 var(--horizon-blue)!important; }
+body.workspace-dark:has(.app-sidebar), body.workspace-dark:has(aside) { color-scheme:light; background-color:#f5f9ff; background-image:radial-gradient(circle at 82% 2%,rgba(65,144,255,.16),transparent 23rem),radial-gradient(circle at 16% 76%,rgba(155,205,255,.16),transparent 22rem); }
+body.workspace-dark:has(.app-sidebar) main, body.workspace-dark:has(.app-sidebar) header, body.workspace-dark:has(aside) main, body.workspace-dark:has(aside) header { background:transparent!important; }
+body.workspace-dark:has(.app-sidebar) main [class*='bg-white'], body.workspace-dark:has(.app-sidebar) main [class*='bg-slate-50'], body.workspace-dark:has(.app-sidebar) main [class*='bg-slate-100'], body.workspace-dark:has(aside) main [class*='bg-white'], body.workspace-dark:has(aside) main [class*='bg-slate-50'], body.workspace-dark:has(aside) main [class*='bg-slate-100'] { background:#fff!important; }
+
+/* Student screens without the faculty navigation use the same canvas. */
+body:has(.student-attendance-card), body:has(.student-workspace) { background:#f5f9ff!important; color:var(--horizon-ink); }
+.student-workspace .text-white, .student-workspace .text-slate-200, .student-workspace .text-slate-300, .student-attendance-card .text-white, .student-attendance-card .text-slate-200, .student-attendance-card .text-slate-300 { color:var(--horizon-ink)!important; }
+.student-attendance-card, .student-workspace [class*='bg-ink-850'], .student-workspace [class*='bg-ink-900'] { background:#fff!important; border-color:var(--horizon-line)!important; box-shadow:0 12px 28px rgba(37,84,143,.08)!important; }
+
+/* Public login: a clean campus welcome, no dark panel and no paper props. */
+.calm-auth-shell:has(.notice-board) { grid-template-columns:20rem minmax(26rem,1fr) minmax(28rem,.95fr); color:var(--horizon-ink); background:#eff6ff!important; }
+.calm-auth-shell:has(.notice-board)::before, .calm-auth-shell:has(.notice-board)::after { display:none; }
+.calm-auth-shell:has(.notice-board) .calm-auth-brand { background:linear-gradient(160deg,#155eef,#0e47b8)!important; color:#fff!important; border:0!important; }
+.calm-auth-shell:has(.notice-board) .calm-auth-brand::before { display:block; right:-11rem; bottom:-10rem; width:24rem; height:24rem; border-color:rgba(255,255,255,.18); box-shadow:0 0 0 4rem rgba(255,255,255,.055),0 0 0 8rem rgba(255,255,255,.035); }
+.calm-auth-shell:has(.notice-board) .notice-board { background:#eff6ff!important; background-image:radial-gradient(circle at 70% 15%,rgba(69,156,255,.22),transparent 18rem)!important; }
+.notice-board>* { background:#fff!important; border:1px solid #dce7f5!important; box-shadow:0 15px 30px rgba(40,85,146,.11)!important; }
+.notice-board>*::after { display:none!important; }
+.notice-timetable::before { background:#d8e8ff!important; }
+.calm-auth-shell:has(.notice-board) .calm-auth-area { background:#f8fbff!important; }
+.calm-auth-shell:has(.notice-board) .calm-auth-area::before { opacity:.55; background-image:radial-gradient(rgba(21,94,239,.11) .7px,transparent .8px); background-size:20px 20px; }
+.notice-login-card { border:1px solid #dce7f5!important; border-radius:1.35rem!important; background:#fff!important; box-shadow:0 22px 50px rgba(33,76,137,.13)!important; }
+.notice-login-card::before, .notice-login-card::after { display:none!important; }
+.notice-login-card .calm-card-kicker, .notice-login-card .calm-form-options button { color:var(--horizon-blue)!important; }
+.notice-login-card .calm-card-header h2, .notice-login-card .calm-role-context strong, .notice-login-card .calm-field { color:var(--horizon-ink)!important; }
+.notice-login-card .calm-card-header>div>p:last-child, .notice-login-card .calm-role-context span, .notice-login-card .calm-security { color:var(--horizon-muted)!important; }
+.notice-login-card .calm-role-switch { border-color:#d6e3f3!important; background:#f3f7fc!important; }
+.notice-login-card .calm-role-switch button { color:#64758b!important; }
+.notice-login-card .calm-role-switch button.active { color:#fff!important; background:var(--horizon-blue)!important; box-shadow:0 6px 14px rgba(21,94,239,.2); }
+.notice-login-card .calm-role-context { border-color:#dce7f5!important; background:#f5f9ff!important; color:var(--horizon-blue)!important; }
+.notice-login-card .calm-field>div, .notice-login-card .google-login-placeholder, .notice-login-card .google-login-disabled { background:#fbfdff!important; border-color:#cfdded!important; color:var(--horizon-ink)!important; }
+.notice-login-card .calm-submit { background:var(--horizon-blue)!important; box-shadow:0 8px 17px rgba(21,94,239,.2)!important; }
+.notice-login-card .calm-submit:hover:not(:disabled) { background:var(--horizon-blue-deep)!important; }
+@media (max-width:1050px) { .calm-auth-shell:has(.notice-board) { grid-template-columns:18rem minmax(26rem,1fr); }.calm-auth-shell:has(.notice-board) .notice-board { display:none; } }
 @media (max-width:767px) { body:has(.app-sidebar) header{padding-left:4.5rem}.app-sidebar{position:fixed!important}body:has(.app-sidebar) main>div{padding-left:1rem!important;padding-right:1rem!important} }
 
 /* Alpha acoustic attendance visuals. DSP runs in AudioWorklet; these effects
