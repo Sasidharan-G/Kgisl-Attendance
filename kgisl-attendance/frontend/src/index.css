@@ -952,19 +952,22 @@ body:has(aside) main h2, body:has(aside) header h1 { background:none; color:var(
 
 /* A dark chalkboard-strip sidebar balances the light sheets. */
 body:has(aside) aside { background:#294d49 !important; border-right:5px solid #e4b84e !important; box-shadow:7px 0 0 rgba(255,253,244,.85),14px 0 28px rgba(47,64,52,.20) !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
-body:has(aside) aside::before { content:'✎'; position:absolute; right:1.1rem; bottom:1rem; color:rgba(255,244,210,.42); font-family:cursive; font-size:4rem; transform:rotate(-16deg); pointer-events:none; }
+body:has(aside) aside::before { content:''; position:absolute; right:1.2rem; bottom:1.15rem; width:4.6rem; height:2.8rem; opacity:.45; border-bottom:2px solid #f0c458; border-radius:50%; transform:rotate(-20deg); pointer-events:none; }
+body:has(aside) aside::after { content:''; position:absolute; right:2rem; bottom:1.55rem; width:2.5rem; height:1px; background:#f0c458; box-shadow:-.55rem .7rem 0 #f0c458,1.15rem .7rem 0 #f0c458; transform:rotate(-20deg); pointer-events:none; }
 body:has(aside) aside nav button:hover, body:has(aside) aside > button:hover { border-color:#f4cf67 !important; background:rgba(255,246,205,.14) !important; box-shadow:none !important; }
 body:has(aside) header { position:relative; background:rgba(255,253,244,.76) !important; border-bottom:1px dashed #c4b182 !important; }
-body:has(aside) header::after { content:'📎  ✏️'; position:absolute; right:1.1rem; top:.35rem; font-size:1.15rem; letter-spacing:.25rem; transform:rotate(-5deg); pointer-events:none; }
+body:has(aside) header::after { content:''; position:absolute; right:1.45rem; top:.75rem; width:2.6rem; height:.42rem; background:#d9ab4d; opacity:.8; transform:rotate(-4deg); box-shadow:0 .78rem 0 -.12rem #c34e42; pointer-events:none; }
 
 /* Login is a desk of layered torn notes, with stationery quietly decorating it. */
 .calm-auth-shell:has(.notice-board) { position:relative; color:var(--ink); background-color:#e6d5a9; background-image:repeating-linear-gradient(0deg,transparent 0 29px,rgba(83,132,170,.23) 30px,transparent 31px),linear-gradient(90deg,transparent 0 4.5rem,rgba(215,79,74,.28) 4.55rem 4.68rem,transparent 4.72rem); }
-.calm-auth-shell:has(.notice-board)::before { content:'✏️'; position:absolute; z-index:5; left:45%; top:7%; font-size:4.5rem; filter:drop-shadow(2px 5px 3px rgba(59,44,24,.25)); transform:rotate(-36deg); pointer-events:none; }
-.calm-auth-shell:has(.notice-board)::after { content:'📐'; position:absolute; z-index:5; right:3%; bottom:5%; font-size:4.4rem; opacity:.8; transform:rotate(17deg); pointer-events:none; }
+.calm-auth-shell:has(.notice-board)::before { content:''; position:absolute; z-index:5; left:46%; top:8%; width:9.5rem; height:.8rem; border-radius:999px; background:linear-gradient(90deg,#e3b653 0 86%,#374435 86% 93%,#e6d9bd 93%); box-shadow:2px 5px 5px rgba(59,44,24,.17); transform:rotate(-36deg); pointer-events:none; }
+.calm-auth-shell:has(.notice-board)::after { content:''; position:absolute; z-index:5; right:4%; bottom:6%; width:5rem; height:5rem; opacity:.72; background:repeating-linear-gradient(90deg,transparent 0 .9rem,#6d7a5f .95rem 1.05rem),repeating-linear-gradient(0deg,transparent 0 .9rem,#6d7a5f .95rem 1.05rem); transform:rotate(17deg); pointer-events:none; }
 .calm-auth-shell:has(.notice-board) .calm-auth-brand { background:#f8f0da; color:var(--ink); border-right:1px dashed #bda96f; }
 .calm-auth-shell:has(.notice-board) .notice-board, .calm-auth-shell:has(.notice-board) .calm-auth-area { background:transparent; }
 .calm-auth-shell:has(.notice-board) .notice-board { background-image:none; }
 .notice-board>* { background:#fffdf4 !important; border:1px solid rgba(176,150,91,.35); }
+.notice-board>*::after { content:''; position:absolute; top:-.95rem; right:1.15rem; width:1.3rem; height:1.3rem; border-radius:50%; background:radial-gradient(circle at 35% 27%,#e97a67 0 16%,#b83f35 18% 70%,#8d2f29 72%); box-shadow:0 2px 3px rgba(53,36,22,.34); }
+.notice-timetable::after { display:none; }
 .notice-login-card { background:#fffdf4 !important; border:1px solid #d6c390 !important; box-shadow:6px 7px 0 rgba(120,93,45,.15),0 18px 30px -22px rgba(46,40,29,.6) !important; }
 .notice-login-card .calm-role-switch { border-color:#608276; }
 .notice-login-card .calm-role-switch button.active, .notice-login-card .calm-submit { background:#2f7864; }
