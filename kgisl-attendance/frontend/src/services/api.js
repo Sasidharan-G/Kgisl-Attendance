@@ -76,7 +76,6 @@ export const loginFaculty = (email, password) =>
 
 export const loginAdmin = (email, password) =>
   api.post('/auth/admin/login', { email, password }).then((r) => r.data);
-export const verifyAdminOtp = (email, code) => api.post('/auth/admin/verify-otp', { email, code }).then((r) => r.data);
 
 export const loginStudent = (email, password) =>
   api.post('/auth/student/login', { email, password }).then((r) => r.data);

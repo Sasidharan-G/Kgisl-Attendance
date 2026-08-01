@@ -2,7 +2,6 @@ import { Router } from 'express';
 import {
   facultyLoginHandler,
   adminLoginHandler,
-  verifyAdminMfaHandler,
   studentLoginHandler,
   refreshHandler,
   logoutHandler,
@@ -22,7 +21,6 @@ const router = Router();
 router.post('/faculty/register', requireAuth('ADMIN'), authRateLimiter, registerFacultyHandler);
 router.post('/faculty/login', authRateLimiter, facultyLoginHandler);
 router.post('/admin/login', authRateLimiter, adminLoginHandler);
-router.post('/admin/verify-otp', authRateLimiter, verifyAdminMfaHandler);
 router.post('/student/login', authRateLimiter, studentLoginHandler);
 router.get('/google/config', googleAuthConfigHandler);
 router.post('/google', authRateLimiter, googleLoginHandler);
