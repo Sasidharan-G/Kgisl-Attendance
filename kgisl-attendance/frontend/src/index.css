@@ -921,6 +921,58 @@ body.workspace-dark:has(.app-sidebar) main [class*='bg-signal-blue'] { backgroun
 .student-workspace [class*='border-ink-border'] { border-color:#e0e6ee!important; }
 .student-attendance-card button.bg-signal-red { color:#fff!important; background:#315f98!important; }
 .student-attendance-card .scan-frame { box-shadow:0 12px 28px rgba(23,38,62,.14); }
+
+/* --------------------------------------------------------------------------
+   Campus stationery theme — recycled notebook paper, torn notes & supplies.
+   This intentionally sits last so every portal (student, faculty and admin)
+   shares one friendly campus visual language without changing any behaviour.
+   -------------------------------------------------------------------------- */
+:root { --paper:#fffdf4; --paper-warm:#f4ecd7; --ink:#263c59; --pencil:#e05d45; --marker:#2f7864; --line:rgba(95,151,190,.20); }
+body { color:var(--ink); background-color:var(--paper-warm); background-image:linear-gradient(90deg, transparent 0 4.6rem, rgba(220,86,79,.18) 4.65rem 4.78rem, transparent 4.82rem),repeating-linear-gradient(0deg,transparent 0 29px,var(--line) 30px,transparent 31px),radial-gradient(circle at 10% 15%,rgba(236,191,91,.19),transparent 24rem); background-size:auto,100% 31px,auto; }
+
+/* Workspaces become sheets pinned above the notebook background. */
+body:has(aside), body:has(.student-attendance-card) { background-color:var(--paper-warm); background-image:linear-gradient(90deg, transparent 0 4.6rem, rgba(220,86,79,.18) 4.65rem 4.78rem, transparent 4.82rem),repeating-linear-gradient(0deg,transparent 0 29px,var(--line) 30px,transparent 31px),radial-gradient(circle at 92% 14%,rgba(242,196,88,.28),transparent 20rem); background-size:auto,100% 31px,auto; color:var(--ink); }
+body:has(aside)::before, body:has(aside)::after { display:none; }
+body:has(aside) .bg-ink-950, body:has(.student-attendance-card) .bg-ink-950 { background:transparent !important; }
+body:has(aside) main, body:has(.student-attendance-card) main { color:var(--ink); }
+body:has(aside) main [class*='bg-ink-850'], body:has(aside) main [class*='bg-ink-900'], body:has(aside) main .shadow-card,
+body:has(.student-attendance-card) [class*='bg-ink-850'], body:has(.student-attendance-card) [class*='bg-ink-900'], body:has(.student-attendance-card) .student-attendance-card {
+  background-color:rgba(255,253,244,.94) !important; background-image:repeating-linear-gradient(0deg,transparent 0 29px,rgba(95,151,190,.12) 30px,transparent 31px) !important;
+  border-color:#d8cba9 !important; box-shadow:4px 5px 0 rgba(112,89,51,.13),0 15px 27px -19px rgba(61,45,25,.42) !important;
+  clip-path:polygon(0 .35%,2% 0,5% .45%,9% 0,13% .35%,18% 0,24% .35%,31% 0,39% .4%,48% 0,56% .35%,65% 0,73% .4%,81% 0,89% .35%,95% 0,100% .4%,99.6% 8%,100% 17%,99.65% 29%,100% 42%,99.6% 55%,100% 68%,99.65% 82%,100% 100%,91% 99.55%,82% 100%,71% 99.6%,62% 100%,51% 99.6%,42% 100%,31% 99.55%,20% 100%,10% 99.55%,0 100%,.35% 89%,0 77%,.3% 65%,0 53%,.35% 41%,0 27%,.3% 14%);
+}
+body:has(aside) main [class*='bg-white'], body:has(aside) main [class*='bg-slate-50'], body:has(aside) main [class*='bg-slate-100'] { background-color:rgba(255,253,244,.93) !important; }
+body:has(aside) main .text-white, body:has(aside) main .text-slate-200, body:has(aside) main .text-slate-300, body:has(.student-attendance-card) .text-white, body:has(.student-attendance-card) .text-slate-200, body:has(.student-attendance-card) .text-slate-300 { color:var(--ink) !important; }
+body:has(aside) main .text-slate-400, body:has(aside) main .text-slate-500, body:has(.student-attendance-card) .text-slate-400, body:has(.student-attendance-card) .text-slate-500 { color:#66758a !important; }
+body:has(aside) main input, body:has(aside) main select, body:has(aside) main textarea, body:has(.student-attendance-card) input, body:has(.student-attendance-card) select, body:has(.student-attendance-card) textarea { color:var(--ink) !important; background:#fffdf4 !important; border-color:#c9b88f !important; box-shadow:none !important; }
+body:has(aside) main input:focus, body:has(aside) main select:focus, body:has(aside) main textarea:focus { border-color:var(--pencil) !important; box-shadow:0 0 0 3px rgba(224,93,69,.13) !important; }
+body:has(aside) main thead { background:rgba(235,220,178,.42) !important; }
+body:has(aside) main tbody tr:hover { background:rgba(255,218,94,.15) !important; box-shadow:inset 4px 0 0 var(--pencil) !important; }
+body:has(aside) main h2, body:has(aside) header h1 { background:none; color:var(--ink); -webkit-text-fill-color:initial; }
+
+/* A dark chalkboard-strip sidebar balances the light sheets. */
+body:has(aside) aside { background:#294d49 !important; border-right:5px solid #e4b84e !important; box-shadow:7px 0 0 rgba(255,253,244,.85),14px 0 28px rgba(47,64,52,.20) !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+body:has(aside) aside::before { content:'✎'; position:absolute; right:1.1rem; bottom:1rem; color:rgba(255,244,210,.42); font-family:cursive; font-size:4rem; transform:rotate(-16deg); pointer-events:none; }
+body:has(aside) aside nav button:hover, body:has(aside) aside > button:hover { border-color:#f4cf67 !important; background:rgba(255,246,205,.14) !important; box-shadow:none !important; }
+body:has(aside) header { position:relative; background:rgba(255,253,244,.76) !important; border-bottom:1px dashed #c4b182 !important; }
+body:has(aside) header::after { content:'📎  ✏️'; position:absolute; right:1.1rem; top:.35rem; font-size:1.15rem; letter-spacing:.25rem; transform:rotate(-5deg); pointer-events:none; }
+
+/* Login is a desk of layered torn notes, with stationery quietly decorating it. */
+.calm-auth-shell:has(.notice-board) { position:relative; color:var(--ink); background-color:#e6d5a9; background-image:repeating-linear-gradient(0deg,transparent 0 29px,rgba(83,132,170,.23) 30px,transparent 31px),linear-gradient(90deg,transparent 0 4.5rem,rgba(215,79,74,.28) 4.55rem 4.68rem,transparent 4.72rem); }
+.calm-auth-shell:has(.notice-board)::before { content:'✏️'; position:absolute; z-index:5; left:45%; top:7%; font-size:4.5rem; filter:drop-shadow(2px 5px 3px rgba(59,44,24,.25)); transform:rotate(-36deg); pointer-events:none; }
+.calm-auth-shell:has(.notice-board)::after { content:'📐'; position:absolute; z-index:5; right:3%; bottom:5%; font-size:4.4rem; opacity:.8; transform:rotate(17deg); pointer-events:none; }
+.calm-auth-shell:has(.notice-board) .calm-auth-brand { background:#f8f0da; color:var(--ink); border-right:1px dashed #bda96f; }
+.calm-auth-shell:has(.notice-board) .notice-board, .calm-auth-shell:has(.notice-board) .calm-auth-area { background:transparent; }
+.calm-auth-shell:has(.notice-board) .notice-board { background-image:none; }
+.notice-board>* { background:#fffdf4 !important; border:1px solid rgba(176,150,91,.35); }
+.notice-login-card { background:#fffdf4 !important; border:1px solid #d6c390 !important; box-shadow:6px 7px 0 rgba(120,93,45,.15),0 18px 30px -22px rgba(46,40,29,.6) !important; }
+.notice-login-card .calm-role-switch { border-color:#608276; }
+.notice-login-card .calm-role-switch button.active, .notice-login-card .calm-submit { background:#2f7864; }
+.notice-login-card .calm-submit:hover:not(:disabled) { background:#246452; }
+.notice-login-card .calm-field>div { background:#fffdf4; border-color:#bdaa7c; }
+
+@media (max-width:1050px) { .calm-auth-shell:has(.notice-board)::before,.calm-auth-shell:has(.notice-board)::after { display:none; } }
+@media (max-width:720px) { body { background-size:auto,100% 31px,auto; } body:has(aside) header::after { display:none; } }
 @media (max-width:767px) { body:has(.app-sidebar) header{padding-left:4.5rem}.app-sidebar{position:fixed!important}body:has(.app-sidebar) main>div{padding-left:1rem!important;padding-right:1rem!important} }
 
 /* Alpha acoustic attendance visuals. DSP runs in AudioWorklet; these effects
