@@ -67,13 +67,8 @@ const envSchema = z.object({
   AI_AGENT_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
 
 }).superRefine((value, ctx) => {
-  const emailConfigured = Boolean(value.BREVO_API_KEY || value.RESEND_API_KEY || (value.SMTP_HOST && value.SMTP_USER && value.SMTP_PASS));
-  if (value.NODE_ENV === 'production' && !emailConfigured) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_PASS'], message: 'Resend or SMTP email credentials are required in production' });
-  }
-  if (value.NODE_ENV === 'production' && (!value.EMAIL_FROM || value.EMAIL_FROM.includes('onboarding@resend.dev'))) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['EMAIL_FROM'], message: 'A verified production EMAIL_FROM is required' });
-  }
+  // Email delivery is optional at startup. The attendance portal remains
+  // available until an administrator configures a mail provider.
   if (value.NODE_ENV === 'production' && !value.ACOUSTIC_TOKEN_PEPPER) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['ACOUSTIC_TOKEN_PEPPER'], message: 'ACOUSTIC_TOKEN_PEPPER is required in production' });
   }
