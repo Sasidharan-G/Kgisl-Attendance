@@ -25,10 +25,17 @@ export default function PortalSelect() {
   const [portal, setPortal] = useState('STUDENT');
   const [showEntrance, setShowEntrance] = useState(true);
   const selectedPortal = portals.find((item) => item.id === portal);
+  const [sessionNotice, setSessionNotice] = useState('');
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowEntrance(false), 6800);
+    const timer = setTimeout(() => setShowEntrance(false), 900);
     return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    const message = sessionStorage.getItem('kgisl_session_notice');
+    if (!message) return;
+    setSessionNotice(message);
+    sessionStorage.removeItem('kgisl_session_notice');
   }, []);
 
   return (
@@ -115,6 +122,7 @@ export default function PortalSelect() {
           </div>
 
           <div className="calm-login-stage">
+            {sessionNotice && <div role="alert" className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900"><span><b>Session expired.</b> {sessionNotice}</span><button type="button" onClick={() => setSessionNotice('')} className="font-bold" aria-label="Dismiss session message">×</button></div>}
             {portal === 'STUDENT'
               ? <StudentLogin active />
               : <AdminLogin key={portal} portal={portal} active />}

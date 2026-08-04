@@ -1249,3 +1249,108 @@ body:has(.app-sidebar) main tbody tr:hover { background: rgba(68, 202, 246, .075
   .student-glass-page { padding: .75rem; }
   .student-glass-page > main { border-radius: 1.25rem; padding: 1.25rem; }
 }
+
+/* --------------------------------------------------------------------------
+   Obsidian / gold clear-glass redesign.  This intentionally sits last so it
+   replaces the older blue, white and cyan experiments with one visual system.
+   -------------------------------------------------------------------------- */
+:root {
+  --obsidian: #070705;
+  --obsidian-soft: #11100c;
+  --gold: #d9af53;
+  --gold-bright: #f7d982;
+  --gold-dim: #9d782c;
+  --glass: rgba(23, 20, 12, .54);
+  --glass-strong: rgba(20, 17, 9, .76);
+  --glass-line: rgba(246, 214, 137, .22);
+  --glass-line-soft: rgba(255, 255, 255, .08);
+  --cream: #f7f0df;
+  --muted-gold: #b9aa8c;
+}
+
+body {
+  color: var(--cream);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(193, 144, 44, .16), transparent 27rem),
+    radial-gradient(circle at 88% 92%, rgba(122, 84, 20, .13), transparent 28rem),
+    linear-gradient(135deg, #050504 0%, #11100b 45%, #050504 100%) !important;
+  background-attachment: fixed !important;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .24;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(circle at center, #000, transparent 78%);
+}
+
+.page-transition { min-height: 100%; animation-duration: .72s; animation-fill-mode: both; animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+.vault-reveal { animation-name: vaultReveal; }
+.gold-orbit { animation-name: goldOrbit; }
+.ledger-rise { animation-name: ledgerRise; }
+.amber-sweep { animation-name: amberSweep; }
+.silk-slide { animation-name: silkSlide; }
+.obsidian-lift { animation-name: obsidianLift; }
+@keyframes vaultReveal { from { opacity: 0; clip-path: inset(0 48% 0 48% round 3rem); filter: brightness(.55); } to { opacity:1; clip-path: inset(0 0 0 0 round 0); filter:brightness(1); } }
+@keyframes goldOrbit { from { opacity:0; transform:perspective(1200px) rotateX(5deg) rotateY(-2deg) scale(.97); } to { opacity:1; transform:none; } }
+@keyframes ledgerRise { from { opacity:0; transform:translateY(30px) skewY(1deg); } to { opacity:1; transform:none; } }
+@keyframes amberSweep { from { opacity:0; transform:translateX(24px); clip-path:polygon(8% 0,100% 0,100% 100%,0 100%); } to { opacity:1; transform:none; clip-path:polygon(0 0,100% 0,100% 100%,0 100%); } }
+@keyframes silkSlide { from { opacity:0; transform:translateY(12px) scale(.985); filter:blur(5px); } to { opacity:1; transform:none; filter:none; } }
+@keyframes obsidianLift { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:none; } }
+
+/* Shared workspaces */
+body:has(.app-sidebar), body:has(aside) { background-color: var(--obsidian) !important; background-image: radial-gradient(circle at 72% 8%, rgba(210,164,66,.13), transparent 25rem), radial-gradient(circle at 8% 92%, rgba(112,73,16,.14), transparent 25rem) !important; }
+body:has(.app-sidebar) .app-sidebar, body:has(aside) aside {
+  background: linear-gradient(160deg, rgba(28,24,14,.86), rgba(8,8,6,.93)) !important;
+  border-color: var(--glass-line) !important;
+  box-shadow: 20px 0 70px rgba(0,0,0,.48), inset -1px 0 rgba(255,231,170,.07) !important;
+  backdrop-filter: blur(28px) saturate(120%);
+}
+body:has(.app-sidebar) main, body:has(aside) main, body:has(aside) header { background: transparent !important; color: var(--cream) !important; }
+body:has(.app-sidebar) header, body:has(aside) header { border-color: var(--glass-line-soft) !important; }
+body:has(.app-sidebar) main section, body:has(.app-sidebar) main article, body:has(.app-sidebar) main .rounded-2xl, body:has(.app-sidebar) main .rounded-xl,
+body:has(aside) main section, body:has(aside) main article, body:has(aside) main .rounded-2xl, body:has(aside) main .rounded-xl {
+  background: linear-gradient(135deg, rgba(41,35,20,.58), rgba(12,11,7,.54)) !important;
+  border-color: var(--glass-line) !important;
+  box-shadow: inset 0 1px rgba(255,238,192,.16), 0 20px 55px rgba(0,0,0,.32) !important;
+  backdrop-filter: blur(24px) saturate(120%);
+}
+body:has(.app-sidebar) main .rounded-2xl:hover, body:has(aside) main .rounded-2xl:hover { border-color: rgba(247,217,130,.55) !important; box-shadow: inset 0 1px rgba(255,244,207,.22), 0 24px 58px rgba(0,0,0,.46), 0 0 0 1px rgba(217,175,83,.08) !important; }
+body:has(.app-sidebar) h1, body:has(.app-sidebar) h2, body:has(aside) h1, body:has(aside) h2 { color: var(--gold-bright) !important; background: none !important; -webkit-text-fill-color: initial !important; }
+body:has(.app-sidebar) .text-slate-900, body:has(.app-sidebar) .text-slate-800, body:has(.app-sidebar) .text-slate-700, body:has(aside) .text-slate-900, body:has(aside) .text-slate-800, body:has(aside) .text-slate-700 { color: var(--cream) !important; }
+body:has(.app-sidebar) .text-slate-600, body:has(.app-sidebar) .text-slate-500, body:has(aside) .text-slate-600, body:has(aside) .text-slate-500 { color: var(--muted-gold) !important; }
+body:has(.app-sidebar) main input, body:has(.app-sidebar) main select, body:has(.app-sidebar) main textarea, body:has(aside) main input, body:has(aside) main select, body:has(aside) main textarea { color: var(--cream) !important; background: rgba(6,6,4,.55) !important; border-color: var(--glass-line) !important; }
+body:has(.app-sidebar) main input:focus, body:has(.app-sidebar) main select:focus, body:has(.app-sidebar) main textarea:focus, body:has(aside) main input:focus, body:has(aside) main select:focus, body:has(aside) main textarea:focus { border-color: var(--gold-bright) !important; box-shadow: 0 0 0 3px rgba(217,175,83,.13) !important; }
+body:has(.app-sidebar) button.bg-signal-red, body:has(aside) button.bg-signal-red, body:has(.app-sidebar) button.bg-ink-950, body:has(aside) button.bg-ink-950 { background: linear-gradient(135deg, #f1cf72, #b4852e) !important; color: #171109 !important; box-shadow: 0 10px 26px rgba(169,122,30,.25) !important; }
+
+/* Login and public landing */
+.calm-auth-shell, .apple-portal, .portal-shell { color: var(--cream) !important; background: transparent !important; }
+.calm-auth-shell::before, .calm-auth-shell::after { background: rgba(211,169,70,.15) !important; }
+.calm-auth-brand, .notice-board, .calm-auth-card, .portal-panel {
+  background: linear-gradient(145deg, rgba(33,28,16,.64), rgba(8,8,5,.72)) !important;
+  border: 1px solid var(--glass-line) !important;
+  box-shadow: inset 0 1px rgba(255,238,190,.16), 0 28px 80px rgba(0,0,0,.45) !important;
+  backdrop-filter: blur(30px) saturate(120%);
+}
+.calm-auth-card h2, .portal-panel h1, .calm-brand-words strong, .portal-headline { color: var(--gold-bright) !important; -webkit-text-fill-color: initial !important; }
+.calm-auth-card p, .calm-auth-brand p, .calm-field span, .calm-security, .calm-help, .notice-login-footer { color: var(--muted-gold) !important; }
+.calm-role-switch, .portal-toggle { background: rgba(3,3,2,.52) !important; border-color: var(--glass-line) !important; }
+.calm-role-switch button.active, .portal-toggle button.active { color: #171109 !important; background: linear-gradient(135deg, var(--gold-bright), var(--gold)) !important; box-shadow: 0 8px 25px rgba(217,175,83,.28) !important; }
+.calm-field > div, .custom-input { background: rgba(6,6,4,.52) !important; border-color: var(--glass-line) !important; }
+.calm-field input { color: var(--cream) !important; }
+.calm-submit, .portal-panel form > button[type='submit'] { background: linear-gradient(135deg, var(--gold-bright), #b9862f) !important; color: #171109 !important; box-shadow: 0 12px 30px rgba(178,127,32,.28) !important; }
+.notice-stats article, .notice-live-ticket, .notice-streak, .notice-flow, .notice-timetable, .notice-map { background: rgba(30,25,14,.5) !important; border-color: var(--glass-line) !important; color: var(--cream) !important; }
+.brand-entrance { background: radial-gradient(circle at center, #2a210d, #050504 68%) !important; }
+.brand-entrance-skip { color: var(--gold-bright) !important; border-color: var(--glass-line) !important; }
+
+.student-glass-page { background: transparent !important; }
+.student-glass-page > main { background: linear-gradient(145deg, rgba(33,28,16,.58), rgba(7,7,5,.7)) !important; border-color: var(--glass-line) !important; }
+.student-glass-page section, .student-glass-page .rounded-2xl, .student-glass-page .rounded-xl { background: rgba(25,21,12,.52) !important; border-color: var(--glass-line) !important; }
+.student-glass-page button.bg-signal-red { background: linear-gradient(135deg, var(--gold-bright), var(--gold)) !important; color: #171109 !important; }
+
+@media (prefers-reduced-motion: reduce) { .page-transition { animation: none !important; } }

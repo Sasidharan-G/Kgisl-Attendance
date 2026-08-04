@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import AgentChat from './components/AgentChat.jsx';
+import StatePanel from './components/StatePanel.jsx';
+import PageTransition from './components/PageTransition.jsx';
 
 const PortalSelect = lazy(() => import('./pages/PortalSelect.jsx'));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx'));
@@ -40,7 +42,8 @@ export default function App() {
       <OfflineBanner />
       <BrowserRouter>
         <GlobalAgent />
-        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 text-slate-300">Loading...</div>}>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 px-4"><div className="w-full max-w-sm"><StatePanel type="loading" title="Opening your workspace" description="Loading attendance tools and your dashboard." /></div></div>}>
+        <PageTransition>
         <Routes>
           <Route path="/" element={<PortalSelect />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -133,6 +136,7 @@ export default function App() {
           <Route path="/faculty/corrections" element={<ProtectedRoute role="FACULTY"><CorrectionRequestsPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </PageTransition>
         </Suspense>
       </BrowserRouter>
       </div>
