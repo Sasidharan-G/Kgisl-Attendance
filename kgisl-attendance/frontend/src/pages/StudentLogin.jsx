@@ -29,6 +29,7 @@ export default function StudentLogin({ active = true }) {
   }
 
   return <>
+    {active && <><div className="login-divider login-divider-google"><span>or continue with Google</span></div><GoogleSignIn role="STUDENT" onError={setError}/></>}
     <form onSubmit={handleSubmit} className="calm-login-form">
       <label className="calm-field">
         <span>Email address</span>
@@ -47,7 +48,6 @@ export default function StudentLogin({ active = true }) {
       {error && <div className="calm-form-error" role="alert"><AlertCircle size={16}/><span>{error}</span></div>}
       <button type="submit" disabled={loading} className="calm-submit">{loading ? 'Signing in...' : 'Sign in'}{!loading && <ArrowRight size={18}/>}</button>
     </form>
-    {active && <><div className="login-divider"><span>or continue with</span></div><GoogleSignIn role="STUDENT" onError={setError}/></>}
     {isSuccessLoading && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 backdrop-blur-sm"><Loader /></div>}
     {showForgot && <ForgotPasswordModal role="STUDENT" initialEmail={email} onClose={() => setShowForgot(false)}/>}
   </>;
