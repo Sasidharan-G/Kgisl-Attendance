@@ -31,7 +31,7 @@ export default function QRPanel({ qr, sessionMeta }) {
   const total = qr?.refreshIntervalSeconds ?? 10;
 
   return (
-    <div className="stitch-qr-panel flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">
+    <div className="flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">
       <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-2 sm:mb-6">
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-red-300/30 bg-red-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-red-200">Beta</span>

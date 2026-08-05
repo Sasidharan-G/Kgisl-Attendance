@@ -17,14 +17,6 @@ redis.on('error', (err) => logger.error('[redis] error', { error: err.message })
  */
 export const qrRedisKey = (sessionId: string) => `attendance:session:${sessionId}`;
 
-/**
- * Keeps each signed QR independently verifiable for its short validity window.
- * The faculty screen may rotate to a newer QR while a student's phone is still
- * obtaining GPS after decoding the previous image.
- */
-export const qrTokenRedisKey = (sessionId: string, tokenHash: string) =>
-  `attendance:session:${sessionId}:qr:${tokenHash}`;
-
 /** Tracks per-student-per-session scan attempts for rate limiting / duplicate short-circuit. */
 export const scanLockKey = (sessionId: string, studentId: string) =>
   `attendance:lock:${sessionId}:${studentId}`;

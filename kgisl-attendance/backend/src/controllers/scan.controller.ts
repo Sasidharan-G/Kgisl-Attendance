@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { validateAndRecordAcousticScan, validateAndRecordScan } from '../services/validation.service';
 import { writeAuditLog, requestContext } from '../services/audit.service';
 import { AppError } from '../utils/AppError';
-import { createNotification } from '../services/notification.service';
 
 const gpsSchema = z.object({
   lat: z.number().finite().min(-90).max(90),
@@ -66,7 +65,6 @@ export async function scanHandler(req: Request, res: Response, next: NextFunctio
       },
     });
 
-    await createNotification({ recipientId: studentId, recipientRole: 'STUDENT', type: 'ATTENDANCE_MARKED', title: 'Attendance marked', message: `Your attendance for ${result.subjectName} was recorded successfully.`, href: '/student/attendance' });
     sendSuccess(res, result, body.gps.accuracy);
   } catch (err) {
     await writeAuditLog({
@@ -115,7 +113,6 @@ export async function acousticScanHandler(
       },
     });
 
-    await createNotification({ recipientId: studentId, recipientRole: 'STUDENT', type: 'ATTENDANCE_MARKED', title: 'Attendance marked', message: `Your attendance for ${result.subjectName} was recorded successfully.`, href: '/student/attendance' });
     sendSuccess(res, result, body.gps.accuracy);
   } catch (err) {
     await writeAuditLog({

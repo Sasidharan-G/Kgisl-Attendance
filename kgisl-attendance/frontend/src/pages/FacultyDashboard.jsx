@@ -305,10 +305,10 @@ export default function FacultyDashboard() {
   }
 
   return (
-    <div className="stitch-command-layout flex min-h-screen bg-ink-950">
+    <div className="flex min-h-screen bg-ink-950">
       <Sidebar />
 
-      <main className="stitch-command-main flex-1 min-w-0 pb-10">
+      <main className="flex-1 min-w-0 pb-10">
         <TopBar connected={connected} sessionActive={sessionActive} />
 
         {catalogError && (
@@ -343,8 +343,8 @@ export default function FacultyDashboard() {
       {showStartConfirm && (() => { const allocation = allocations.find((x) => x.id === subjectId); return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-ink-border bg-ink-850 p-6"><h2 className="text-lg font-bold text-white">Confirm attendance session</h2><p className="mt-3 text-sm text-slate-300">Check before opening attendance. Students in this section will be able to mark presence.</p><dl className="mt-4 space-y-2 rounded-xl bg-ink-900 p-4 text-sm"><div className="flex justify-between"><dt className="text-slate-500">Subject</dt><dd className="text-white">{allocation?.subject?.code} · {allocation?.subject?.name}</dd></div><div className="flex justify-between"><dt className="text-slate-500">Section</dt><dd className="text-white">{allocation?.batch?.name}</dd></div><div className="flex justify-between"><dt className="text-slate-500">Room</dt><dd className="text-white">{allocation?.room?.name}</dd></div><div className="flex justify-between"><dt className="text-slate-500">Time</dt><dd className="text-white">{allocation?.startTime}–{allocation?.endTime}</dd></div></dl><div className="mt-5 flex gap-3"><button onClick={() => setShowStartConfirm(false)} className="flex-1 rounded-xl border border-ink-border py-2.5 text-sm text-slate-300">Back</button><button onClick={confirmStart} className="flex-1 rounded-xl bg-signal-green py-2.5 text-sm font-bold text-ink-950">Confirm & start</button></div></div></div>; })()}
       {sessionActive && cancelGraceUntil > Date.now() && <div className="fixed bottom-5 right-5 z-40 rounded-xl border border-signal-amber/30 bg-ink-850 p-4 shadow-xl"><p className="text-sm text-slate-200">Session started. Wrong class-aa?</p><button onClick={handleEnd} className="mt-2 text-sm font-bold text-signal-amber">Cancel session (10 sec grace)</button></div>}
 
-        <div className="stitch-command-grid mt-3 grid grid-cols-1 gap-3 px-3 sm:mt-6 sm:gap-6 sm:px-6 md:px-8 lg:grid-cols-[1fr_1.3fr_1fr]">
-          <div className="stitch-session-status flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">
+        <div className="mt-3 grid grid-cols-1 gap-3 px-3 sm:mt-6 sm:gap-6 sm:px-6 md:px-8 lg:grid-cols-[1fr_1.3fr_1fr]">
+          <div className="flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">
             <div className="w-full flex items-center justify-between mb-4">
               <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Session Status</h3>
               <span className="flex items-center gap-1.5 text-[11px] text-signal-green">
@@ -389,7 +389,7 @@ export default function FacultyDashboard() {
             </div>
           </div>
 
-          <div className="stitch-command-center flex flex-col h-full gap-6">
+          <div className="flex flex-col h-full gap-6">
             <AcousticBroadcastPanel
               sessionId={sessionMeta?.sessionId}
               sessionActive={sessionActive}

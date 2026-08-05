@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/prisma';
-import { createNotification, notifyFacultyForLeaveRequest } from '../services/notification.service';
 
 const requestSchema = z.object({
   type: z.enum(['LEAVE', 'ON_DUTY']),
@@ -22,11 +21,7 @@ export async function createLeaveRequestHandler(req: Request, res: Response, nex
       where: { studentId: req.auth!.sub, status: 'PENDING', fromDate: { lte: input.toDate }, toDate: { gte: input.fromDate } },
     });
     if (existing) { res.status(409).json({ success: false, message: 'An overlapping request is already pending.' }); return; }
-    const data = await prisma.leaveRequest.create({
-      data: { studentId: req.auth!.sub, ...input },
-      include: { student: { select: { name: true, rollNo: true, batchId: true } } },
-    });
-    await notifyFacultyForLeaveRequest({ studentName: data.student.name, studentRollNo: data.student.rollNo, batchId: data.student.batchId });
+    const data = await prisma.leaveRequest.create({ data: { studentId: req.auth!.sub, ...input } });
     res.status(201).json({ success: true, data });
   } catch (err) { next(err); }
 }
@@ -36,7 +31,8 @@ export async function listLeaveRequestsHandler(req: Request, res: Response, next
     let where = {};
     if (req.auth!.role === 'STUDENT') where = { studentId: req.auth!.sub };
     if (req.auth!.role === 'FACULTY') {
-      where = { student: { batch: { mentorId: req.auth!.sub } } };
+      const batches = await prisma.timetableAllocation.findMany({ where: { facultyId: req.auth!.sub }, select: { batchId: true }, distinct: ['batchId'] });
+      where = { student: { batchId: { in: batches.map((item) => item.batchId) } } };
     }
     const data = await prisma.leaveRequest.findMany({ where, include: { student: { select: { name: true, rollNo: true, regNo: true, batch: { select: { name: true } } } } }, orderBy: { createdAt: 'desc' } });
     res.json({ success: true, data });
@@ -50,8 +46,8 @@ export async function reviewLeaveRequestHandler(req: Request, res: Response, nex
     if (!request) { res.status(404).json({ success: false, message: 'Request not found' }); return; }
     if (request.status !== 'PENDING') { res.status(409).json({ success: false, message: 'Request was already reviewed' }); return; }
     if (req.auth!.role === 'FACULTY') {
-      const ownsBatch = await prisma.batch.findFirst({ where: { id: request.student.batchId, mentorId: req.auth!.sub } });
-      if (!ownsBatch) { res.status(403).json({ success: false, message: 'Only this section mentor or an administrator can review the request.' }); return; }
+      const ownsBatch = await prisma.timetableAllocation.findFirst({ where: { facultyId: req.auth!.sub, batchId: request.student.batchId } });
+      if (!ownsBatch) { res.status(403).json({ success: false, message: 'You cannot review this section.' }); return; }
     }
 
     const updated = await prisma.leaveRequest.update({ where: { id: request.id }, data: { ...input, reviewedBy: req.auth!.sub, reviewedAt: new Date() } });
@@ -82,14 +78,6 @@ export async function reviewLeaveRequestHandler(req: Request, res: Response, nex
         });
       }
     }
-    await createNotification({
-      recipientId: request.studentId,
-      recipientRole: 'STUDENT',
-      type: 'LEAVE_REVIEWED',
-      title: `Leave request ${input.status.toLowerCase()}`,
-      message: `Your ${request.type === 'ON_DUTY' ? 'on-duty' : 'leave'} request has been ${input.status.toLowerCase()}.`,
-      href: '/student/leave',
-    });
     res.json({ success: true, data: updated });
   } catch (err) { next(err); }
 }

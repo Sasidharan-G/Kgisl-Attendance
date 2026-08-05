@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import AgentChat from './components/AgentChat.jsx';
-import PageTransition from './components/PageTransition.jsx';
 
 const PortalSelect = lazy(() => import('./pages/PortalSelect.jsx'));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx'));
@@ -41,8 +40,7 @@ export default function App() {
       <OfflineBanner />
       <BrowserRouter>
         <GlobalAgent />
-        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 px-4"><div className="rounded-2xl border border-amber-300/20 bg-black/50 px-6 py-5 text-sm font-semibold tracking-wide text-amber-100 backdrop-blur-xl">Opening your workspace…</div></div>}>
-        <PageTransition>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 text-slate-300">Loading...</div>}>
         <Routes>
           <Route path="/" element={<PortalSelect />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -135,7 +133,6 @@ export default function App() {
           <Route path="/faculty/corrections" element={<ProtectedRoute role="FACULTY"><CorrectionRequestsPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </PageTransition>
         </Suspense>
       </BrowserRouter>
       </div>

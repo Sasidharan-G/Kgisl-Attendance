@@ -45,13 +45,11 @@ api.interceptors.response.use(
         } catch {
           refreshInFlight = null;
           clearStoredSession();
-          sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
           window.location.assign('/');
           return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
         }
       } else {
         clearStoredSession();
-        sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
         window.location.assign('/');
         return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
       }
@@ -142,10 +140,6 @@ export const reviewLeaveRequest = (id, payload) => api.patch(`/leave-requests/${
 export const listAttendanceCorrections = () => api.get('/attendance-corrections').then((r) => r.data.data);
 export const createAttendanceCorrection = (payload) => api.post('/attendance-corrections', payload).then((r) => r.data.data);
 export const reviewAttendanceCorrection = (id, payload) => api.patch(`/attendance-corrections/${id}/review`, payload).then((r) => r.data.data);
-// ---- Notification Center ----
-export const listNotifications = () => api.get('/notifications').then((r) => r.data);
-export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`).then((r) => r.data.data);
-export const markAllNotificationsRead = () => api.patch('/notifications/read-all').then((r) => r.data);
 export const listAllocations = (scope) => api.get('/timetable', { params: scope ? { scope } : {} }).then((r) => r.data.data);
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);

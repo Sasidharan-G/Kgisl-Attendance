@@ -13,7 +13,6 @@ import historyRoutes from './routes/history.routes';
 import agentRoutes from './routes/agent.routes';
 import leaveRoutes from './routes/leave.routes';
 import correctionRoutes from './routes/correction.routes';
-import notificationRoutes from './routes/notification.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
 import { prisma } from './config/prisma';
@@ -31,18 +30,13 @@ export function createApp() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'https://*.googleusercontent.com'], // QR codes are served as base64 data: URLs
-          connectSrc: ["'self'", ...allowedOrigins, 'https://accounts.google.com'],
-          scriptSrc: ["'self'", 'https://accounts.google.com'],
-          frameSrc: ["'self'", 'https://accounts.google.com'],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:'], // QR codes are served as base64 data: URLs
+          connectSrc: ["'self'", ...allowedOrigins],
+          scriptSrc: ["'self'"],
           objectSrc: ["'none'"],
           frameAncestors: ["'none'"],
         },
       },
-      // Google Identity Services uses a popup and needs to retain its opener
-      // relationship long enough to return the signed credential.
-      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       crossOriginResourcePolicy: { policy: 'same-site' },
     })
@@ -79,7 +73,6 @@ export function createApp() {
   app.use('/api/v1/agent', agentRoutes);
   app.use('/api/v1/leave-requests', leaveRoutes);
   app.use('/api/v1/attendance-corrections', correctionRoutes);
-  app.use('/api/v1/notifications', notificationRoutes);
 
   // Serve frontend static files in production
   if (process.env.NODE_ENV === 'production') {

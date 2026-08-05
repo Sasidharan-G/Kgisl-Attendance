@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { qrTokenRedisKey, redis, scanLockKey } from '../config/redis';
+import { qrRedisKey, redis, scanLockKey } from '../config/redis';
 import { env } from '../config/env';
 import { verifyQrSignature, sha256Hex, QrSignableFields } from '../utils/crypto';
 import { distanceMeters } from '../utils/geo';
@@ -76,7 +76,7 @@ async function claimQrTokenOnce(
   const claimed = await redis.eval(
     CLAIM_QR_TOKEN_SCRIPT,
     2,
-    qrTokenRedisKey(req.qr.sessionId, tokenHash),
+    qrRedisKey(req.qr.sessionId),
     scanLockKey(req.qr.sessionId, req.studentId),
     tokenHash,
     req.qr.nonce,
@@ -227,8 +227,7 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
     throw Errors.QR_EXPIRED();
   }
 
-  const tokenHash = sha256Hex(req.qr.token);
-  const redisRaw = await redis.get(qrTokenRedisKey(req.qr.sessionId, tokenHash));
+  const redisRaw = await redis.get(qrRedisKey(req.qr.sessionId));
   if (!redisRaw) throw Errors.QR_EXPIRED();
   let redisEntry: { tokenHash: string; nonce: string; issuedAt: number; expiresAt: number };
   try {
@@ -236,6 +235,7 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
   } catch {
     throw Errors.QR_EXPIRED();
   }
+  const tokenHash = sha256Hex(req.qr.token);
   if (
     redisEntry.tokenHash !== tokenHash ||
     redisEntry.nonce !== req.qr.nonce ||

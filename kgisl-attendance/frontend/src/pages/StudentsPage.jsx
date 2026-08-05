@@ -3,7 +3,6 @@ import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { bulkCreateStudents, createStudent, resetStudentDevice, setStudentActive, listBatches, listStudents } from '../services/api.js';
 import { Search, GraduationCap, Plus, Power, Users, X, FileUp } from 'lucide-react';
-import StatePanel from '../components/StatePanel.jsx';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
@@ -18,8 +17,6 @@ export default function StudentsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
-  const [formErrors, setFormErrors] = useState({});
-  const [reloadKey, setReloadKey] = useState(0);
   const [bulkRows, setBulkRows] = useState([]);
   const [bulkBatchId, setBulkBatchId] = useState('');
 
@@ -35,26 +32,10 @@ export default function StudentsPage() {
         setLoading(false);
       }
     })();
-  }, [reloadKey]);
-
-  const validateStudentForm = () => {
-    const next = {};
-    if (!form.name.trim()) next.name = 'Enter the student name.';
-    if (!form.rollNo.trim()) next.rollNo = 'Enter the roll number.';
-    if (!form.regNo.trim()) next.regNo = 'Enter the register number.';
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = 'Enter a valid college email address.';
-    if (form.password.length < 6) next.password = 'Password must contain at least 6 characters.';
-    if (!form.batchId) next.batchId = 'Choose a section.';
-    setFormErrors(next);
-    return Object.keys(next).length === 0;
-  };
+  }, []);
 
   const handleAddStudent = async (event) => {
     event.preventDefault();
-    if (!validateStudentForm()) {
-      setError('Please correct the highlighted fields before adding the student.');
-      return;
-    }
     setSaving(true);
     setError('');
     setSuccess('');
@@ -181,17 +162,15 @@ export default function StudentsPage() {
                 ].map(([key, label, type]) => (
                   <label key={key} className="text-xs font-semibold text-slate-400">
                     {label}
-                    <input required type={type} value={form[key]} aria-invalid={Boolean(formErrors[key])} onChange={(e) => { setForm({ ...form, [key]: e.target.value }); setFormErrors((current) => ({ ...current, [key]: '' })); }} className={`mt-1.5 w-full rounded-xl border bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-signal-red ${formErrors[key] ? 'border-signal-red ring-1 ring-signal-red/30' : 'border-ink-border'}`} />
-                    {formErrors[key] && <span className="mt-1 block font-normal text-red-300">{formErrors[key]}</span>}
+                    <input required type={type} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="mt-1.5 w-full rounded-xl border border-ink-border bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-signal-red" />
                   </label>
                 ))}
                 <label className="text-xs font-semibold text-slate-400">
                   Section
-                  <select required value={form.batchId} aria-invalid={Boolean(formErrors.batchId)} onChange={(e) => { setForm({ ...form, batchId: e.target.value }); setFormErrors((current) => ({ ...current, batchId: '' })); }} className={`mt-1.5 w-full rounded-xl border bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-signal-red ${formErrors.batchId ? 'border-signal-red ring-1 ring-signal-red/30' : 'border-ink-border'}`}>
+                  <select required value={form.batchId} onChange={(e) => setForm({ ...form, batchId: e.target.value })} className="mt-1.5 w-full rounded-xl border border-ink-border bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-signal-red">
                     <option value="">Select section</option>
                     {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.name}</option>)}
                   </select>
-                  {formErrors.batchId && <span className="mt-1 block font-normal text-red-300">{formErrors.batchId}</span>}
                 </label>
               </div>
               <button disabled={saving} className="mt-5 rounded-xl bg-signal-red px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
@@ -211,7 +190,7 @@ export default function StudentsPage() {
               {error}
             </p>
           )}
-          {success && <div className="mb-6"><StatePanel type="success" compact title="Saved successfully" description={success} /></div>}
+          {success && <p className="mb-6 rounded-lg border border-signal-green/30 bg-signal-green/10 px-4 py-2.5 text-xs text-signal-green">{success}</p>}
 
           <div className="mb-6">
             <div className="mb-3">
@@ -249,20 +228,14 @@ export default function StudentsPage() {
                 <tbody className="divide-y divide-ink-border/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8">
-                        <StatePanel type="loading" compact title="Loading student directory" description="Fetching registered students and attendance data." />
-                      </td>
-                    </tr>
-                  ) : error && students.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-8">
-                        <StatePanel type="error" title="Could not load students" description={error} actionLabel="Try again" onAction={() => { setLoading(true); setError(''); setReloadKey((key) => key + 1); }} />
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                        Loading students data...
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8">
-                        <StatePanel type="empty" compact title={search ? 'No matching students' : 'No students in this view'} description={search ? `No name or roll number matches “${search}”. Try a different search.` : 'Add a student or select a different batch to see records here.'} actionLabel={search ? 'Clear search' : undefined} onAction={search ? () => setSearch('') : undefined} />
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                        No students found.
                       </td>
                     </tr>
                   ) : (

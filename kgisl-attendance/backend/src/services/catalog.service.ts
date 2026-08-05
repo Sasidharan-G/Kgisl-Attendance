@@ -14,7 +14,7 @@ export function listRooms() {
 }
 
 export function listBatches() {
-  return prisma.batch.findMany({ orderBy: { name: 'asc' }, include: { mentor: { select: { id: true, name: true, email: true } } } });
+  return prisma.batch.findMany({ orderBy: { name: 'asc' } });
 }
 
 export type BatchInput = {
@@ -23,7 +23,6 @@ export type BatchInput = {
   programme: string;
   semester: number;
   academicYear: string;
-  mentorId?: string | null;
 };
 
 export function createBatch(data: BatchInput) {
