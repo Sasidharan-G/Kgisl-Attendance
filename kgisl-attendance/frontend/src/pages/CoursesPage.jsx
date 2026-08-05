@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { listSubjects } from '../services/api.js';
 import { BookOpen, FolderOpen } from 'lucide-react';
+import StatePanel from '../components/StatePanel.jsx';
 
 export default function CoursesPage() {
   const [subjects, setSubjects] = useState([]);
@@ -40,11 +41,7 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          {error && (
-            <p className="rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300 mb-6">
-              {error}
-            </p>
-          )}
+          {error && <div className="mb-6"><StatePanel type="error" compact title="Could not load courses" description={error} actionLabel="Try again" onAction={() => window.location.reload()} /></div>}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Primary MCA Card */}
@@ -66,9 +63,9 @@ export default function CoursesPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {loading ? (
-                    <p className="text-slate-500 text-sm col-span-2">Loading curriculum...</p>
+                    <div className="col-span-2"><StatePanel type="loading" compact title="Loading curriculum" description="Fetching the latest subject catalog." /></div>
                   ) : subjects.length === 0 ? (
-                    <p className="text-slate-500 text-sm col-span-2">No subjects found in database.</p>
+                    <div className="col-span-2"><StatePanel type="empty" compact title="No subjects configured" description="Subjects added by the administrator will appear here." /></div>
                   ) : (
                     subjects.map((sub) => (
                       <div

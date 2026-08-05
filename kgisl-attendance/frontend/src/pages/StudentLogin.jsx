@@ -19,7 +19,10 @@ export default function StudentLogin({ active = true }) {
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
-    e.preventDefault(); setError(''); setLoading(true);
+    e.preventDefault(); setError('');
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Enter a valid registered email address.'); return; }
+    if (!password) { setError('Enter your password to continue.'); return; }
+    setLoading(true);
     try {
       const { token, refreshToken, user } = await loginStudent(email, password);
       login(token, refreshToken, user); setIsSuccessLoading(true);

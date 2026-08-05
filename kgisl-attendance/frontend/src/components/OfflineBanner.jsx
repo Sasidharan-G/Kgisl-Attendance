@@ -1,17 +1,27 @@
 import { useEffect, useState } from 'react';
-import { WifiOff } from 'lucide-react';
+import { Gauge, WifiOff } from 'lucide-react';
 
 export default function OfflineBanner() {
   const [online, setOnline] = useState(() => navigator.onLine);
+  const [slow, setSlow] = useState(false);
   useEffect(() => {
-    const sync = () => setOnline(navigator.onLine);
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const sync = () => {
+      setOnline(navigator.onLine);
+      setSlow(Boolean(connection && (connection.saveData || ['slow-2g', '2g'].includes(connection.effectiveType) || connection.rtt > 800)));
+    };
+    sync();
     window.addEventListener('online', sync);
     window.addEventListener('offline', sync);
+    connection?.addEventListener?.('change', sync);
     return () => {
       window.removeEventListener('online', sync);
       window.removeEventListener('offline', sync);
+      connection?.removeEventListener?.('change', sync);
     };
   }, []);
   if (online) return null;
-  return <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-2 bg-amber-500 px-3 py-2 text-sm font-semibold text-black"><WifiOff size={16}/>You are offline. Attendance scan needs a live connection.</div>;
+  if (!online) return <div className="network-banner network-banner--offline" role="alert"><WifiOff size={16}/><span><b>No internet.</b> Reconnect before scanning or saving changes.</span></div>;
+  if (slow) return <div className="network-banner network-banner--slow" role="status"><Gauge size={16}/><span><b>Slow network.</b> Requests may take a little longer.</span></div>;
+  return null;
 }

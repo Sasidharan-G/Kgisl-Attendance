@@ -21,7 +21,10 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
-    e.preventDefault(); setError(''); setLoading(true);
+    e.preventDefault(); setError('');
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Enter a valid registered email address.'); return; }
+    if (!password) { setError('Enter your password to continue.'); return; }
+    setLoading(true);
     try {
       const res = portal === 'ADMIN' ? await loginAdmin(email, password) : await loginFaculty(email, password);
       if (portal === 'ADMIN' && res.data?.mfaRequired) { setOtpRequired(true); return; }

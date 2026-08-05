@@ -3,13 +3,15 @@ import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { FileClock, Terminal } from 'lucide-react';
 import { listAuditLogs } from '../services/api.js';
+import StatePanel from '../components/StatePanel.jsx';
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = () => listAuditLogs().then(setLogs).catch((err) => setError(err.message || 'Could not load audit logs'));
+    const load = () => listAuditLogs().then((data) => { setLogs(data); setError(''); }).catch((err) => setError(err.message || 'Could not load audit logs')).finally(() => setLoading(false));
     load();
     const interval = setInterval(load, 10000);
 
@@ -47,7 +49,8 @@ export default function LogsPage() {
               </span>
             </div>
 
-            {error && <p className="mb-3 text-red-300">{error}</p>}
+            {loading && <StatePanel type="loading" compact title="Loading audit trail" description="Reading the latest security activity." />}
+            {!loading && error && <StatePanel type="error" compact title="Audit trail unavailable" description={error} actionLabel="Try again" onAction={() => { setLoading(true); setError(''); listAuditLogs().then(setLogs).catch((err) => setError(err.message)).finally(() => setLoading(false)); }} />}
             <div className="space-y-2 max-h-[450px] overflow-y-auto leading-relaxed">
               {logs.map((log, idx) => (
                 <div key={log.id || idx} className="flex gap-4">
@@ -64,7 +67,7 @@ export default function LogsPage() {
                   <span className="text-slate-300 font-mono">{log.action}{log.reasonCode ? ` · ${log.reasonCode}` : ''}{log.sessionId ? ` · session ${log.sessionId.slice(0, 8)}` : ''}</span>
                 </div>
               ))}
-              {!logs.length && !error && <p className="py-8 text-center text-slate-500">No audit activity found.</p>}
+              {!loading && !logs.length && !error && <StatePanel type="empty" compact title="No audit activity" description="Security and attendance actions will appear here." />}
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, GraduationCap, ShieldCheck, Sparkles, UserRoundCog } from 'lucide-react';
 import AdminLogin from './AdminLogin.jsx';
 import StudentLogin from './StudentLogin.jsx';
+import StatePanel from '../components/StatePanel.jsx';
 
 const portals = [
   { id: 'STUDENT', label: 'Student', description: 'Mark attendance and view records', Icon: GraduationCap },
@@ -24,9 +25,11 @@ function LoginBrandLockup() {
 export default function PortalSelect() {
   const [portal, setPortal] = useState('STUDENT');
   const [showEntrance, setShowEntrance] = useState(true);
+  const [sessionNotice, setSessionNotice] = useState(() => sessionStorage.getItem('kgisl_session_notice') || '');
   const selectedPortal = portals.find((item) => item.id === portal);
 
   useEffect(() => {
+    if (sessionNotice) { sessionStorage.removeItem('kgisl_session_notice'); setShowEntrance(false); }
     const timer = setTimeout(() => setShowEntrance(false), 6800);
     return () => clearTimeout(timer);
   }, []);
@@ -92,6 +95,8 @@ export default function PortalSelect() {
             </div>
             <div className="calm-mobile-logo"><LoginBrandLockup /></div>
           </header>
+
+          {sessionNotice && <div className="mb-4"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
 
           <div className="calm-role-switch" role="tablist" aria-label="Choose your role">
             {portals.map(({ id, label, Icon }) => (

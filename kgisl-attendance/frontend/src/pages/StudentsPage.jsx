@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { bulkCreateStudents, createStudent, resetStudentDevice, setStudentActive, listBatches, listStudents } from '../services/api.js';
 import { Search, GraduationCap, Plus, Power, Users, X, FileUp } from 'lucide-react';
+import StatePanel from '../components/StatePanel.jsx';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
@@ -36,6 +37,10 @@ export default function StudentsPage() {
 
   const handleAddStudent = async (event) => {
     event.preventDefault();
+    if (!form.name.trim() || !form.rollNo.trim() || !form.regNo.trim() || !/^\S+@\S+\.\S+$/.test(form.email) || form.password.length < 6 || !form.batchId) {
+      setError('Complete every field with a valid email and a password of at least 6 characters.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSuccess('');
@@ -185,12 +190,8 @@ export default function StudentsPage() {
             {bulkRows.length > 0 && <p className="mt-3 text-xs text-signal-green">{bulkRows.length} valid-looking rows ready. Duplicate roll/register/email values are checked again by the server.</p>}
           </section>
 
-          {error && (
-            <p className="rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300 mb-6">
-              {error}
-            </p>
-          )}
-          {success && <p className="mb-6 rounded-lg border border-signal-green/30 bg-signal-green/10 px-4 py-2.5 text-xs text-signal-green">{success}</p>}
+          {error && <div className="mb-6"><StatePanel type="error" compact title="Action needs attention" description={error} /></div>}
+          {success && <div className="mb-6"><StatePanel type="success" compact title="Saved successfully" description={success} /></div>}
 
           <div className="mb-6">
             <div className="mb-3">
@@ -228,15 +229,11 @@ export default function StudentsPage() {
                 <tbody className="divide-y divide-ink-border/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                        Loading students data...
-                      </td>
+                      <td colSpan={7} className="px-6 py-8"><StatePanel type="loading" compact title="Loading student directory" description="Fetching registered students and attendance data." /></td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                        No students found.
-                      </td>
+                      <td colSpan={7} className="px-6 py-8"><StatePanel type={search ? 'search' : 'empty'} compact title={search ? 'No search results' : 'No students in this view'} description={search ? `No student matches “${search}”. Try a name or roll number.` : 'Add a student or choose another section to see records.'} actionLabel={search ? 'Clear search' : undefined} onAction={search ? () => setSearch('') : undefined} /></td>
                     </tr>
                   ) : (
                     filtered.map((s) => (

@@ -45,11 +45,13 @@ api.interceptors.response.use(
         } catch {
           refreshInFlight = null;
           clearStoredSession();
+          sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
           window.location.assign('/');
           return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
         }
       } else {
         clearStoredSession();
+        sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
         window.location.assign('/');
         return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
       }

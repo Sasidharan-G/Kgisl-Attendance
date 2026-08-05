@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import AgentChat from './components/AgentChat.jsx';
+import StatePanel from './components/StatePanel.jsx';
 
 const PortalSelect = lazy(() => import('./pages/PortalSelect.jsx'));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx'));
@@ -24,7 +25,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
 function ProtectedRoute({ role, children }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/" replace />;
-  if (role && user.role !== role) return <Navigate to="/" replace />;
+  if (role && user.role !== role) return <div className="flex min-h-screen items-center justify-center bg-ink-950 px-5"><div className="w-full max-w-md"><StatePanel type="permission" title="Permission denied" description={`This page is available only to ${role.toLowerCase()} accounts. You are signed in as ${user.role.toLowerCase()}.`} actionLabel="Return to my portal" onAction={() => window.location.assign(user.role === 'STUDENT' ? '/student/dashboard' : user.role === 'FACULTY' ? '/faculty/dashboard' : '/admin/timetable')} /></div></div>;
   return children;
 }
 
@@ -40,7 +41,7 @@ export default function App() {
       <OfflineBanner />
       <BrowserRouter>
         <GlobalAgent />
-        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 text-slate-300">Loading...</div>}>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 px-5"><div className="w-full max-w-md"><StatePanel type="loading" title="Opening your workspace" description="Loading your attendance tools and latest records." /></div></div>}>
         <Routes>
           <Route path="/" element={<PortalSelect />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
