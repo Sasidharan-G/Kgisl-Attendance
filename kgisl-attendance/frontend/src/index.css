@@ -983,13 +983,19 @@ button{font-weight:720}
    Login/public screens remain on their own cinematic palette. */
 body:has(aside) main,
 body:has(aside) main :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a),
+body:has(aside) header,
+body:has(aside) header :where(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,b,a,button),
 body:has(aside) aside :where(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,b,a,button),
+body:has(aside) main button,
 .student-command-layout :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a,button),
 .stitch-scan-flow :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a,button){color:#fff!important;opacity:1!important}
 
 body:has(aside) main input,
 body:has(aside) main select,
 body:has(aside) main textarea,
+body:has(aside) header input,
+body:has(aside) header select,
+body:has(aside) header textarea,
 .student-command-layout input,
 .student-command-layout select,
 .student-command-layout textarea,
@@ -999,6 +1005,8 @@ body:has(aside) main textarea,
 
 body:has(aside) main input::placeholder,
 body:has(aside) main textarea::placeholder,
+body:has(aside) header input::placeholder,
+body:has(aside) header textarea::placeholder,
 .student-command-layout input::placeholder,
 .student-command-layout textarea::placeholder,
 .stitch-scan-flow input::placeholder,
