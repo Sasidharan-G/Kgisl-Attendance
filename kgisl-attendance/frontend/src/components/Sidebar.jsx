@@ -12,7 +12,6 @@ import {
   UserPlus,
   Menu,
   X,
-  ClipboardCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -26,7 +25,6 @@ const FACULTY_NAV = [
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
   { icon: FileClock, label: 'Logs', path: '/faculty/logs' },
   { icon: Bell, label: 'Leave / On Duty', path: '/faculty/leave' },
-  { icon: ClipboardCheck, label: 'Corrections', path: '/faculty/corrections' },
 ];
 const ADMIN_NAV = [
   { icon: BookOpen, label: 'Academic Setup', path: '/admin/academic' },
@@ -35,7 +33,6 @@ const ADMIN_NAV = [
   { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },
   { icon: BarChart3, label: 'Attendance Reports', path: '/admin/analytics' },
   { icon: Bell, label: 'Leave / On Duty', path: '/admin/leave' },
-  { icon: ClipboardCheck, label: 'Corrections', path: '/admin/corrections' },
 ];
 
 export default function Sidebar() {
@@ -50,18 +47,18 @@ export default function Sidebar() {
     <>
       <button onClick={() => setOpen(true)} className="app-menu-button fixed left-4 top-4 z-40 rounded-lg p-2 md:hidden" aria-label="Open menu"><Menu size={20}/></button>
       {open && <button aria-label="Close menu" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-sm md:hidden"/>}
-      <aside className={`app-sidebar fixed inset-y-0 left-0 z-50 shrink-0 flex flex-col overflow-hidden transition-[width,transform] duration-300 ease-in-out md:sticky md:translate-x-0 ${collapsed ? 'md:w-16' : 'md:w-64'} w-64 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`app-sidebar fixed inset-y-0 left-0 z-50 shrink-0 flex flex-col transition-all duration-200 md:sticky md:translate-x-0 ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       <button onClick={() => setOpen(false)} className="absolute right-3 top-3 p-2 text-slate-400 md:hidden"><X size={18}/></button>
       <button
         type="button"
         onClick={() => setCollapsed((value) => !value)}
-        className={`hidden rounded-lg p-2 text-slate-300 transition-all duration-300 hover:bg-white/10 hover:text-white md:block ${collapsed ? 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2' : 'absolute right-3 top-3'}`}
+        className="absolute right-3 top-3 hidden rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white md:block"
         aria-label={collapsed ? 'Expand navigation menu' : 'Collapse navigation menu'}
         title={collapsed ? 'Expand menu' : 'Collapse menu'}
       >
         <Menu size={18}/>
       </button>
-      {!collapsed && <div className="app-sidebar-brand sidebar-brand-reveal px-5 py-6">
+      <div className="app-sidebar-brand px-5 py-6">
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
             <ScanLine size={17} className="text-blue-200" />
@@ -69,17 +66,16 @@ export default function Sidebar() {
           {!collapsed && <span className="font-display font-bold text-white tracking-tight">KGiSL-IIM</span>}
         </div>
         {!collapsed && <p className="mt-1 pl-11 text-[9px] tracking-[0.16em] text-slate-400 uppercase">MCA Department</p>}
-      </div>}
+      </div>
 
-      {!collapsed && <nav className="sidebar-menu-reveal flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map(({ icon: Icon, label, path, badge }, index) => {
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {navItems.map(({ icon: Icon, label, path, badge }) => {
           const isActive = location.pathname === path;
           return (
             <button
               key={label}
-              style={{ animationDelay: `${120 + index * 75}ms` }}
               onClick={() => { navigate(path); setOpen(false); }}
-              className={`sidebar-menu-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+              className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${collapsed ? 'md:justify-center md:px-2' : ''} ${
                 isActive
                   ? 'app-nav-active text-white border border-white/10'
                   : 'text-slate-400 hover:bg-ink-850 hover:text-slate-200 border border-transparent'
@@ -95,7 +91,7 @@ export default function Sidebar() {
             </button>
           );
         })}
-      </nav>}
+      </nav>
 
       {!collapsed && <button
         onClick={logout}

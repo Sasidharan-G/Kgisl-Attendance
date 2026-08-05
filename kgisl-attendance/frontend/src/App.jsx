@@ -17,9 +17,6 @@ const LogsPage = lazy(() => import('./pages/LogsPage.jsx'));
 const StudentAttendancePage = lazy(() => import('./pages/StudentAttendancePage.jsx'));
 const LeaveRequestsPage = lazy(() => import('./pages/LeaveRequestsPage.jsx'));
 const AcademicSetupPage = lazy(() => import('./pages/AcademicSetupPage.jsx'));
-const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage.jsx'));
-const CorrectionRequestsPage = lazy(() => import('./pages/CorrectionRequestsPage.jsx'));
-const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
 
 function ProtectedRoute({ role, children }) {
   const { user } = useAuth();
@@ -36,14 +33,12 @@ function GlobalAgent() {
 export default function App() {
   return (
     <AuthProvider>
-      <div id="main-content" tabIndex="-1">
       <OfflineBanner />
       <BrowserRouter>
         <GlobalAgent />
         <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 text-slate-300">Loading...</div>}>
         <Routes>
           <Route path="/" element={<PortalSelect />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/admin/timetable" element={<ProtectedRoute role="ADMIN"><TimetablePage /></ProtectedRoute>} />
           <Route path="/admin/academic" element={<ProtectedRoute role="ADMIN"><AcademicSetupPage /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute role="ADMIN"><StudentsPage /></ProtectedRoute>} />
@@ -114,10 +109,6 @@ export default function App() {
             }
           />
           <Route
-            path="/student/dashboard"
-            element={<ProtectedRoute role="STUDENT"><StudentDashboardPage /></ProtectedRoute>}
-          />
-          <Route
             path="/student/scan"
             element={
               <ProtectedRoute role="STUDENT">
@@ -129,13 +120,10 @@ export default function App() {
           <Route path="/student/leave" element={<ProtectedRoute role="STUDENT"><LeaveRequestsPage /></ProtectedRoute>} />
           <Route path="/faculty/leave" element={<ProtectedRoute role="FACULTY"><LeaveRequestsPage /></ProtectedRoute>} />
           <Route path="/admin/leave" element={<ProtectedRoute role="ADMIN"><LeaveRequestsPage /></ProtectedRoute>} />
-          <Route path="/admin/corrections" element={<ProtectedRoute role="ADMIN"><CorrectionRequestsPage /></ProtectedRoute>} />
-          <Route path="/faculty/corrections" element={<ProtectedRoute role="FACULTY"><CorrectionRequestsPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
       </BrowserRouter>
-      </div>
     </AuthProvider>
   );
 }

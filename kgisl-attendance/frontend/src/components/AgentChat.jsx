@@ -39,8 +39,8 @@ export default function AgentChat() {
   };
 
   const quickPrompts = user?.role === 'ADMIN'
-    ? ['Show attendance risk summary', 'Summarize pending workload', 'Show pending leave requests']
-    : ['Show attendance risk summary', 'Session status', 'Show pending leave requests'];
+    ? ['Assign Yamunarani a session after lunch', 'List faculty', 'Show pending leave requests']
+    : ['Session status', 'Start my session', 'Show pending leave requests'];
 
   return (
     <>

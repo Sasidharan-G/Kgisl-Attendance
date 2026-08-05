@@ -5,7 +5,7 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <><a className="skip-link" href="#main-content">Skip to main content</a><App /></>
+    <App />
   </React.StrictMode>
 );
 

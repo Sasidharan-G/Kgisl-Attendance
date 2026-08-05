@@ -5,7 +5,6 @@ import { logger } from '../utils/logger';
 import { requestContext, writeAuditLog } from '../services/audit.service';
 import { endSession, getActiveSession, pauseSession, resumeSession, startSession } from '../services/session.service';
 import { overrideAttendance } from '../services/attendance.service';
-import { askAttendanceAi } from '../services/aiAnalytics.service';
 
 type Draft = {
   facultyId?: string; facultyName?: string;
@@ -251,8 +250,6 @@ export async function handleAgentChat(req: Request, res: Response): Promise<void
       const sessions = await prisma.attendanceSession.findMany({ where: { status: 'ACTIVE' }, include: { subject: true, batch: true, room: true, faculty: true } });
       res.json({ reply: sessions.length ? sessions.map((s) => `${s.subject.name} - ${s.batch.name}, ${s.room.name}, ${s.faculty.name}`).join('\n') : 'There are currently no active sessions.' }); return;
     }
-    const aiReply = await askAttendanceAi({ message, role: req.auth!.role as 'ADMIN' | 'FACULTY', actorId: req.auth!.sub });
-    if (aiReply) { res.json({ reply: aiReply, action: 'ai_analytics' }); return; }
     res.json({ reply: req.auth!.role === 'ADMIN'
       ? 'I can manage timetable assignments, list or remove faculty/students, review leave and On Duty requests, show active sessions, and answer operational counts. All write actions require confirmation.'
       : 'I can start, pause, resume or end your session, mark manual attendance, review leave requests for your sections, and show session status. All write actions require confirmation.' });

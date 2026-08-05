@@ -12,7 +12,6 @@ import studentRoutes from './routes/student.routes';
 import historyRoutes from './routes/history.routes';
 import agentRoutes from './routes/agent.routes';
 import leaveRoutes from './routes/leave.routes';
-import correctionRoutes from './routes/correction.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
 import { prisma } from './config/prisma';
@@ -72,7 +71,6 @@ export function createApp() {
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/agent', agentRoutes);
   app.use('/api/v1/leave-requests', leaveRoutes);
-  app.use('/api/v1/attendance-corrections', correctionRoutes);
 
   // Serve frontend static files in production
   if (process.env.NODE_ENV === 'production') {

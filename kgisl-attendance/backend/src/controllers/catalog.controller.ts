@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { listSubjects, listRooms, listBatches, createBatch, updateBatch, createSubject, updateSubject, createRoom, updateRoom } from '../services/catalog.service';
+import { listSubjects, listRooms, listBatches, createBatch, updateBatch } from '../services/catalog.service';
 
 const batchSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -8,11 +8,6 @@ const batchSchema = z.object({
   programme: z.string().trim().min(2).max(50),
   semester: z.coerce.number().int().min(1).max(12),
   academicYear: z.string().trim().regex(/^\d{4}-\d{4}$/, 'Academic year must look like 2026-2027'),
-});
-const subjectSchema = z.object({ name: z.string().trim().min(2).max(120), code: z.string().trim().min(2).max(30).transform((v) => v.toUpperCase()) });
-const roomSchema = z.object({
-  name: z.string().trim().min(2).max(100), latitude: z.coerce.number().min(-90).max(90), longitude: z.coerce.number().min(-180).max(180),
-  geofenceRadiusM: z.coerce.number().int().min(10).max(2000).default(120), wifiBssidWhitelist: z.array(z.string().trim().min(1).max(64)).max(20).default([]),
 });
 
 export async function listSubjectsHandler(_req: Request, res: Response, next: NextFunction) {
@@ -56,8 +51,3 @@ export async function updateBatchHandler(req: Request, res: Response, next: Next
     next(err);
   }
 }
-
-export async function createSubjectHandler(req: Request, res: Response, next: NextFunction) { try { res.status(201).json({ success: true, data: await createSubject(subjectSchema.parse(req.body)) }); } catch (err) { next(err); } }
-export async function updateSubjectHandler(req: Request, res: Response, next: NextFunction) { try { res.json({ success: true, data: await updateSubject(req.params.id, subjectSchema.parse(req.body)) }); } catch (err) { next(err); } }
-export async function createRoomHandler(req: Request, res: Response, next: NextFunction) { try { res.status(201).json({ success: true, data: await createRoom(roomSchema.parse(req.body)) }); } catch (err) { next(err); } }
-export async function updateRoomHandler(req: Request, res: Response, next: NextFunction) { try { res.json({ success: true, data: await updateRoom(req.params.id, roomSchema.parse(req.body)) }); } catch (err) { next(err); } }

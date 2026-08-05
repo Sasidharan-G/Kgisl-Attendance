@@ -76,7 +76,6 @@ export const loginFaculty = (email, password) =>
 
 export const loginAdmin = (email, password) =>
   api.post('/auth/admin/login', { email, password }).then((r) => r.data);
-export const verifyAdminOtp = (email, code) => api.post('/auth/admin/verify-otp', { email, code }).then((r) => r.data);
 
 export const loginStudent = (email, password) =>
   api.post('/auth/student/login', { email, password }).then((r) => r.data);
@@ -100,10 +99,6 @@ export const listRooms = () => api.get('/catalog/rooms').then((r) => r.data.data
 export const listBatches = () => api.get('/catalog/batches').then((r) => r.data.data);
 export const createBatch = (payload) => api.post('/catalog/batches', payload).then((r) => r.data.data);
 export const updateBatch = (id, payload) => api.patch(`/catalog/batches/${id}`, payload).then((r) => r.data.data);
-export const createSubject = (payload) => api.post('/catalog/subjects', payload).then((r) => r.data.data);
-export const updateSubject = (id, payload) => api.patch(`/catalog/subjects/${id}`, payload).then((r) => r.data.data);
-export const createRoom = (payload) => api.post('/catalog/rooms', payload).then((r) => r.data.data);
-export const updateRoom = (id, payload) => api.patch(`/catalog/rooms/${id}`, payload).then((r) => r.data.data);
 
 // ---- Sessions ----
 export const startSession = (payload) => api.post('/sessions', payload).then((r) => r.data);
@@ -127,10 +122,8 @@ export const setFacultyActive = (id, isActive) => api.patch(`/faculty/${id}/stat
 export const listStudents = (batchId) => api.get('/students', { params: batchId ? { batchId } : {} }).then((r) => r.data.data);
 export const getMyAttendance = () => api.get('/students/me/attendance').then((r) => r.data.data);
 export const createStudent = (payload) => api.post('/students', payload).then((r) => r.data.data);
-export const bulkCreateStudents = (payload) => api.post('/students/bulk', payload).then((r) => r.data.data);
 export const deleteStudent = (id) => api.delete(`/students/${id}`).then((r) => r.data);
 export const setStudentActive = (id, isActive) => api.patch(`/students/${id}/status`, { isActive }).then((r) => r.data.data);
-export const resetStudentDevice = (id) => api.post(`/students/${id}/device-reset`).then((r) => r.data);
 export const listHistory = (params) => api.get('/history', { params }).then((r) => r.data.data);
 export const getSessionAttendance = (sessionId) => api.get(`/history/${sessionId}`).then((r) => r.data.data);
 export const getAnalyticsSummary = () => api.get('/history/summary').then((r) => r.data.data);
@@ -138,9 +131,6 @@ export const listAuditLogs = () => api.get('/history/audit').then((r) => r.data.
 export const listLeaveRequests = () => api.get('/leave-requests').then((r) => r.data.data);
 export const createLeaveRequest = (payload) => api.post('/leave-requests', payload).then((r) => r.data.data);
 export const reviewLeaveRequest = (id, payload) => api.patch(`/leave-requests/${id}/review`, payload).then((r) => r.data.data);
-export const listAttendanceCorrections = () => api.get('/attendance-corrections').then((r) => r.data.data);
-export const createAttendanceCorrection = (payload) => api.post('/attendance-corrections', payload).then((r) => r.data.data);
-export const reviewAttendanceCorrection = (id, payload) => api.patch(`/attendance-corrections/${id}/review`, payload).then((r) => r.data.data);
 export const listAllocations = (scope) => api.get('/timetable', { params: scope ? { scope } : {} }).then((r) => r.data.data);
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);

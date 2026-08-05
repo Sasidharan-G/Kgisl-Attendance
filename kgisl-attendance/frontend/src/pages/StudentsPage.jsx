@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { bulkCreateStudents, createStudent, resetStudentDevice, setStudentActive, listBatches, listStudents } from '../services/api.js';
-import { Search, GraduationCap, Plus, Power, Users, X, FileUp } from 'lucide-react';
+import { createStudent, setStudentActive, listBatches, listStudents } from '../services/api.js';
+import { Search, GraduationCap, Plus, Power, Users, X } from 'lucide-react';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
@@ -17,8 +17,6 @@ export default function StudentsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
-  const [bulkRows, setBulkRows] = useState([]);
-  const [bulkBatchId, setBulkBatchId] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -65,38 +63,6 @@ export default function StudentsPage() {
       setError(err.response?.data?.message || err.message || 'Failed to remove student');
     }
   };
-  const handleDeviceReset = async (student) => {
-    if (!window.confirm(`Reset device binding for ${student.name}? Their next verified classroom scan will bind the new phone.`)) return;
-    try { const result = await resetStudentDevice(student.id); setSuccess(result.message); } catch (err) { setError(err.message || 'Could not reset device'); }
-  };
-
-  async function loadCsv(file) {
-    setError(''); setSuccess(''); setBulkRows([]);
-    if (!file) return;
-    const text = await file.text();
-    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
-    const headers = (lines.shift() || '').split(',').map((value) => value.trim().toLowerCase());
-    const required = ['name', 'rollno', 'regno', 'email', 'password'];
-    if (required.some((key) => !headers.includes(key))) { setError('CSV header must be: name,rollNo,regNo,email,password'); return; }
-    const rows = lines.map((line) => {
-      const values = line.split(',').map((value) => value.trim());
-      return Object.fromEntries(headers.map((header, index) => [header, values[index] || '']));
-    });
-    if (!rows.length) { setError('CSV does not contain any student rows'); return; }
-    if (rows.some((row) => required.some((key) => !row[key]))) { setError('Every row needs name, rollNo, regNo, email and password'); return; }
-    setBulkRows(rows);
-  }
-
-  async function importStudents() {
-    if (!bulkBatchId) { setError('Select the section for this CSV first'); return; }
-    setSaving(true); setError(''); setSuccess('');
-    try {
-      const result = await bulkCreateStudents({ batchId: bulkBatchId, students: bulkRows.map((row) => ({ name: row.name, rollNo: row.rollno, regNo: row.regno, email: row.email, password: row.password })) });
-      const data = await listStudents(); setStudents(data); setSelectedBatch(bulkBatchId); setBulkRows([]);
-      setSuccess(`${result.created} students imported into ${result.batchName}.`);
-    } catch (err) { setError(err.response?.data?.message || err.message || 'Student import failed'); }
-    finally { setSaving(false); }
-  }
 
   const normalizedSearch = search.trim().toLowerCase();
   const filtered = students.filter((s) =>
@@ -179,12 +145,6 @@ export default function StudentsPage() {
             </form>
           )}
 
-          <section className="mb-6 rounded-2xl border border-signal-blue/25 bg-ink-850/60 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="flex items-center gap-2 font-bold text-white"><FileUp size={17} className="text-signal-blue"/>Bulk Student Import</h3><p className="mt-1 text-xs text-slate-400">Upload a CSV with <code>name,rollNo,regNo,email,password</code>. Review before creating accounts.</p></div>{bulkRows.length > 0 && <button disabled={saving} onClick={importStudents} className="rounded-xl bg-signal-blue px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? 'Importing...' : `Import ${bulkRows.length} students`}</button>}</div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2"><input type="file" accept=".csv,text/csv" onChange={(event) => loadCsv(event.target.files?.[0])} className="rounded-xl border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-300"/><select value={bulkBatchId} onChange={(event) => setBulkBatchId(event.target.value)} className="rounded-xl border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select section for import</option>{batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</select></div>
-            {bulkRows.length > 0 && <p className="mt-3 text-xs text-signal-green">{bulkRows.length} valid-looking rows ready. Duplicate roll/register/email values are checked again by the server.</p>}
-          </section>
-
           {error && (
             <p className="rounded-lg border border-signal-red/30 bg-signal-red/10 px-4 py-2.5 text-xs text-red-300 mb-6">
               {error}
@@ -263,7 +223,7 @@ export default function StudentsPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {s.lastScanTime ? new Date(s.lastScanTime).toLocaleString() : 'Never'}
                         </td>
-                        <td className="px-6 py-4"><div className="flex gap-3"><button onClick={() => handleDeviceReset(s)} title="Reset device binding" className="text-signal-blue hover:text-blue-300 text-xs font-semibold">Device</button><button onClick={() => handleRemoveStudent(s)} title={s.isActive ? 'Deactivate student' : 'Reactivate student'} className={s.isActive ? 'text-red-400 hover:text-red-300' : 'text-signal-green hover:text-green-300'}><Power size={17}/></button></div></td>
+                        <td className="px-6 py-4"><button onClick={() => handleRemoveStudent(s)} title={s.isActive ? 'Deactivate student' : 'Reactivate student'} className={s.isActive ? 'text-red-400 hover:text-red-300' : 'text-signal-green hover:text-green-300'}><Power size={17}/></button></td>
                       </tr>
                     ))
                   )}

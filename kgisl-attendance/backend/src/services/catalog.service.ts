@@ -32,11 +32,3 @@ export function createBatch(data: BatchInput) {
 export function updateBatch(id: string, data: BatchInput) {
   return prisma.batch.update({ where: { id }, data });
 }
-
-export type SubjectInput = { name: string; code: string };
-export type RoomInput = { name: string; latitude: number; longitude: number; geofenceRadiusM: number; wifiBssidWhitelist: string[] };
-
-export function createSubject(data: SubjectInput) { return prisma.subject.create({ data }); }
-export function updateSubject(id: string, data: SubjectInput) { return prisma.subject.update({ where: { id }, data }); }
-export function createRoom(data: RoomInput) { return prisma.room.create({ data }); }
-export function updateRoom(id: string, data: RoomInput) { return prisma.room.update({ where: { id }, data }); }

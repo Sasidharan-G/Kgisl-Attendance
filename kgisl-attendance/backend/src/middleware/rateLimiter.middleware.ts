@@ -29,8 +29,6 @@ export const authRateLimiter = rateLimit({
   message: { code: 'RATE_LIMITED', message: 'Too many authentication attempts, try again later.' },
 });
 
-export const agentRateLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false, message: { code: 'RATE_LIMITED', message: 'Too many assistant messages. Please wait a minute.' } });
-
 /**
  * Fine-grained per-student rate limit using Redis, independent of IP —
  * prevents a single compromised account from hammering the validation
