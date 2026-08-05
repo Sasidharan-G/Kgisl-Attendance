@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Wifi, MapPin, ShieldCheck, Search, Moon, Sun } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
+import NotificationBell from './NotificationBell.jsx';
 
 function StatusPill({ icon: Icon, label, value, tone = 'green' }) {
   const toneClasses = {
@@ -60,7 +61,7 @@ export default function TopBar({ connected, sessionActive = false }) {
   }, [darkMode]);
 
   return (
-    <header className="app-topbar flex items-center justify-between gap-3 px-4 py-4 pl-16 sm:px-6 md:px-8 md:py-5 md:pl-8">
+    <header className="app-topbar stitch-topbar flex items-center justify-between gap-3 px-4 py-4 pl-16 sm:px-6 md:px-8 md:py-5 md:pl-8">
       <div>
         <h1 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">{title}</h1>
         <p className="hidden text-sm text-slate-500 sm:block">Manage your academic workspace</p>
@@ -86,6 +87,7 @@ export default function TopBar({ connected, sessionActive = false }) {
           value={connected ? 'Active' : 'Reconnecting…'}
           tone={connected ? 'green' : 'blue'}
         />
+        <NotificationBell />
         <button
           type="button"
           onClick={() => setDarkMode((current) => !current)}

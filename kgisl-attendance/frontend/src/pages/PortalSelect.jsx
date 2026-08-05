@@ -9,15 +9,6 @@ const portals = [
   { id: 'ADMIN', label: 'Admin', description: 'Campus administration access', Icon: ShieldCheck },
 ];
 
-function LoginBrandLockup() {
-  return (
-    <div className="lux-brand-lockup" aria-label="KGiSL-IIM — KGiSL Institute of Information Management">
-      <img src="/entrance-emblem.png" alt="KGiSL-IIM emblem" />
-      <div><strong>KGiSL-IIM</strong><span>Institute of Information Management</span></div>
-    </div>
-  );
-}
-
 export default function PortalSelect() {
   const [portal, setPortal] = useState('STUDENT');
   const [showEntrance, setShowEntrance] = useState(true);
@@ -54,32 +45,31 @@ export default function PortalSelect() {
         </section>
       )}
 
-      <main className={`lux-login-shell ${showEntrance ? 'entrance-waiting' : 'entrance-ready'}`}>
-        <div className="lux-gold-halo lux-gold-halo-one" aria-hidden="true" />
-        <div className="lux-gold-halo lux-gold-halo-two" aria-hidden="true" />
-        <div className="lux-arch-lines" aria-hidden="true" />
-
-        <section className="lux-login-layout">
-          <div className="lux-login-intro"><LoginBrandLockup /><p className="lux-eyebrow">SMART ATTENDANCE SYSTEM</p><h1>One secure place<br />for every campus day.</h1><p className="lux-intro-copy">A refined attendance experience for students, faculty and campus administration.</p></div>
-
-          <section className="lux-glass-card" aria-label={`${portal.toLowerCase()} sign in`}>
-            <span className="lux-card-sheen" aria-hidden="true" />
-            <header className="lux-card-header"><p>WELCOME BACK</p><h2>Sign in to continue</h2><span>Select your access portal below.</span></header>
-
-            <div className="lux-role-switch" role="tablist" aria-label="Choose your role">
-              {portals.map(({ id, label, Icon }) => <button key={id} type="button" role="tab" aria-selected={portal === id} className={portal === id ? 'active' : ''} onClick={() => setPortal(id)}><Icon size={16} /><span>{label}</span></button>)}
+      <main className={`stitch-access-shell ${showEntrance ? 'entrance-waiting' : 'entrance-ready'}`}>
+        <div className="stitch-liquid-light" aria-hidden="true" />
+        <section className="stitch-access-sheet">
+          <section className="stitch-access-welcome">
+            <header><p>KGISL COMMAND</p><h1>Welcome</h1><span>Select your role to access the portal.</span></header>
+            <div className="stitch-role-grid" role="tablist" aria-label="Choose your role">
+              {portals.map(({ id, label, Icon }) => (
+                <button key={id} type="button" role="tab" aria-selected={portal === id} className={portal === id ? 'active' : ''} onClick={() => setPortal(id)}>
+                  <Icon size={21} /><span>{label}</span>
+                </button>
+              ))}
             </div>
+            <div className="stitch-access-brand"><img src="/entrance-emblem.png" alt="" /><strong>KGISL<span>Attendance</span></strong></div>
+          </section>
 
-            <div className="lux-role-context"><selectedPortal.Icon size={17} /><div><strong>{selectedPortal.label} portal</strong><span>{selectedPortal.description}</span></div></div>
-
-            <div className="lux-login-stage">
+          <section className="stitch-signin-panel" aria-label={`${portal.toLowerCase()} sign in`}>
+            <header><h2>Sign In</h2><p>{selectedPortal.label} access · {selectedPortal.description}</p></header>
+            <div className="stitch-login-stage">
               {sessionNotice && <div role="alert" className="lux-session-notice"><span><b>Session expired.</b> {sessionNotice}</span><button type="button" onClick={() => setSessionNotice('')} aria-label="Dismiss session message">×</button></div>}
               {portal === 'STUDENT' ? <StudentLogin active /> : <AdminLogin key={portal} portal={portal} active />}
             </div>
-            <p className="lux-security"><ShieldCheck size={14} /> Encrypted and protected campus access</p>
+            <p className="stitch-security"><ShieldCheck size={13} /> Secure institutional access</p>
           </section>
         </section>
-        <p className="lux-footer">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
+        <p className="stitch-access-footer">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
       </main>
     </>
   );

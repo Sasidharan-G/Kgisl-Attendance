@@ -7,7 +7,6 @@ import {
   LogOut,
   MapPin,
   Loader2,
-  Camera,
   ShieldAlert,
   History,
   CalendarCheck,
@@ -18,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { submitScan, getSessionPublicInfo } from '../services/api.js';
 import StudentAcousticPanel from '../components/StudentAcousticPanel';
+import StatePanel from '../components/StatePanel.jsx';
 
 /**
  * Stable per-browser device fingerprint (persisted in localStorage).
@@ -255,8 +255,10 @@ export default function StudentScanPage() {
         await videoRef.current.play();
       }
       rafRef.current = requestAnimationFrame(tick);
-    } catch {
-      setCameraError('Camera access is required to scan the attendance QR.');
+    } catch (error) {
+      setCameraError(error?.name === 'NotAllowedError'
+        ? 'Camera permission was denied. Allow camera access in your browser settings, then try again.'
+        : 'Camera access is required to scan the attendance QR. Check that another app is not using your camera.');
       setStatus('idle');
     }
   }
@@ -286,7 +288,7 @@ export default function StudentScanPage() {
   }
 
   return (
-    <div className="student-workspace min-h-screen flex flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
+    <div className="stitch-scan-flow student-workspace min-h-screen flex flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -302,7 +304,7 @@ export default function StudentScanPage() {
           </button></div>
         </div>
 
-        <div className="student-attendance-card mt-6 rounded-2xl p-5 shadow-card sm:p-7">
+        <div className="stitch-scan-card student-attendance-card mt-6 rounded-2xl p-5 shadow-card sm:p-7">
           <h1 className="font-display text-xl font-semibold text-white">Mark Attendance</h1>
           <p className="mt-1 text-sm text-slate-400">Listen for the Alpha sound. If it is unavailable, use the Beta QR scanner.</p>
 
@@ -337,10 +339,7 @@ export default function StudentScanPage() {
 
           {/* Camera permission error */}
           {cameraError && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3">
-              <Camera size={14} className="text-amber-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-300">{cameraError}</p>
-            </div>
+            <div className="mt-4"><StatePanel type="permission" compact title="Camera permission needed" description={cameraError} actionLabel="Try camera again" onAction={startScanning} /></div>
           )}
 
           {/* IDLE state */}

@@ -29,11 +29,10 @@ export default function StudentLogin({ active = true }) {
   }
 
   return <>
-    {active && <><div className="login-divider login-divider-google"><span>or continue with Google</span></div><GoogleSignIn role="STUDENT" onError={setError}/></>}
     <form onSubmit={handleSubmit} className="calm-login-form">
       <label className="calm-field">
-        <span>Email address</span>
-        <div><Mail size={18}/><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@kgisl.com" /></div>
+        <span>Institute ID / Email</span>
+        <div><Mail size={18}/><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your ID" /></div>
       </label>
       <label className="calm-field">
         <span>Password</span>
@@ -46,8 +45,9 @@ export default function StudentLogin({ active = true }) {
         <button type="button" onClick={() => setShowForgot(true)}>Forgot password?</button>
       </div>
       {error && <div className="calm-form-error" role="alert"><AlertCircle size={16}/><span>{error}</span></div>}
-      <button type="submit" disabled={loading} className="calm-submit">{loading ? 'Signing in...' : 'Sign in'}{!loading && <ArrowRight size={18}/>}</button>
+      <button type="submit" disabled={loading} className="calm-submit">{loading ? 'Authenticating...' : 'Authenticate'}{!loading && <ArrowRight size={18}/>}</button>
     </form>
+    {active && <><div className="login-divider login-divider-google"><span>or</span></div><GoogleSignIn role="STUDENT" onError={setError}/></>}
     {isSuccessLoading && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 backdrop-blur-sm"><Loader /></div>}
     {showForgot && <ForgotPasswordModal role="STUDENT" initialEmail={email} onClose={() => setShowForgot(false)}/>}
   </>;

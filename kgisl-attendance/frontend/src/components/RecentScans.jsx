@@ -2,7 +2,7 @@ import { CheckCircle2, ShieldAlert } from 'lucide-react';
 
 export default function RecentScans({ scans }) {
   return (
-    <div className="rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6 flex flex-col">
+    <div className="stitch-live-feed rounded-2xl border border-ink-border bg-ink-850/60 shadow-card p-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Recent Attendance Activity</h3>
         <span className="flex items-center gap-1.5 text-[11px] text-signal-green">

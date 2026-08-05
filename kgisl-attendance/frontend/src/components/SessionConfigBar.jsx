@@ -22,7 +22,7 @@ const DAYS = [
 export default function SessionConfigBar({ selectedDay, setSelectedDay, subjectId, setSubjectId, batchId, roomId, subjects, rooms, loadingCatalog, timeLabel, sessionActive, sessionPaused, onStart, onEnd, onPause, onResume, starting, dayAllocations }) {
   const readyToStart = !starting && !loadingCatalog && Boolean(selectedDay && subjectId && batchId && roomId);
 
-  return <div className="mx-3 rounded-xl border border-ink-border bg-ink-850/60 px-4 py-4 shadow-card sm:mx-6 md:mx-8 md:px-6 md:py-5">
+  return <div className="stitch-session-config mx-3 rounded-xl border border-ink-border bg-ink-850/60 px-4 py-4 shadow-card sm:mx-6 md:mx-8 md:px-6 md:py-5">
     <div className="flex flex-wrap items-end gap-3 sm:gap-5">
       <Field icon={CalendarDays} label="1. Select Day" value={selectedDay} onChange={setSelectedDay} options={DAYS} loading={loadingCatalog} placeholder="Choose day" />
       <div className="hidden h-8 w-px bg-ink-border md:block" />

@@ -50,7 +50,7 @@ export default function Sidebar() {
     <>
       <button onClick={() => setOpen(true)} className="app-menu-button fixed left-4 top-4 z-40 rounded-lg p-2 md:hidden" aria-label="Open menu"><Menu size={20}/></button>
       {open && <button aria-label="Close menu" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-sm md:hidden"/>}
-      <aside className={`app-sidebar fixed inset-y-0 left-0 z-50 shrink-0 flex flex-col overflow-hidden transition-[width,transform] duration-300 ease-in-out md:sticky md:translate-x-0 ${collapsed ? 'md:w-16' : 'md:w-64'} w-64 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`app-sidebar stitch-sidebar fixed inset-y-0 left-0 z-50 shrink-0 flex flex-col overflow-hidden transition-[width,transform] duration-300 ease-in-out md:sticky md:translate-x-0 ${collapsed ? 'md:w-16' : 'md:w-64'} w-64 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       <button onClick={() => setOpen(false)} className="absolute right-3 top-3 p-2 text-slate-400 md:hidden"><X size={18}/></button>
       <button
         type="button"
