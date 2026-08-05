@@ -979,44 +979,36 @@ button{font-weight:720}
 .stitch-command-layout .stitch-sidebar,.student-command-sidebar{background:linear-gradient(180deg,rgba(10,39,52,.88),rgba(3,21,31,.92))!important}
 @media(prefers-contrast:more){.text-slate-400,.text-slate-500,.text-slate-600{color:#d7edf3!important}.border-ink-border{border-color:rgba(174,238,252,.42)!important}}
 
-/* Authenticated portals: the user requested every readable label to be white.
-   Login/public screens remain on their own cinematic palette. */
-body:has(aside) main,
-body:has(aside) main :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a),
-body:has(aside) header,
-body:has(aside) header :where(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,b,a,button),
+/* Theme-aware authenticated typography. Content follows the selected theme;
+   the permanently dark navigation rail remains white in both themes. */
+body.workspace-dark:has(aside) :where(main,header),
+body.workspace-dark:has(aside) :where(main,header) :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a,button),
 body:has(aside) aside :where(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,b,a,button),
-body:has(aside) main button,
 .student-command-layout :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a,button),
 .stitch-scan-flow :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a,button){color:#fff!important;opacity:1!important}
 
-body:has(aside) main input,
-body:has(aside) main select,
-body:has(aside) main textarea,
-body:has(aside) header input,
-body:has(aside) header select,
-body:has(aside) header textarea,
-.student-command-layout input,
-.student-command-layout select,
-.student-command-layout textarea,
-.stitch-scan-flow input,
-.stitch-scan-flow select,
-.stitch-scan-flow textarea{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
+body:not(.workspace-dark):has(aside) :where(main,header),
+body:not(.workspace-dark):has(aside) :where(main,header) :where(h1,h2,h3,h4,h5,h6,p,span,label,small,td,th,li,strong,b,a,button){color:#111827!important;opacity:1!important}
 
-body:has(aside) main input::placeholder,
-body:has(aside) main textarea::placeholder,
-body:has(aside) header input::placeholder,
-body:has(aside) header textarea::placeholder,
-.student-command-layout input::placeholder,
-.student-command-layout textarea::placeholder,
-.stitch-scan-flow input::placeholder,
-.stitch-scan-flow textarea::placeholder{color:rgba(255,255,255,.78)!important;opacity:1!important}
+body.workspace-dark:has(aside) :where(main,header) :where(input,select,textarea),
+.student-command-layout :where(input,select,textarea),
+.stitch-scan-flow :where(input,select,textarea){color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
 
-body:has(aside) main select option,
+body:not(.workspace-dark):has(aside) :where(main,header) :where(input,select,textarea){color:#111827!important;-webkit-text-fill-color:#111827!important;opacity:1!important}
+
+body.workspace-dark:has(aside) :where(main,header) :where(input,textarea)::placeholder,
+.student-command-layout :where(input,textarea)::placeholder,
+.stitch-scan-flow :where(input,textarea)::placeholder{color:rgba(255,255,255,.78)!important;opacity:1!important}
+
+body:not(.workspace-dark):has(aside) :where(main,header) :where(input,textarea)::placeholder{color:#475569!important;opacity:1!important}
+
+body.workspace-dark:has(aside) main select option,
 .student-command-layout select option,
 .stitch-scan-flow select option{color:#fff!important;background:#06131d!important}
+body:not(.workspace-dark):has(aside) main select option{color:#111827!important;background:#fff!important}
 
-/* Disabled actions remain visibly disabled without making their text unreadable. */
-body:has(aside) button:disabled,
+/* Disabled actions stay readable while still looking unavailable. */
+body.workspace-dark:has(aside) button:disabled,
 .student-command-layout button:disabled,
 .stitch-scan-flow button:disabled{color:#fff!important;opacity:.62!important}
+body:not(.workspace-dark):has(aside) main button:disabled{color:#111827!important;opacity:.52!important}
