@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Wifi, MapPin, ShieldCheck, Search, Moon, Sun } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 function StatusPill({ icon: Icon, label, value, tone = 'green' }) {
   const toneClasses = {
@@ -40,43 +39,18 @@ const TITLE_MAP = {
   '/faculty/leave': 'Leave / On Duty',
 };
 
-const SEARCH_PAGES = {
-  ADMIN: [
-    { label: 'Academic Setup', description: 'Manage batches and subjects', path: '/admin/academic' },
-    { label: 'Upload Timetable', description: 'Create and view timetable entries', path: '/admin/timetable' },
-    { label: 'Students', description: 'Search and manage students', path: '/admin/students' },
-    { label: 'Faculty', description: 'Add and manage faculty', path: '/admin/faculty' },
-    { label: 'Attendance Reports', description: 'View attendance analytics', path: '/admin/analytics' },
-    { label: 'Leave / On Duty', description: 'Review leave requests', path: '/admin/leave' },
-  ],
-  FACULTY: [
-    { label: 'Attendance', description: 'Start or manage an attendance session', path: '/faculty/dashboard' },
-    { label: 'Dashboard', description: 'View attendance analytics', path: '/faculty/analytics' },
-    { label: 'Courses', description: 'View assigned courses', path: '/faculty/courses' },
-    { label: 'Timetable', description: 'View your class timetable', path: '/faculty/timetable' },
-    { label: 'Settings', description: 'Manage workspace settings', path: '/faculty/settings' },
-    { label: 'Logs', description: 'View system logs', path: '/faculty/logs' },
-    { label: 'Leave / On Duty', description: 'Review leave requests', path: '/faculty/leave' },
-  ],
-};
-
 export default function TopBar({ connected, sessionActive = false }) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const title = TITLE_MAP[location.pathname] || 'Smart Attendance';
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('kgisl_workspace_theme') !== 'light');
-  const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const query = search.trim().toLowerCase();
-  const results = query
-    ? (SEARCH_PAGES[user?.role] || []).filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(query))
-    : [];
+  const search = searchParams.get('search') || '';
 
-  const goToResult = (path) => {
-    navigate(path);
-    setSearch('');
-    setSearchOpen(false);
+  const updateSearch = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value.trim()) next.set('search', value);
+    else next.delete('search');
+    setSearchParams(next, { replace: true });
   };
 
   useEffect(() => {
@@ -98,23 +72,11 @@ export default function TopBar({ connected, sessionActive = false }) {
           <input
             type="search"
             value={search}
-            onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }}
-            onFocus={() => setSearchOpen(true)}
-            onKeyDown={(event) => { if (event.key === 'Enter' && results[0]) goToResult(results[0].path); if (event.key === 'Escape') setSearchOpen(false); }}
-            aria-label="Search workspace"
-            placeholder="Search workspace"
+            onChange={(event) => updateSearch(event.target.value)}
+            aria-label={`Search ${title}`}
+            placeholder={`Search ${title}`}
             className="w-44 rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-500 xl:w-56"
           />
-          {searchOpen && query && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
-              {results.length ? results.map((item) => (
-                <button key={item.path} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => goToResult(item.path)} className="block w-full px-4 py-3 text-left hover:bg-slate-50">
-                  <span className="block text-sm font-semibold text-slate-800">{item.label}</span>
-                  <span className="block text-xs text-slate-500">{item.description}</span>
-                </button>
-              )) : <p className="px-4 py-3 text-xs text-slate-500">No matching workspace results.</p>}
-            </div>
-          )}
         </div>
         <StatusPill icon={Wifi} label="Live Connection" value={connected ? 'Connected' : 'Offline'} tone={connected ? 'green' : 'blue'} />
         <StatusPill icon={MapPin} label="Geofence" value={sessionActive ? 'Enforced' : 'Standby'} tone={sessionActive ? 'green' : 'blue'} />

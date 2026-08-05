@@ -722,6 +722,32 @@ body:has(aside) ::-webkit-scrollbar-thumb:hover { background-color: rgba(56, 189
 @media (max-width:720px) { .calm-mobile-logo{width:13rem}.calm-mobile-logo .login-brand-lockup{gap:.2rem;padding:.55rem .7rem;border-radius:.75rem;background:#101a38}.calm-mobile-logo .login-brand-words strong{font-size:1.65rem}.calm-mobile-logo .login-brand-words small{margin-top:.25rem;font-size:.24rem;letter-spacing:0}.calm-mobile-logo .login-brand-lockup>img{width:2.5rem;height:auto;filter:drop-shadow(0 5px 10px rgba(0,0,0,.28))} }
 @media (max-width:390px) { .calm-mobile-logo{width:11.5rem}.calm-mobile-logo .login-brand-words strong{font-size:1.45rem}.calm-mobile-logo .login-brand-lockup>img{width:2.2rem} }
 
+/* Clean wordmark and a compact mobile sign-in layout. */
+.brand-entrance-title { font-family:Inter,Arial,sans-serif; font-style:italic; letter-spacing:-.06em; }
+.brand-entrance-title span { color:#f8fafc; background:none; -webkit-background-clip:initial; background-clip:initial; -webkit-text-fill-color:#f8fafc; -webkit-text-stroke:0; text-shadow:0 4px 16px rgba(0,0,0,.35); }
+.brand-entrance-title span:nth-child(3) { color:#ef3340; -webkit-text-fill-color:#ef3340; background:none; }
+@media (max-width:720px) {
+  .calm-auth-shell { padding:.75rem; background:linear-gradient(180deg,#eef3fa,#f8fafc); }
+  .calm-auth-area { min-height:calc(100dvh - 1.5rem); align-items:stretch; }
+  .calm-auth-card { max-width:none; min-height:0; padding:1.25rem 1rem 1rem; border-radius:1.35rem; }
+  .calm-card-header { display:grid; grid-template-columns:1fr; gap:.85rem; }
+  .calm-card-header > div:first-child { width:100%; }
+  .calm-card-header h2 { max-width:16rem; font-size:1.7rem; line-height:1.12; }
+  .calm-card-header > div > p:last-child { max-width:19rem; font-size:.82rem; line-height:1.45; }
+  .calm-mobile-logo { order:-1; width:100%; justify-content:center; }
+  .calm-mobile-logo .login-brand-lockup { width:min(100%,17rem); justify-content:center; }
+  .calm-role-switch { margin:1rem 0 .85rem; }
+  .calm-role-switch button { min-height:2.65rem; padding:.45rem .25rem; font-size:.7rem; }
+  .calm-role-switch button svg { width:15px; height:15px; }
+  .calm-role-context { padding:.7rem .8rem; }
+  .calm-login-stage { margin-top:1rem; }
+  .calm-login-form { gap:.8rem; }
+  .calm-field > div { min-height:3.15rem; }
+  .calm-submit { min-height:3.15rem; }
+  .calm-security { margin-top:1rem; }
+  .calm-help { margin:.85rem .5rem .25rem; line-height:1.4; }
+}
+
 /* Professional authenticated workspace */
 body:has(.app-sidebar) { color:#24324a; background:#f3f6fa; background-image:none; }
 body:has(.app-sidebar)::before,body:has(.app-sidebar)::after { display:none; }
@@ -866,4 +892,33 @@ body.workspace-dark:has(.app-sidebar) main [class*='bg-signal-blue'] { backgroun
 }
 @media (prefers-reduced-motion:reduce) {
   .acoustic-radar-ring,.acoustic-listen-ring,.acoustic-confetti span { animation:none; }
+}
+
+/* Collapsed sidebar: the centred menu control expands the navigation, then
+   each item lands in sequence with a compact impact-and-settle motion. */
+.sidebar-brand-reveal { animation:sidebar-brand-reveal .28s ease-out both; }
+.sidebar-menu-item { opacity:0; animation:sidebar-menu-land .44s cubic-bezier(.2,1.35,.45,1) both; }
+@keyframes sidebar-brand-reveal {
+  from { opacity:0; transform:translateX(-18px); }
+  to { opacity:1; transform:translateX(0); }
+}
+@keyframes sidebar-menu-land {
+  0% { opacity:0; transform:translateX(-46px) scale(.88); }
+  62% { opacity:1; transform:translateX(7px) scale(1.025); }
+  80% { transform:translateX(-3px) scale(.99); }
+  100% { opacity:1; transform:translateX(0) scale(1); }
+}
+
+/* A short tactile press for every interactive button. */
+button:not(:disabled):active {
+  animation:button-jelly-press .32s cubic-bezier(.2,1.4,.42,1) both;
+}
+@keyframes button-jelly-press {
+  0% { transform:scale(1); }
+  35% { transform:scale(.9,.82); }
+  65% { transform:scale(1.08,.96); }
+  100% { transform:scale(1); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .sidebar-brand-reveal,.sidebar-menu-item,button:not(:disabled):active { animation:none; opacity:1; }
 }
