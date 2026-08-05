@@ -30,13 +30,17 @@ export function createApp() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:'], // QR codes are served as base64 data: URLs
-          connectSrc: ["'self'", ...allowedOrigins],
-          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https://*.googleusercontent.com'], // QR codes are served as base64 data: URLs
+          connectSrc: ["'self'", ...allowedOrigins, 'https://accounts.google.com'],
+          scriptSrc: ["'self'", 'https://accounts.google.com'],
+          frameSrc: ["'self'", 'https://accounts.google.com'],
           objectSrc: ["'none'"],
           frameAncestors: ["'none'"],
         },
       },
+      // Google Identity Services opens an account chooser popup. It must retain
+      // its opener long enough to post the signed credential back to this app.
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       crossOriginResourcePolicy: { policy: 'same-site' },
     })
