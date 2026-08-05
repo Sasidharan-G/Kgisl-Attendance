@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { loginAdmin, loginFaculty, loginStudent, loginWithGoogle } from '../services/auth.service';
+import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verifyAdminEmailMfa } from '../services/auth.service';
 import { OAuth2Client } from 'google-auth-library';
 import { AppError } from '../utils/AppError';
 import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
@@ -12,6 +12,7 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+const adminMfaVerifySchema = z.object({ email: z.string().email(), code: z.string().regex(/^\d{6}$/) });
 
 const registerFacultySchema = z.object({
   name: z.string().min(1),
@@ -91,8 +92,13 @@ export async function facultyLoginHandler(req: Request, res: Response, next: Nex
 export async function adminLoginHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = loginSchema.parse(req.body);
-    res.json(await loginAdmin(email, password, requestContext(req)));
+    res.json({ success: true, data: await beginAdminEmailMfa(email, password, requestContext(req)) });
   } catch (err) { next(err); }
+}
+
+export async function verifyAdminMfaHandler(req: Request, res: Response, next: NextFunction) {
+  try { const { email, code } = adminMfaVerifySchema.parse(req.body); res.json(await verifyAdminEmailMfa(email, code, requestContext(req))); }
+  catch (err) { next(err); }
 }
 
 export async function studentLoginHandler(req: Request, res: Response, next: NextFunction) {
