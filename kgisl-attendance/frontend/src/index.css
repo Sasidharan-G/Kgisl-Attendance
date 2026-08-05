@@ -922,71 +922,57 @@ body.workspace-dark:has(.app-sidebar) main [class*='bg-signal-blue'] { backgroun
 .student-attendance-card button.bg-signal-red { color:#fff!important; background:#315f98!important; }
 .student-attendance-card .scan-frame { box-shadow:0 12px 28px rgba(23,38,62,.14); }
 
-/* ========================================================================
-   KGiSL Horizon — unified, clean campus UI system.
-   A quiet white canvas, cobalt actions, and sky-tinted depth across every
-   public, student, faculty, and administrator experience.
-   ======================================================================== */
-:root { --horizon-blue:#155eef; --horizon-blue-deep:#0f46bb; --horizon-sky:#eef6ff; --horizon-ink:#16213a; --horizon-muted:#66758a; --horizon-line:#dce7f5; --horizon-card:#ffffff; --horizon-success:#16a46b; }
-body { color:var(--horizon-ink); background:#f5f9ff; }
+/* --------------------------------------------------------------------------
+   Campus stationery theme — recycled notebook paper, torn notes & supplies.
+   This intentionally sits last so every portal (student, faculty and admin)
+   shares one friendly campus visual language without changing any behaviour.
+   -------------------------------------------------------------------------- */
+:root { --paper:#fffdf4; --paper-warm:#f4ecd7; --ink:#263c59; --pencil:#e05d45; --marker:#2f7864; --line:rgba(95,151,190,.20); }
+body { color:var(--ink); background-color:var(--paper-warm); background-image:linear-gradient(90deg, transparent 0 4.6rem, rgba(220,86,79,.18) 4.65rem 4.78rem, transparent 4.82rem),repeating-linear-gradient(0deg,transparent 0 29px,var(--line) 30px,transparent 31px),radial-gradient(circle at 10% 15%,rgba(236,191,91,.19),transparent 24rem); background-size:auto,100% 31px,auto; }
 
-/* App workspaces */
-body:has(.app-sidebar), body:has(aside) { color:var(--horizon-ink); background-color:#f5f9ff; background-image:radial-gradient(circle at 82% 2%,rgba(65,144,255,.16),transparent 23rem),radial-gradient(circle at 16% 76%,rgba(155,205,255,.16),transparent 22rem); background-attachment:fixed; }
-body:has(.app-sidebar)::before, body:has(.app-sidebar)::after, body:has(aside)::before, body:has(aside)::after { display:none; }
-body:has(.app-sidebar) .bg-ink-950, body:has(aside) .bg-ink-950 { background:transparent!important; }
-body:has(.app-sidebar) aside, body:has(aside) aside { background:rgba(255,255,255,.95)!important; border-right:1px solid var(--horizon-line)!important; box-shadow:10px 0 34px rgba(34,83,145,.06)!important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
-body:has(.app-sidebar) aside .text-white, body:has(.app-sidebar) aside .text-slate-200, body:has(.app-sidebar) aside .text-slate-300, body:has(aside) aside .text-white, body:has(aside) aside .text-slate-200, body:has(aside) aside .text-slate-300 { color:var(--horizon-ink)!important; }
-body:has(.app-sidebar) aside .text-slate-400, body:has(.app-sidebar) aside .text-slate-500, body:has(aside) aside .text-slate-400, body:has(aside) aside .text-slate-500 { color:#71829a!important; }
-body:has(.app-sidebar) .sidebar-menu-item, body:has(aside) .sidebar-menu-item { color:#5f6f86!important; border:1px solid transparent; }
-body:has(.app-sidebar) .sidebar-menu-item:hover, body:has(aside) .sidebar-menu-item:hover { color:var(--horizon-blue)!important; background:#eef5ff!important; border-color:#d8e8ff!important; transform:none!important; box-shadow:none!important; }
-body:has(.app-sidebar) .sidebar-menu-item[class*='bg'], body:has(aside) .sidebar-menu-item[class*='bg'] { color:var(--horizon-blue)!important; background:#e7f0ff!important; border-color:#c9ddff!important; box-shadow:inset 3px 0 var(--horizon-blue)!important; }
-body:has(.app-sidebar) header, body:has(aside) header { color:var(--horizon-ink)!important; background:rgba(255,255,255,.7)!important; border-color:rgba(220,231,245,.8)!important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
-body:has(.app-sidebar) header h1, body:has(aside) header h1, body:has(.app-sidebar) main h2, body:has(aside) main h2 { color:var(--horizon-ink)!important; background:none!important; -webkit-text-fill-color:initial!important; }
-body:has(.app-sidebar) main .text-white, body:has(.app-sidebar) main .text-slate-200, body:has(.app-sidebar) main .text-slate-300, body:has(aside) main .text-white, body:has(aside) main .text-slate-200, body:has(aside) main .text-slate-300 { color:var(--horizon-ink)!important; }
-body:has(.app-sidebar) main .text-slate-400, body:has(.app-sidebar) main .text-slate-500, body:has(aside) main .text-slate-400, body:has(aside) main .text-slate-500 { color:var(--horizon-muted)!important; }
-body:has(.app-sidebar) main [class*='bg-ink-850'], body:has(.app-sidebar) main [class*='bg-ink-900'], body:has(.app-sidebar) main .shadow-card, body:has(aside) main [class*='bg-ink-850'], body:has(aside) main [class*='bg-ink-900'], body:has(aside) main .shadow-card { background:rgba(255,255,255,.94)!important; border-color:var(--horizon-line)!important; box-shadow:0 12px 28px rgba(37,84,143,.07)!important; }
-body:has(.app-sidebar) main [class*='bg-white'], body:has(.app-sidebar) main [class*='bg-slate-50'], body:has(.app-sidebar) main [class*='bg-slate-100'], body:has(aside) main [class*='bg-white'], body:has(aside) main [class*='bg-slate-50'], body:has(aside) main [class*='bg-slate-100'] { background-color:#fff!important; }
-body:has(.app-sidebar) main .rounded-2xl, body:has(aside) main .rounded-2xl { border-radius:1.15rem!important; }
-body:has(.app-sidebar) main input, body:has(.app-sidebar) main select, body:has(.app-sidebar) main textarea, body:has(aside) main input, body:has(aside) main select, body:has(aside) main textarea { color:var(--horizon-ink)!important; background:#fbfdff!important; border-color:#cfddef!important; box-shadow:none!important; }
-body:has(.app-sidebar) main input:focus, body:has(.app-sidebar) main select:focus, body:has(.app-sidebar) main textarea:focus, body:has(aside) main input:focus, body:has(aside) main select:focus, body:has(aside) main textarea:focus { border-color:#83b3ff!important; box-shadow:0 0 0 3px rgba(21,94,239,.11)!important; }
-body:has(.app-sidebar) main button.bg-signal-blue, body:has(.app-sidebar) main .bg-signal-blue, body:has(aside) main button.bg-signal-blue, body:has(aside) main .bg-signal-blue { background:var(--horizon-blue)!important; color:#fff!important; box-shadow:0 8px 16px rgba(21,94,239,.19)!important; }
-body:has(.app-sidebar) main button:not(:disabled):hover, body:has(aside) main button:not(:disabled):hover { transform:translateY(-1px); filter:none; }
-body:has(.app-sidebar) main thead, body:has(aside) main thead { background:#f3f7fc!important; }
-body:has(.app-sidebar) main tbody tr, body:has(aside) main tbody tr { border-color:#e5edf7!important; }
-body:has(.app-sidebar) main tbody tr:hover, body:has(aside) main tbody tr:hover { background:#f6faff!important; box-shadow:inset 3px 0 var(--horizon-blue)!important; }
-body.workspace-dark:has(.app-sidebar), body.workspace-dark:has(aside) { color-scheme:light; background-color:#f5f9ff; background-image:radial-gradient(circle at 82% 2%,rgba(65,144,255,.16),transparent 23rem),radial-gradient(circle at 16% 76%,rgba(155,205,255,.16),transparent 22rem); }
-body.workspace-dark:has(.app-sidebar) main, body.workspace-dark:has(.app-sidebar) header, body.workspace-dark:has(aside) main, body.workspace-dark:has(aside) header { background:transparent!important; }
-body.workspace-dark:has(.app-sidebar) main [class*='bg-white'], body.workspace-dark:has(.app-sidebar) main [class*='bg-slate-50'], body.workspace-dark:has(.app-sidebar) main [class*='bg-slate-100'], body.workspace-dark:has(aside) main [class*='bg-white'], body.workspace-dark:has(aside) main [class*='bg-slate-50'], body.workspace-dark:has(aside) main [class*='bg-slate-100'] { background:#fff!important; }
+/* Workspaces become sheets pinned above the notebook background. */
+body:has(aside), body:has(.student-attendance-card) { background-color:var(--paper-warm); background-image:linear-gradient(90deg, transparent 0 4.6rem, rgba(220,86,79,.18) 4.65rem 4.78rem, transparent 4.82rem),repeating-linear-gradient(0deg,transparent 0 29px,var(--line) 30px,transparent 31px),radial-gradient(circle at 92% 14%,rgba(242,196,88,.28),transparent 20rem); background-size:auto,100% 31px,auto; color:var(--ink); }
+body:has(aside)::before, body:has(aside)::after { display:none; }
+body:has(aside) .bg-ink-950, body:has(.student-attendance-card) .bg-ink-950 { background:transparent !important; }
+body:has(aside) main, body:has(.student-attendance-card) main { color:var(--ink); }
+body:has(aside) main [class*='bg-ink-850'], body:has(aside) main [class*='bg-ink-900'], body:has(aside) main .shadow-card,
+body:has(.student-attendance-card) [class*='bg-ink-850'], body:has(.student-attendance-card) [class*='bg-ink-900'], body:has(.student-attendance-card) .student-attendance-card {
+  background-color:rgba(255,253,244,.94) !important; background-image:repeating-linear-gradient(0deg,transparent 0 29px,rgba(95,151,190,.12) 30px,transparent 31px) !important;
+  border-color:#d8cba9 !important; box-shadow:4px 5px 0 rgba(112,89,51,.13),0 15px 27px -19px rgba(61,45,25,.42) !important;
+  clip-path:polygon(0 .35%,2% 0,5% .45%,9% 0,13% .35%,18% 0,24% .35%,31% 0,39% .4%,48% 0,56% .35%,65% 0,73% .4%,81% 0,89% .35%,95% 0,100% .4%,99.6% 8%,100% 17%,99.65% 29%,100% 42%,99.6% 55%,100% 68%,99.65% 82%,100% 100%,91% 99.55%,82% 100%,71% 99.6%,62% 100%,51% 99.6%,42% 100%,31% 99.55%,20% 100%,10% 99.55%,0 100%,.35% 89%,0 77%,.3% 65%,0 53%,.35% 41%,0 27%,.3% 14%);
+}
+body:has(aside) main [class*='bg-white'], body:has(aside) main [class*='bg-slate-50'], body:has(aside) main [class*='bg-slate-100'] { background-color:rgba(255,253,244,.93) !important; }
+body:has(aside) main .text-white, body:has(aside) main .text-slate-200, body:has(aside) main .text-slate-300, body:has(.student-attendance-card) .text-white, body:has(.student-attendance-card) .text-slate-200, body:has(.student-attendance-card) .text-slate-300 { color:var(--ink) !important; }
+body:has(aside) main .text-slate-400, body:has(aside) main .text-slate-500, body:has(.student-attendance-card) .text-slate-400, body:has(.student-attendance-card) .text-slate-500 { color:#66758a !important; }
+body:has(aside) main input, body:has(aside) main select, body:has(aside) main textarea, body:has(.student-attendance-card) input, body:has(.student-attendance-card) select, body:has(.student-attendance-card) textarea { color:var(--ink) !important; background:#fffdf4 !important; border-color:#c9b88f !important; box-shadow:none !important; }
+body:has(aside) main input:focus, body:has(aside) main select:focus, body:has(aside) main textarea:focus { border-color:var(--pencil) !important; box-shadow:0 0 0 3px rgba(224,93,69,.13) !important; }
+body:has(aside) main thead { background:rgba(235,220,178,.42) !important; }
+body:has(aside) main tbody tr:hover { background:rgba(255,218,94,.15) !important; box-shadow:inset 4px 0 0 var(--pencil) !important; }
+body:has(aside) main h2, body:has(aside) header h1 { background:none; color:var(--ink); -webkit-text-fill-color:initial; }
 
-/* Student screens without the faculty navigation use the same canvas. */
-body:has(.student-attendance-card), body:has(.student-workspace) { background:#f5f9ff!important; color:var(--horizon-ink); }
-.student-workspace .text-white, .student-workspace .text-slate-200, .student-workspace .text-slate-300, .student-attendance-card .text-white, .student-attendance-card .text-slate-200, .student-attendance-card .text-slate-300 { color:var(--horizon-ink)!important; }
-.student-attendance-card, .student-workspace [class*='bg-ink-850'], .student-workspace [class*='bg-ink-900'] { background:#fff!important; border-color:var(--horizon-line)!important; box-shadow:0 12px 28px rgba(37,84,143,.08)!important; }
+/* A dark chalkboard-strip sidebar balances the light sheets. */
+body:has(aside) aside { background:#294d49 !important; border-right:5px solid #e4b84e !important; box-shadow:7px 0 0 rgba(255,253,244,.85),14px 0 28px rgba(47,64,52,.20) !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+body:has(aside) aside::before { content:'✎'; position:absolute; right:1.1rem; bottom:1rem; color:rgba(255,244,210,.42); font-family:cursive; font-size:4rem; transform:rotate(-16deg); pointer-events:none; }
+body:has(aside) aside nav button:hover, body:has(aside) aside > button:hover { border-color:#f4cf67 !important; background:rgba(255,246,205,.14) !important; box-shadow:none !important; }
+body:has(aside) header { position:relative; background:rgba(255,253,244,.76) !important; border-bottom:1px dashed #c4b182 !important; }
+body:has(aside) header::after { content:'📎  ✏️'; position:absolute; right:1.1rem; top:.35rem; font-size:1.15rem; letter-spacing:.25rem; transform:rotate(-5deg); pointer-events:none; }
 
-/* Public login: a clean campus welcome, no dark panel and no paper props. */
-.calm-auth-shell:has(.notice-board) { grid-template-columns:20rem minmax(26rem,1fr) minmax(28rem,.95fr); color:var(--horizon-ink); background:#eff6ff!important; }
-.calm-auth-shell:has(.notice-board)::before, .calm-auth-shell:has(.notice-board)::after { display:none; }
-.calm-auth-shell:has(.notice-board) .calm-auth-brand { background:linear-gradient(160deg,#155eef,#0e47b8)!important; color:#fff!important; border:0!important; }
-.calm-auth-shell:has(.notice-board) .calm-auth-brand::before { display:block; right:-11rem; bottom:-10rem; width:24rem; height:24rem; border-color:rgba(255,255,255,.18); box-shadow:0 0 0 4rem rgba(255,255,255,.055),0 0 0 8rem rgba(255,255,255,.035); }
-.calm-auth-shell:has(.notice-board) .notice-board { background:#eff6ff!important; background-image:radial-gradient(circle at 70% 15%,rgba(69,156,255,.22),transparent 18rem)!important; }
-.notice-board>* { background:#fff!important; border:1px solid #dce7f5!important; box-shadow:0 15px 30px rgba(40,85,146,.11)!important; }
-.notice-board>*::after { display:none!important; }
-.notice-timetable::before { background:#d8e8ff!important; }
-.calm-auth-shell:has(.notice-board) .calm-auth-area { background:#f8fbff!important; }
-.calm-auth-shell:has(.notice-board) .calm-auth-area::before { opacity:.55; background-image:radial-gradient(rgba(21,94,239,.11) .7px,transparent .8px); background-size:20px 20px; }
-.notice-login-card { border:1px solid #dce7f5!important; border-radius:1.35rem!important; background:#fff!important; box-shadow:0 22px 50px rgba(33,76,137,.13)!important; }
-.notice-login-card::before, .notice-login-card::after { display:none!important; }
-.notice-login-card .calm-card-kicker, .notice-login-card .calm-form-options button { color:var(--horizon-blue)!important; }
-.notice-login-card .calm-card-header h2, .notice-login-card .calm-role-context strong, .notice-login-card .calm-field { color:var(--horizon-ink)!important; }
-.notice-login-card .calm-card-header>div>p:last-child, .notice-login-card .calm-role-context span, .notice-login-card .calm-security { color:var(--horizon-muted)!important; }
-.notice-login-card .calm-role-switch { border-color:#d6e3f3!important; background:#f3f7fc!important; }
-.notice-login-card .calm-role-switch button { color:#64758b!important; }
-.notice-login-card .calm-role-switch button.active { color:#fff!important; background:var(--horizon-blue)!important; box-shadow:0 6px 14px rgba(21,94,239,.2); }
-.notice-login-card .calm-role-context { border-color:#dce7f5!important; background:#f5f9ff!important; color:var(--horizon-blue)!important; }
-.notice-login-card .calm-field>div, .notice-login-card .google-login-placeholder, .notice-login-card .google-login-disabled { background:#fbfdff!important; border-color:#cfdded!important; color:var(--horizon-ink)!important; }
-.notice-login-card .calm-submit { background:var(--horizon-blue)!important; box-shadow:0 8px 17px rgba(21,94,239,.2)!important; }
-.notice-login-card .calm-submit:hover:not(:disabled) { background:var(--horizon-blue-deep)!important; }
-@media (max-width:1050px) { .calm-auth-shell:has(.notice-board) { grid-template-columns:18rem minmax(26rem,1fr); }.calm-auth-shell:has(.notice-board) .notice-board { display:none; } }
+/* Login is a desk of layered torn notes, with stationery quietly decorating it. */
+.calm-auth-shell:has(.notice-board) { position:relative; color:var(--ink); background-color:#e6d5a9; background-image:repeating-linear-gradient(0deg,transparent 0 29px,rgba(83,132,170,.23) 30px,transparent 31px),linear-gradient(90deg,transparent 0 4.5rem,rgba(215,79,74,.28) 4.55rem 4.68rem,transparent 4.72rem); }
+.calm-auth-shell:has(.notice-board)::before { content:'✏️'; position:absolute; z-index:5; left:45%; top:7%; font-size:4.5rem; filter:drop-shadow(2px 5px 3px rgba(59,44,24,.25)); transform:rotate(-36deg); pointer-events:none; }
+.calm-auth-shell:has(.notice-board)::after { content:'📐'; position:absolute; z-index:5; right:3%; bottom:5%; font-size:4.4rem; opacity:.8; transform:rotate(17deg); pointer-events:none; }
+.calm-auth-shell:has(.notice-board) .calm-auth-brand { background:#f8f0da; color:var(--ink); border-right:1px dashed #bda96f; }
+.calm-auth-shell:has(.notice-board) .notice-board, .calm-auth-shell:has(.notice-board) .calm-auth-area { background:transparent; }
+.calm-auth-shell:has(.notice-board) .notice-board { background-image:none; }
+.notice-board>* { background:#fffdf4 !important; border:1px solid rgba(176,150,91,.35); }
+.notice-login-card { background:#fffdf4 !important; border:1px solid #d6c390 !important; box-shadow:6px 7px 0 rgba(120,93,45,.15),0 18px 30px -22px rgba(46,40,29,.6) !important; }
+.notice-login-card .calm-role-switch { border-color:#608276; }
+.notice-login-card .calm-role-switch button.active, .notice-login-card .calm-submit { background:#2f7864; }
+.notice-login-card .calm-submit:hover:not(:disabled) { background:#246452; }
+.notice-login-card .calm-field>div { background:#fffdf4; border-color:#bdaa7c; }
+
+@media (max-width:1050px) { .calm-auth-shell:has(.notice-board)::before,.calm-auth-shell:has(.notice-board)::after { display:none; } }
+@media (max-width:720px) { body { background-size:auto,100% 31px,auto; } body:has(aside) header::after { display:none; } }
 @media (max-width:767px) { body:has(.app-sidebar) header{padding-left:4.5rem}.app-sidebar{position:fixed!important}body:has(.app-sidebar) main>div{padding-left:1rem!important;padding-right:1rem!important} }
 
 /* Alpha acoustic attendance visuals. DSP runs in AudioWorklet; these effects
@@ -1093,159 +1079,4 @@ button:not(:disabled):active {
 }
 @media (prefers-reduced-motion:reduce) {
   .sidebar-brand-reveal,.sidebar-menu-item,button:not(:disabled):active { animation:none; opacity:1; }
-}
-
-/* Glass workspace — the shared visual shell for the operational views. */
-:root {
-  --glass-bg: rgba(8, 27, 42, .58);
-  --glass-strong: rgba(8, 29, 45, .72);
-  --glass-line: rgba(198, 242, 255, .18);
-  --glass-line-soft: rgba(198, 242, 255, .09);
-  --glass-text: #edfaff;
-  --glass-muted: #a6c2ce;
-  --glass-cyan: #55d9ff;
-}
-
-body {
-  color: var(--glass-text);
-  background-color: #02080d;
-  background-image:
-    radial-gradient(ellipse 70% 54% at 78% -8%, rgba(49, 194, 255, .34), transparent 61%),
-    radial-gradient(ellipse 58% 68% at -9% 100%, rgba(0, 131, 194, .30), transparent 66%),
-    radial-gradient(ellipse 46% 36% at 45% 48%, rgba(42, 167, 205, .12), transparent 76%);
-  background-attachment: fixed;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  z-index: -2;
-  inset: 0;
-  pointer-events: none;
-  opacity: .92;
-  background:
-    radial-gradient(ellipse 58% 17% at 68% 15%, rgba(101, 220, 255, .45) 0 5%, rgba(19, 94, 128, .20) 27%, transparent 59%),
-    radial-gradient(ellipse 45% 16% at 24% 86%, rgba(27, 196, 255, .30) 0 6%, transparent 58%),
-    radial-gradient(ellipse 36% 60% at 105% 63%, rgba(49, 177, 224, .21), transparent 66%);
-  filter: blur(20px) saturate(125%);
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  z-index: -1;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(115deg, rgba(0,0,0,.48), transparent 38%, rgba(0, 12, 20, .36));
-}
-
-/* Existing Tailwind primitives become soft material instead of solid indigo. */
-.bg-ink-950 { background: transparent !important; }
-.bg-ink-900 { background-color: rgba(2, 17, 28, .68) !important; }
-.bg-ink-850, .bg-ink-850\/60, .bg-ink-800 { background-color: var(--glass-bg) !important; }
-.border-ink-border { border-color: var(--glass-line) !important; }
-.text-slate-200, .text-slate-300 { color: #d8edf5 !important; }
-.text-slate-400, .text-slate-500 { color: var(--glass-muted) !important; }
-.text-white { color: var(--glass-text) !important; }
-.text-signal-blue { color: var(--glass-cyan) !important; }
-.bg-signal-blue { background-color: #29bfe9 !important; color: #04212d !important; }
-
-/* Admin and faculty: a large translucent surface with a distinct glass nav. */
-body:has(.app-sidebar) .app-sidebar {
-  margin: 1.1rem 0 1.1rem 1.1rem;
-  height: calc(100vh - 2.2rem);
-  border: 1px solid var(--glass-line) !important;
-  border-radius: 1.5rem;
-  background: rgba(4, 19, 31, .60) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 26px 70px rgba(0,0,0,.36);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
-  backdrop-filter: blur(28px) saturate(140%);
-}
-
-body:has(.app-sidebar) main {
-  margin: 1.1rem;
-  margin-left: 1.1rem;
-  min-height: calc(100vh - 2.2rem);
-  border: 1px solid var(--glass-line);
-  border-radius: 1.75rem;
-  background: rgba(4, 22, 35, .48);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.13), 0 30px 80px rgba(0,0,0,.30);
-  overflow: hidden;
-  -webkit-backdrop-filter: blur(32px) saturate(135%);
-  backdrop-filter: blur(32px) saturate(135%);
-}
-
-body:has(.app-sidebar) .app-topbar {
-  border-bottom: 1px solid var(--glass-line-soft);
-  background: rgba(4, 22, 35, .16) !important;
-}
-body:has(.app-sidebar) .app-topbar h1 { color: var(--glass-text) !important; -webkit-text-fill-color: initial; }
-body:has(.app-sidebar) .app-status-pill,
-body:has(.app-sidebar) .app-theme-toggle,
-body:has(.app-sidebar) .app-profile,
-body:has(.app-sidebar) .app-menu-button {
-  border: 1px solid var(--glass-line) !important;
-  background: rgba(10, 43, 60, .42) !important;
-  color: var(--glass-text) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
-}
-body:has(.app-sidebar) .app-nav-active {
-  background: linear-gradient(90deg, rgba(67, 210, 255, .24), rgba(37, 133, 173, .09)) !important;
-  border-color: rgba(102, 222, 255, .30) !important;
-  box-shadow: inset 3px 0 0 var(--glass-cyan), 0 7px 24px rgba(15, 181, 238, .10);
-}
-body:has(.app-sidebar) main section,
-body:has(.app-sidebar) main article,
-body:has(.app-sidebar) main .rounded-2xl,
-body:has(.app-sidebar) main .rounded-xl {
-  border-color: var(--glass-line) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 14px 36px rgba(0, 0, 0, .16) !important;
-}
-body:has(.app-sidebar) main .rounded-2xl:hover {
-  transform: translateY(-2px);
-  border-color: rgba(112, 224, 255, .33) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 20px 40px rgba(0, 82, 116, .20) !important;
-}
-body:has(.app-sidebar) main input,
-body:has(.app-sidebar) main select,
-body:has(.app-sidebar) main textarea {
-  border-color: var(--glass-line) !important;
-  background: rgba(3, 21, 34, .45) !important;
-  color: var(--glass-text) !important;
-}
-body:has(.app-sidebar) main thead { background: rgba(2, 18, 30, .42) !important; }
-body:has(.app-sidebar) main tbody tr { border-color: var(--glass-line-soft) !important; }
-body:has(.app-sidebar) main tbody tr:hover { background: rgba(68, 202, 246, .075) !important; }
-
-/* Student pages use the same hero glass surface without a faculty sidebar. */
-.student-glass-page {
-  position: relative;
-  min-height: 100vh;
-  padding: clamp(1rem, 3vw, 2.25rem);
-}
-.student-glass-page > main {
-  min-height: calc(100vh - clamp(2rem, 6vw, 4.5rem));
-  max-width: 76rem;
-  padding: clamp(1.25rem, 3vw, 2.5rem);
-  border: 1px solid var(--glass-line);
-  border-radius: 2rem;
-  background: rgba(4, 25, 39, .54);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 28px 72px rgba(0,0,0,.34);
-  -webkit-backdrop-filter: blur(32px) saturate(140%);
-  backdrop-filter: blur(32px) saturate(140%);
-}
-.student-glass-page section,
-.student-glass-page .rounded-2xl,
-.student-glass-page .rounded-xl {
-  border-color: var(--glass-line) !important;
-  background-color: rgba(8, 39, 56, .42) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 14px 34px rgba(0,0,0,.15);
-}
-.student-glass-page button.bg-signal-red { background: #34c9ef !important; color: #04212d !important; }
-
-@media (max-width: 767px) {
-  body:has(.app-sidebar) .app-sidebar { margin: .65rem; height: calc(100vh - 1.3rem); border-radius: 1.25rem; }
-  body:has(.app-sidebar) main { margin: .65rem; border-radius: 1.25rem; }
-  .student-glass-page { padding: .75rem; }
-  .student-glass-page > main { border-radius: 1.25rem; padding: 1.25rem; }
 }
