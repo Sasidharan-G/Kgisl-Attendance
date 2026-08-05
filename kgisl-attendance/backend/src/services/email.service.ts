@@ -2,6 +2,14 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import nodemailer from 'nodemailer';
 
+export function isEmailDeliveryConfigured() {
+  return Boolean(
+    env.BREVO_API_KEY
+    || env.RESEND_API_KEY
+    || (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS),
+  );
+}
+
 export async function sendPasswordResetEmail(to: string, code: string) {
   const subject = 'KGiSL Attendance password reset code';
   const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto"><h2>KGiSL Smart Attendance</h2><p>Your one-time password reset code is:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px">${code}</p><p>This code expires in ${Math.floor(env.PASSWORD_RESET_TTL_SECONDS / 60)} minutes. If you did not request it, ignore this email.</p><p>Never share this code with anyone.</p></div>`;

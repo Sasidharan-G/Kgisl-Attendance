@@ -6,7 +6,7 @@ import { Errors } from '../utils/AppError';
 import crypto from 'crypto';
 import { redis } from '../config/redis';
 import { sha256Hex } from '../utils/crypto';
-import { sendAdminLoginOtp } from './email.service';
+import { isEmailDeliveryConfigured, sendAdminLoginOtp } from './email.service';
 
 export interface LoginContext {
   ip: string | null;
@@ -67,6 +67,26 @@ export async function beginAdminEmailMfa(email: string, password: string, ctx: L
     throw Errors.INVALID_CREDENTIALS();
   }
   if (!admin.isActive) throw Errors.ACCOUNT_INACTIVE();
+  // Keep self-hosted deployments usable until a transactional email provider
+  // is configured. Password validation, rate limiting and audit logging still
+  // apply; enabling Brevo, Resend or complete SMTP credentials restores MFA.
+  if (!isEmailDeliveryConfigured()) {
+    const { accessToken, refreshToken, expiresIn } = await issueTokenPair(admin.id, 'ADMIN');
+    await writeAuditLog({
+      actorId: admin.id,
+      actorType: 'ADMIN',
+      action: 'ADMIN_LOGIN_MFA_UNAVAILABLE',
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { reason: 'EMAIL_DELIVERY_NOT_CONFIGURED' },
+    });
+    return {
+      token: accessToken,
+      refreshToken,
+      expiresIn,
+      user: { id: admin.id, name: admin.name, email: admin.email, role: 'ADMIN' as const },
+    };
+  }
   const code = crypto.randomInt(100000, 1000000).toString();
   await redis.set(adminMfaKey(normalizedEmail), sha256Hex(code), 'EX', 600);
   await sendAdminLoginOtp(normalizedEmail, code);
