@@ -27,7 +27,7 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
     setLoading(true);
     try {
       const res = portal === 'ADMIN' ? await loginAdmin(email, password) : await loginFaculty(email, password);
-      if (portal === 'ADMIN' && res.data?.mfaRequired) { setOtpRequired(true); return; }
+      if (portal === 'ADMIN' && res.mfaRequired) { setOtpRequired(true); return; }
       login(res.token, res.refreshToken, res.user); setIsSuccessLoading(true);
       setTimeout(() => { setIsSuccessLoading(false); navigate(portal === 'ADMIN' ? '/admin/timetable' : '/faculty/dashboard'); }, 2000);
     } catch (err) { setError(err.message || 'Login failed'); }
