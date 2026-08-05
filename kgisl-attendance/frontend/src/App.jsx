@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import AgentChat from './components/AgentChat.jsx';
 import StatePanel from './components/StatePanel.jsx';
+import StudentTheme from './components/StudentTheme.jsx';
 
 const PortalSelect = lazy(() => import('./pages/PortalSelect.jsx'));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx'));
@@ -26,7 +27,7 @@ function ProtectedRoute({ role, children }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/" replace />;
   if (role && user.role !== role) return <div className="flex min-h-screen items-center justify-center bg-ink-950 px-5"><div className="w-full max-w-md"><StatePanel type="permission" title="Permission denied" description={`This page is available only to ${role.toLowerCase()} accounts. You are signed in as ${user.role.toLowerCase()}.`} actionLabel="Return to my portal" onAction={() => window.location.assign(user.role === 'STUDENT' ? '/student/dashboard' : user.role === 'FACULTY' ? '/faculty/dashboard' : '/admin/timetable')} /></div></div>;
-  return children;
+  return role === 'STUDENT' ? <><StudentTheme />{children}</> : children;
 }
 
 function GlobalAgent() {

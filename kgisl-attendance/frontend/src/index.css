@@ -1012,3 +1012,25 @@ body.workspace-dark:has(aside) button:disabled,
 .student-command-layout button:disabled,
 .stitch-scan-flow button:disabled{color:#fff!important;opacity:.62!important}
 body:not(.workspace-dark):has(aside) main button:disabled{color:#111827!important;opacity:.52!important}
+
+/* Student pages use the same saved dark/light workspace preference as the
+   faculty and admin dashboards. This also replaces the old forced-light scan UI. */
+body.student-portal{color-scheme:dark;background:#151b26!important}
+body.student-portal .student-theme-toggle{color:#d7dee8;border:1px solid #3a4659;background:#202938;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+body.student-portal .student-workspace,
+body.student-portal #main-content>div[class*='bg-ink-950']{color:#d7dee8;background:#151b26!important;background-image:none!important}
+body.student-portal .student-attendance-card,
+body.student-portal main [class*='bg-ink-850']{color:#d7dee8;border-color:#344052!important;background:#202938!important;box-shadow:0 8px 24px -18px rgba(0,0,0,.52)!important}
+body.student-portal .student-attendance-card h1,
+body.student-portal :where(main,.student-workspace) :where(h1,h2,h3,h4,p,span,label,small,strong,b,button){color:#edf1f6!important}
+body.student-portal :where(main,.student-workspace) [class*='bg-ink-900']{border-color:#344052!important;background:#1a2230!important}
+
+body.student-portal-light{color-scheme:light;background:#f3f6fa!important}
+body.student-portal-light .student-theme-toggle{color:#475569;border-color:#d7e0ea;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.10)}
+body.student-portal-light .student-workspace,
+body.student-portal-light #main-content>div[class*='bg-ink-950']{color:#26364d;background:#f3f6fa!important}
+body.student-portal-light .student-attendance-card,
+body.student-portal-light main [class*='bg-ink-850']{color:#26364d;border-color:#dfe6ef!important;background:#fff!important;box-shadow:0 18px 45px -32px rgba(28,45,76,.28)!important}
+body.student-portal-light .student-attendance-card h1,
+body.student-portal-light :where(main,.student-workspace) :where(h1,h2,h3,h4,p,span,label,small,strong,b,button){color:#18283f!important}
+body.student-portal-light :where(main,.student-workspace) [class*='bg-ink-900']{border-color:#e0e6ee!important;background:#f4f7fa!important}
