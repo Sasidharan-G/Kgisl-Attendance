@@ -8,6 +8,7 @@ const batchSchema = z.object({
   programme: z.string().trim().min(2).max(50),
   semester: z.coerce.number().int().min(1).max(12),
   academicYear: z.string().trim().regex(/^\d{4}-\d{4}$/, 'Academic year must look like 2026-2027'),
+  mentorId: z.string().uuid().nullable().optional(),
 });
 const subjectSchema = z.object({ name: z.string().trim().min(2).max(120), code: z.string().trim().min(2).max(30).transform((v) => v.toUpperCase()) });
 const roomSchema = z.object({

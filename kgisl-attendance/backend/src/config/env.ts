@@ -60,6 +60,7 @@ const envSchema = z.object({
   SMTP_PASS: z.string().default(''),
   // Public OAuth audience used to verify Google Identity Services ID tokens.
   GOOGLE_CLIENT_ID: z.string().default(''),
+  GOOGLE_ANDROID_CLIENT_ID: z.string().default(''),
 
   // Online AI assistant. Keep disabled until an API key is configured.
   OPENAI_API_KEY: z.string().default(''),

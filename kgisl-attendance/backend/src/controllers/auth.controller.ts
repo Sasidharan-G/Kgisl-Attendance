@@ -34,14 +34,15 @@ const googleLoginSchema = z.object({
 });
 
 export function googleAuthConfigHandler(_req: Request, res: Response) {
-  res.json({ success: true, data: { enabled: Boolean(env.GOOGLE_CLIENT_ID), clientId: env.GOOGLE_CLIENT_ID || null } });
+  res.json({ success: true, data: { enabled: Boolean(env.GOOGLE_CLIENT_ID), clientId: env.GOOGLE_CLIENT_ID || null, androidClientId: env.GOOGLE_ANDROID_CLIENT_ID || null } });
 }
 
 export async function googleLoginHandler(req: Request, res: Response, next: NextFunction) {
   try {
     if (!env.GOOGLE_CLIENT_ID) throw new AppError('GOOGLE_AUTH_NOT_CONFIGURED', 'Google sign-in is not configured yet.', 503);
     const { credential, role } = googleLoginSchema.parse(req.body);
-    const ticket = await new OAuth2Client(env.GOOGLE_CLIENT_ID).verifyIdToken({ idToken: credential, audience: env.GOOGLE_CLIENT_ID });
+    const audiences = [env.GOOGLE_CLIENT_ID, env.GOOGLE_ANDROID_CLIENT_ID].filter(Boolean);
+    const ticket = await new OAuth2Client(env.GOOGLE_CLIENT_ID).verifyIdToken({ idToken: credential, audience: audiences });
     const payload = ticket.getPayload();
     if (!payload?.email || !payload.email_verified) throw new AppError('INVALID_GOOGLE_TOKEN', 'Google account verification failed.', 401);
     res.json(await loginWithGoogle(payload.email, role, requestContext(req)));

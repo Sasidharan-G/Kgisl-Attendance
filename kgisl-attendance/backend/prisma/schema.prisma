@@ -26,6 +26,7 @@ model Faculty {
 
   sessions    AttendanceSession[]
   allocations TimetableAllocation[]
+  mentoredBatches Batch[] @relation("BatchMentor")
 
   @@map("faculty")
 }
@@ -93,6 +94,8 @@ model Batch {
   programme    String                @default("MCA")
   semester     Int                   @default(1)
   academicYear String                @default("2026-2027") @map("academic_year")
+  mentorId     String?               @map("mentor_id")
+  mentor       Faculty?              @relation("BatchMentor", fields: [mentorId], references: [id], onDelete: SetNull)
   students     Student[]
   sessions     AttendanceSession[]
   allocations  TimetableAllocation[]
@@ -284,6 +287,24 @@ model LeaveRequest {
   @@index([studentId, createdAt])
   @@index([status, createdAt])
   @@map("leave_request")
+}
+
+// In-app messages are intentionally independent of a specific user table:
+// recipients can be students, faculty, or admins. A null recipientId is a
+// role-wide notification, while a populated value targets one account.
+model Notification {
+  id            String    @id @default(uuid())
+  recipientId   String?   @map("recipient_id")
+  recipientRole ActorType @map("recipient_role")
+  type          String
+  title         String
+  message       String
+  href          String?
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([recipientRole, recipientId, readAt, createdAt])
+  @@map("notification")
 }
 
 // ------------------------------------------------------------
