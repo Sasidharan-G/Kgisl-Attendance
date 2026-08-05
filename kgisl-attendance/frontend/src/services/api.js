@@ -103,6 +103,8 @@ export const listRooms = () => api.get('/catalog/rooms').then((r) => r.data.data
 export const listBatches = () => api.get('/catalog/batches').then((r) => r.data.data);
 export const createBatch = (payload) => api.post('/catalog/batches', payload).then((r) => r.data.data);
 export const updateBatch = (id, payload) => api.patch(`/catalog/batches/${id}`, payload).then((r) => r.data.data);
+export const approveBatchArchive = (id) => api.post(`/catalog/batches/${id}/archive-approve`).then((r) => r.data);
+export const retrieveBatch = (id, completionDate) => api.post(`/catalog/batches/${id}/retrieve`, { completionDate }).then((r) => r.data);
 export const createSubject = (payload) => api.post('/catalog/subjects', payload).then((r) => r.data.data);
 export const updateSubject = (id, payload) => api.patch(`/catalog/subjects/${id}`, payload).then((r) => r.data.data);
 export const createRoom = (payload) => api.post('/catalog/rooms', payload).then((r) => r.data.data);
@@ -127,7 +129,7 @@ export const listFaculty = () => api.get('/faculty').then((r) => r.data.data);
 export const createFaculty = (payload) => api.post('/faculty', payload).then((r) => r.data);
 export const deleteFaculty = (id) => api.delete(`/faculty/${id}`).then((r) => r.data);
 export const setFacultyActive = (id, isActive) => api.patch(`/faculty/${id}/status`, { isActive }).then((r) => r.data.data);
-export const listStudents = (batchId) => api.get('/students', { params: batchId ? { batchId } : {} }).then((r) => r.data.data);
+export const listStudents = (batchId, view = 'current') => api.get('/students', { params: { ...(batchId ? { batchId } : {}), view } }).then((r) => r.data.data);
 export const getMyAttendance = () => api.get('/students/me/attendance').then((r) => r.data.data);
 export const createStudent = (payload) => api.post('/students', payload).then((r) => r.data.data);
 export const bulkCreateStudents = (payload) => api.post('/students/bulk', payload).then((r) => r.data.data);

@@ -19,6 +19,7 @@ export async function listFacultyHandler(_req: Request, res: Response, next: Nex
         email: true,
         createdAt: true,
         isActive: true,
+        mentoredBatches: { select: { id: true, name: true, lifecycle: true } },
       },
       orderBy: { name: 'asc' },
     });

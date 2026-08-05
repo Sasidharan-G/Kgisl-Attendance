@@ -159,6 +159,7 @@ export default function AddFacultyPage() {
                     <th className="px-6 py-4">Name</th>
                     <th className="px-6 py-4">Email</th>
                     <th className="px-6 py-4">Role</th>
+                    <th className="px-6 py-4">Mentor for</th>
                     <th className="px-6 py-4">Registered Date</th>
                     <th className="px-6 py-4">Action</th>
                   </tr>
@@ -166,13 +167,13 @@ export default function AddFacultyPage() {
                 <tbody className="divide-y divide-ink-border/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
+                      <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
                         Loading directory...
                       </td>
                     </tr>
                   ) : faculties.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
+                      <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
                         No faculty registered yet.
                       </td>
                     </tr>
@@ -186,6 +187,7 @@ export default function AddFacultyPage() {
                             FACULTY
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-xs text-slate-300">{fac.mentoredBatches?.filter((batch) => batch.lifecycle !== 'ARCHIVED').map((batch) => batch.name).join(', ') || 'Not assigned'}</td>
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {new Date(fac.createdAt).toLocaleDateString()}
                         </td>

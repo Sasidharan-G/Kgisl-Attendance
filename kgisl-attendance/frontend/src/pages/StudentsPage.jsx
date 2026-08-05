@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { bulkCreateStudents, createStudent, resetStudentDevice, setStudentActive, listBatches, listStudents } from '../services/api.js';
+import { approveBatchArchive, bulkCreateStudents, createStudent, resetStudentDevice, retrieveBatch, setStudentActive, listBatches, listStudents } from '../services/api.js';
 import { Search, GraduationCap, Plus, Power, Users, X, FileUp } from 'lucide-react';
 import StatePanel from '../components/StatePanel.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
 export default function StudentsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [students, setStudents] = useState([]);
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState('');
@@ -20,11 +23,12 @@ export default function StudentsPage() {
   const [success, setSuccess] = useState('');
   const [bulkRows, setBulkRows] = useState([]);
   const [bulkBatchId, setBulkBatchId] = useState('');
+  const [view, setView] = useState('current');
+  const [retrieveDates, setRetrieveDates] = useState({});
 
-  useEffect(() => {
-    (async () => {
+  async function load() {
       try {
-        const [data, batchData] = await Promise.all([listStudents(), listBatches()]);
+        const [data, batchData] = await Promise.all([listStudents(undefined, view), listBatches()]);
         setStudents(data);
         setBatches(batchData);
       } catch (err) {
@@ -32,8 +36,18 @@ export default function StudentsPage() {
       } finally {
         setLoading(false);
       }
-    })();
-  }, []);
+  }
+  useEffect(() => { setLoading(true); load(); }, [view]);
+
+  async function approveArchive(batch) {
+    if (!window.confirm(`Move ${batch.name} students to the Passed Out Database? Attendance history will be preserved.`)) return;
+    try { const result = await approveBatchArchive(batch.id); setSuccess(result.message); await load(); } catch (err) { setError(err.message || 'Could not archive batch'); }
+  }
+  async function restoreBatch(batch) {
+    const completionDate = retrieveDates[batch.id];
+    if (!completionDate) return;
+    try { const result = await retrieveBatch(batch.id, new Date(`${completionDate}T23:59:59`).toISOString()); setSuccess(result.message); setView('current'); } catch (err) { setError(err.message || 'Could not retrieve batch'); }
+  }
 
   const handleAddStudent = async (event) => {
     event.preventDefault();
@@ -132,10 +146,10 @@ export default function StudentsPage() {
             </div>
 
             <div className="flex w-full max-w-xl gap-3">
-              <button onClick={() => setShowAddForm((value) => !value)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-signal-red px-4 py-2 text-sm font-bold text-white hover:brightness-110">
+              {!isAdmin && <button onClick={() => setShowAddForm((value) => !value)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-signal-red px-4 py-2 text-sm font-bold text-white hover:brightness-110">
                 {showAddForm ? <X size={16} /> : <Plus size={16} />}
                 {showAddForm ? 'Cancel' : 'Add Student'}
-              </button>
+              </button>}
               <div className="relative w-full">
               <span className="absolute inset-y-0 left-3 flex items-center text-slate-500">
                 <Search size={16} />
@@ -151,7 +165,7 @@ export default function StudentsPage() {
             </div>
           </div>
 
-          {showAddForm && (
+          {!isAdmin && showAddForm && (
             <form onSubmit={handleAddStudent} className="mb-6 rounded-2xl border border-ink-border bg-ink-850/60 p-5">
               <div className="mb-4">
                 <h3 className="font-bold text-white">Add Student</h3>
@@ -184,11 +198,17 @@ export default function StudentsPage() {
             </form>
           )}
 
-          <section className="mb-6 rounded-2xl border border-signal-blue/25 bg-ink-850/60 p-5">
+          {!isAdmin && <section className="mb-6 rounded-2xl border border-signal-blue/25 bg-ink-850/60 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="flex items-center gap-2 font-bold text-white"><FileUp size={17} className="text-signal-blue"/>Bulk Student Import</h3><p className="mt-1 text-xs text-slate-400">Upload a CSV with <code>name,rollNo,regNo,email,password</code>. Review before creating accounts.</p></div>{bulkRows.length > 0 && <button disabled={saving} onClick={importStudents} className="rounded-xl bg-signal-blue px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? 'Importing...' : `Import ${bulkRows.length} students`}</button>}</div>
             <div className="mt-4 grid gap-3 md:grid-cols-2"><input type="file" accept=".csv,text/csv" onChange={(event) => loadCsv(event.target.files?.[0])} className="rounded-xl border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-300"/><select value={bulkBatchId} onChange={(event) => setBulkBatchId(event.target.value)} className="rounded-xl border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select section for import</option>{batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.name}</option>)}</select></div>
             {bulkRows.length > 0 && <p className="mt-3 text-xs text-signal-green">{bulkRows.length} valid-looking rows ready. Duplicate roll/register/email values are checked again by the server.</p>}
-          </section>
+          </section>}
+
+          {isAdmin && <div className="mb-6 flex flex-wrap gap-3"><button onClick={() => setView('current')} className={`rounded-xl px-4 py-2 text-sm font-bold ${view === 'current' ? 'bg-signal-blue text-white' : 'border border-ink-border'}`}>Current Students</button><button onClick={() => setView('archived')} className={`rounded-xl px-4 py-2 text-sm font-bold ${view === 'archived' ? 'bg-signal-blue text-white' : 'border border-ink-border'}`}>Passed Out Database</button></div>}
+
+          {isAdmin && view === 'current' && batches.some((batch) => batch.lifecycle === 'ARCHIVE_PENDING') && <section className="mb-6 rounded-2xl border border-signal-amber/40 bg-signal-amber/10 p-5"><h3 className="font-bold text-white">Archive permission requests</h3><p className="mt-1 text-xs text-slate-300">These batches reached their configured completion date. Review before moving students.</p><div className="mt-4 space-y-3">{batches.filter((batch) => batch.lifecycle === 'ARCHIVE_PENDING').map((batch) => <div key={batch.id} className="flex items-center justify-between rounded-xl border border-ink-border p-3"><div><b>{batch.name}</b><p className="text-xs">{batch._count?.students || 0} students · Mentor: {batch.mentor?.name || 'Unassigned'}</p></div><button onClick={() => approveArchive(batch)} className="rounded-lg bg-signal-amber px-3 py-2 text-xs font-bold text-black">Approve archive</button></div>)}</div></section>}
+
+          {isAdmin && view === 'archived' && <section className="mb-6 rounded-2xl border border-ink-border bg-ink-850/60 p-5"><h3 className="font-bold text-white">Archived batches</h3><div className="mt-4 grid gap-3 md:grid-cols-2">{batches.filter((batch) => batch.lifecycle === 'ARCHIVED').map((batch) => <div key={batch.id} className="rounded-xl border border-ink-border p-4"><b>{batch.name}</b><p className="mt-1 text-xs">Passed out: {batch.archivedAt ? new Date(batch.archivedAt).toLocaleDateString() : '—'} · {batch._count?.students || 0} students</p><label className="mt-3 block text-xs">New completion date<input type="date" min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} value={retrieveDates[batch.id] || ''} onChange={(event) => setRetrieveDates((current) => ({ ...current, [batch.id]: event.target.value }))} className="mt-1 w-full rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-white"/></label><button disabled={!retrieveDates[batch.id]} onClick={() => restoreBatch(batch)} className="mt-3 rounded-lg bg-signal-blue px-3 py-2 text-xs font-bold text-white disabled:opacity-40">Retrieve batch</button></div>)}</div></section>}
 
           {error && <div className="mb-6"><StatePanel type="error" compact title="Action needs attention" description={error} /></div>}
           {success && <div className="mb-6"><StatePanel type="success" compact title="Saved successfully" description={success} /></div>}
@@ -201,6 +221,7 @@ export default function StudentsPage() {
             <div className="grid gap-4 md:grid-cols-3">
               {batches.map((batch) => {
                 const count = students.filter((s) => s.batchId === batch.id).length;
+                if ((view === 'current' && batch.lifecycle === 'ARCHIVED') || (view === 'archived' && batch.lifecycle !== 'ARCHIVED')) return null;
                 const active = selectedBatch === batch.id;
                 return <button key={batch.id} onClick={() => setSelectedBatch(active ? '' : batch.id)} className={`rounded-2xl border p-5 text-left transition ${active ? 'border-signal-blue bg-signal-blue/10 ring-2 ring-signal-blue/20' : 'border-ink-border bg-ink-850/60 hover:border-signal-blue/50'}`}>
                   <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-signal-blue/10 text-signal-blue"><Users size={18}/></div>
@@ -260,7 +281,7 @@ export default function StudentsPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {s.lastScanTime ? new Date(s.lastScanTime).toLocaleString() : 'Never'}
                         </td>
-                        <td className="px-6 py-4"><div className="flex gap-3"><button onClick={() => handleDeviceReset(s)} title="Reset device binding" className="text-signal-blue hover:text-blue-300 text-xs font-semibold">Device</button><button onClick={() => handleRemoveStudent(s)} title={s.isActive ? 'Deactivate student' : 'Reactivate student'} className={s.isActive ? 'text-red-400 hover:text-red-300' : 'text-signal-green hover:text-green-300'}><Power size={17}/></button></div></td>
+                        <td className="px-6 py-4">{view === 'archived' ? <span className="text-xs font-semibold text-slate-400">Passed out</span> : <div className="flex gap-3"><button onClick={() => handleDeviceReset(s)} title="Reset device binding" className="text-signal-blue hover:text-blue-300 text-xs font-semibold">Device</button><button onClick={() => handleRemoveStudent(s)} title={s.isActive ? 'Deactivate student' : 'Reactivate student'} className={s.isActive ? 'text-red-400 hover:text-red-300' : 'text-signal-green hover:text-green-300'}><Power size={17}/></button></div>}</td>
                       </tr>
                     ))
                   )}

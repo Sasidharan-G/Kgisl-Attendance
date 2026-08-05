@@ -13,8 +13,16 @@ export function listRooms() {
   return prisma.room.findMany({ orderBy: { name: 'asc' } });
 }
 
-export function listBatches() {
-  return prisma.batch.findMany({ orderBy: { name: 'asc' } });
+export async function listBatches(role?: 'ADMIN' | 'FACULTY', actorId?: string) {
+  await prisma.batch.updateMany({
+    where: { lifecycle: 'ACTIVE', completionDate: { lte: new Date() } },
+    data: { lifecycle: 'ARCHIVE_PENDING', archiveRequestedAt: new Date() },
+  });
+  return prisma.batch.findMany({
+    where: role === 'FACULTY' ? { mentorId: actorId, lifecycle: { not: 'ARCHIVED' } } : undefined,
+    include: { mentor: { select: { id: true, name: true, email: true } }, _count: { select: { students: true } } },
+    orderBy: { name: 'asc' },
+  });
 }
 
 export type BatchInput = {
@@ -23,6 +31,8 @@ export type BatchInput = {
   programme: string;
   semester: number;
   academicYear: string;
+  mentorId?: string | null;
+  completionDate?: Date | null;
 };
 
 export function createBatch(data: BatchInput) {

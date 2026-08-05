@@ -17,15 +17,23 @@ const bulkStudentSchema = z.object({
   students: z.array(createStudentSchema.omit({ batchId: true })).min(1).max(500),
 });
 
+type MentorBatchAccess =
+  | { batch: { id: string; name: string; mentorId: string | null; lifecycle: 'ACTIVE' | 'ARCHIVE_PENDING' | 'ARCHIVED' } }
+  | { error: string; status: number };
+
+async function requireMentorBatch(req: Request, batchId: string): Promise<MentorBatchAccess> {
+  const batch = await prisma.batch.findUnique({ where: { id: batchId }, select: { id: true, name: true, mentorId: true, lifecycle: true } });
+  if (!batch) return { error: 'Selected section does not exist', status: 404 } as const;
+  if (batch.lifecycle !== 'ACTIVE') return { error: 'Students can only be managed in an active batch', status: 409 } as const;
+  if (req.auth!.role === 'FACULTY' && batch.mentorId !== req.auth!.sub) return { error: 'Only the assigned section mentor can manage these students', status: 403 } as const;
+  return { batch } as const;
+}
+
 export async function createStudentHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = createStudentSchema.parse(req.body);
-    const batch = await prisma.batch.findUnique({ where: { id: input.batchId } });
-    if (!batch) {
-      res.status(404).json({ success: false, message: 'Selected section does not exist' });
-      return;
-    }
-
+    const access = await requireMentorBatch(req, input.batchId);
+    if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
     const duplicate = await prisma.student.findFirst({
       where: { OR: [{ rollNo: input.rollNo }, { regNo: input.regNo }, { email: input.email }] },
       select: { rollNo: true, regNo: true, email: true },
@@ -74,8 +82,9 @@ export async function createStudentHandler(req: Request, res: Response, next: Ne
 export async function bulkCreateStudentsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = bulkStudentSchema.parse(req.body);
-    const batch = await prisma.batch.findUnique({ where: { id: input.batchId }, select: { id: true, name: true } });
-    if (!batch) { res.status(404).json({ success: false, message: 'Selected section does not exist' }); return; }
+    const access = await requireMentorBatch(req, input.batchId);
+    if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
+    const batch = access.batch;
     const seen = new Set<string>();
     for (const student of input.students) {
       for (const value of [student.rollNo, student.regNo, student.email]) {
@@ -97,12 +106,13 @@ export async function deleteStudentHandler(req: Request, res: Response, next: Ne
   try {
     const student = await prisma.student.findUnique({
       where: { id: req.params.id },
-      select: { id: true },
+      select: { id: true, batchId: true },
     });
     if (!student) {
       res.status(404).json({ success: false, message: 'Student does not exist' });
       return;
     }
+    const access = await requireMentorBatch(req, student.batchId); if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
     await prisma.student.update({ where: { id: student.id }, data: { isActive: false } });
     res.json({ success: true, message: 'Student account deactivated; attendance history was preserved.' });
   } catch (err) {
@@ -113,6 +123,9 @@ export async function deleteStudentHandler(req: Request, res: Response, next: Ne
 export async function setStudentStatusHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { isActive } = z.object({ isActive: z.boolean() }).parse(req.body);
+    const existing = await prisma.student.findUnique({ where: { id: req.params.id }, select: { batchId: true } });
+    if (!existing) { res.status(404).json({ success: false, message: 'Student does not exist' }); return; }
+    const access = await requireMentorBatch(req, existing.batchId); if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
     const student = await prisma.student.update({
       where: { id: req.params.id },
       data: { isActive },
@@ -126,9 +139,12 @@ export async function setStudentStatusHandler(req: Request, res: Response, next:
  * securely binds the student's new device; the reset itself is audit logged. */
 export async function resetStudentDeviceHandler(req: Request, res: Response, next: NextFunction) {
   try {
+    const existing = await prisma.student.findUnique({ where: { id: req.params.id }, select: { batchId: true } });
+    if (!existing) { res.status(404).json({ success: false, message: 'Student does not exist' }); return; }
+    const access = await requireMentorBatch(req, existing.batchId); if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
     const student = await prisma.student.update({ where: { id: req.params.id }, data: { deviceId: null }, select: { id: true, name: true, rollNo: true } });
     const ctx = requestContext(req);
-    await writeAuditLog({ actorId: req.auth!.sub, actorType: 'ADMIN', action: 'STUDENT_DEVICE_RESET', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { studentId: student.id, rollNo: student.rollNo } });
+    await writeAuditLog({ actorId: req.auth!.sub, actorType: req.auth!.role as 'ADMIN' | 'FACULTY', action: 'STUDENT_DEVICE_RESET', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { studentId: student.id, rollNo: student.rollNo } });
     res.json({ success: true, data: student, message: `Device reset for ${student.name}. The next verified scan will bind the new phone.` });
   } catch (err) { next(err); }
 }
@@ -136,8 +152,13 @@ export async function resetStudentDeviceHandler(req: Request, res: Response, nex
 export async function listStudentsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : undefined;
+    const archived = req.auth!.role === 'ADMIN' && req.query.view === 'archived';
     const students = await prisma.student.findMany({
-      where: batchId ? { batchId } : undefined,
+      where: {
+        archivedAt: archived ? { not: null } : null,
+        ...(batchId ? { batchId } : {}),
+        ...(req.auth!.role === 'FACULTY' ? { batch: { mentorId: req.auth!.sub, lifecycle: { not: 'ARCHIVED' } } } : {}),
+      },
       include: {
         batch: true,
         records: {
@@ -176,6 +197,7 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
         regNo: student.regNo,
         email: student.email,
         isActive: student.isActive,
+        archivedAt: student.archivedAt,
         batchName: student.batch.name,
         batchId: student.batchId,
         lastScanTime: lastScan ? lastScan.scanTime : null,

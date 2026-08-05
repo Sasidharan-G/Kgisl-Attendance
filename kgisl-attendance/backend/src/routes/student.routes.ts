@@ -6,10 +6,10 @@ const router = Router();
 
 router.get('/', requireAuth('ADMIN', 'FACULTY'), listStudentsHandler);
 router.get('/me/attendance', requireAuth('STUDENT'), getMyAttendanceHandler);
-router.post('/', requireAuth('ADMIN'), createStudentHandler);
-router.post('/bulk', requireAuth('ADMIN'), bulkCreateStudentsHandler);
-router.delete('/:id', requireAuth('ADMIN'), deleteStudentHandler);
-router.patch('/:id/status', requireAuth('ADMIN'), setStudentStatusHandler);
-router.post('/:id/device-reset', requireAuth('ADMIN'), resetStudentDeviceHandler);
+router.post('/', requireAuth('FACULTY'), createStudentHandler);
+router.post('/bulk', requireAuth('FACULTY'), bulkCreateStudentsHandler);
+router.delete('/:id', requireAuth('ADMIN', 'FACULTY'), deleteStudentHandler);
+router.patch('/:id/status', requireAuth('ADMIN', 'FACULTY'), setStudentStatusHandler);
+router.post('/:id/device-reset', requireAuth('ADMIN', 'FACULTY'), resetStudentDeviceHandler);
 
 export default router;

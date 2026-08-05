@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { listSubjects, listRooms, listBatches, createBatch, updateBatch, createSubject, updateSubject, createRoom, updateRoom } from '../services/catalog.service';
+import { prisma } from '../config/prisma';
+import { requestContext, writeAuditLog } from '../services/audit.service';
 
 const batchSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -8,6 +10,8 @@ const batchSchema = z.object({
   programme: z.string().trim().min(2).max(50),
   semester: z.coerce.number().int().min(1).max(12),
   academicYear: z.string().trim().regex(/^\d{4}-\d{4}$/, 'Academic year must look like 2026-2027'),
+  mentorId: z.string().uuid().nullable().optional(),
+  completionDate: z.coerce.date().nullable().optional(),
 });
 const subjectSchema = z.object({ name: z.string().trim().min(2).max(120), code: z.string().trim().min(2).max(30).transform((v) => v.toUpperCase()) });
 const roomSchema = z.object({
@@ -31,12 +35,43 @@ export async function listRoomsHandler(_req: Request, res: Response, next: NextF
   }
 }
 
-export async function listBatchesHandler(_req: Request, res: Response, next: NextFunction) {
+export async function listBatchesHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    res.json({ success: true, data: await listBatches() });
+    res.json({ success: true, data: await listBatches(req.auth!.role as 'ADMIN' | 'FACULTY', req.auth!.sub) });
   } catch (err) {
     next(err);
   }
+}
+
+const retrieveSchema = z.object({ completionDate: z.coerce.date() });
+
+export async function approveBatchArchiveHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const batch = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    if (!batch || batch.lifecycle !== 'ARCHIVE_PENDING') { res.status(409).json({ success: false, message: 'Batch is not waiting for archive approval' }); return; }
+    const archivedAt = new Date();
+    await prisma.$transaction([
+      prisma.student.updateMany({ where: { batchId: batch.id }, data: { archivedAt, isActive: false, deviceId: null } }),
+      prisma.batch.update({ where: { id: batch.id }, data: { lifecycle: 'ARCHIVED', archivedAt } }),
+    ]);
+    const ctx = requestContext(req); await writeAuditLog({ actorId: req.auth!.sub, actorType: 'ADMIN', action: 'BATCH_ARCHIVE_APPROVED', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { batchId: batch.id, batchName: batch.name } });
+    res.json({ success: true, message: `${batch.name} moved to Passed Out Student Database.` });
+  } catch (err) { next(err); }
+}
+
+export async function retrieveBatchHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { completionDate } = retrieveSchema.parse(req.body);
+    if (completionDate <= new Date()) { res.status(400).json({ success: false, message: 'New completion date must be in the future' }); return; }
+    const batch = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    if (!batch || batch.lifecycle !== 'ARCHIVED') { res.status(409).json({ success: false, message: 'Only an archived batch can be retrieved' }); return; }
+    await prisma.$transaction([
+      prisma.student.updateMany({ where: { batchId: batch.id }, data: { archivedAt: null, isActive: true } }),
+      prisma.batch.update({ where: { id: batch.id }, data: { lifecycle: 'ACTIVE', completionDate, archivedAt: null, archiveRequestedAt: null } }),
+    ]);
+    const ctx = requestContext(req); await writeAuditLog({ actorId: req.auth!.sub, actorType: 'ADMIN', action: 'BATCH_RETRIEVED', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { batchId: batch.id, completionDate: completionDate.toISOString() } });
+    res.json({ success: true, message: `${batch.name} restored to current students.` });
+  } catch (err) { next(err); }
 }
 
 export async function createBatchHandler(req: Request, res: Response, next: NextFunction) {

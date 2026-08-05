@@ -21,6 +21,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const FACULTY_NAV = [
   { icon: ScanLine, label: 'Attendance', path: '/faculty/dashboard' },
   { icon: LayoutGrid, label: 'Dashboard', path: '/faculty/analytics' },
+  { icon: Users, label: 'My Students', path: '/faculty/students' },
   { icon: BookOpen, label: 'Courses', path: '/faculty/courses' },
   { icon: CalendarDays, label: 'Timetable', path: '/faculty/timetable' },
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
@@ -31,7 +32,7 @@ const FACULTY_NAV = [
 const ADMIN_NAV = [
   { icon: BookOpen, label: 'Academic Setup', path: '/admin/academic' },
   { icon: CalendarDays, label: 'Upload Timetable', path: '/admin/timetable' },
-  { icon: Users, label: 'Students', path: '/admin/students' },
+  { icon: Users, label: 'Student Database', path: '/admin/students' },
   { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },
   { icon: BarChart3, label: 'Attendance Reports', path: '/admin/analytics' },
   { icon: Bell, label: 'Leave / On Duty', path: '/admin/leave' },
