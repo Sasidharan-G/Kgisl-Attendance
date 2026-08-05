@@ -944,3 +944,37 @@ button:not(:disabled):active {
 .network-banner{position:fixed;z-index:110;top:0;right:0;left:0;display:flex;align-items:center;justify-content:center;gap:.55rem;padding:.65rem 1rem;font-size:.78rem;box-shadow:0 10px 35px rgba(0,0,0,.28)}
 .network-banner--offline{background:#f59e0b;color:#160e00}
 .network-banner--slow{background:#0ea5e9;color:#03131c}
+
+/* Premium contrast pass — bright, legible typography across every portal. */
+:root{--premium-white:#f7fdff;--premium-silver:#d9edf3;--premium-muted:#aac7d1;--premium-subtle:#86a9b6;--premium-cyan:#5de2ff;--premium-line:rgba(137,230,250,.24)}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+body{color:var(--premium-silver)!important;font-weight:450}
+h1,h2,h3,h4,h5,h6,strong{color:var(--premium-white)}
+h1,h2{text-shadow:0 0 28px rgba(93,226,255,.10)}
+p,label,td,th,li{text-wrap:pretty}
+.text-white{color:var(--premium-white)!important}
+.text-slate-100,.text-slate-200{color:#eefaff!important}
+.text-slate-300{color:var(--premium-silver)!important}
+.text-slate-400{color:var(--premium-muted)!important}
+.text-slate-500,.text-slate-600{color:var(--premium-subtle)!important}
+.placeholder-slate-500::placeholder,.placeholder-slate-600::placeholder{color:#7899a5!important;opacity:1}
+.text-signal-blue{color:var(--premium-cyan)!important}
+.text-signal-green{color:#64ef98!important}
+.text-signal-amber{color:#ffd477!important}
+.text-signal-red,.text-red-300,.text-red-400{color:#ff8d87!important}
+.border-ink-border{border-color:var(--premium-line)!important}
+.bg-ink-950{background-color:#02070b!important}
+.bg-ink-900{background-color:rgba(3,21,31,.82)!important}
+.bg-ink-850\/60,.bg-ink-850{background-color:rgba(10,36,48,.66)!important}
+main .rounded-2xl,main .rounded-xl,.state-panel{border-color:var(--premium-line)!important;box-shadow:inset 0 1px rgba(240,253,255,.12),0 22px 58px rgba(0,0,0,.34),0 0 34px rgba(40,190,225,.035)!important}
+main .rounded-2xl:hover,main .rounded-xl:hover{border-color:rgba(128,231,255,.40)!important}
+input,select,textarea{font-weight:560}
+input:focus,select:focus,textarea:focus{caret-color:var(--premium-cyan)}
+button{font-weight:720}
+.stitch-access-welcome header>span,.stitch-signin-panel>header p,.stitch-command-main .stitch-topbar>div:first-child p,.app-sidebar-brand p,.student-command-brand span,.student-command-bottom small,.stitch-security,.stitch-access-footer{color:var(--premium-subtle)!important}
+.stitch-role-grid button,.student-command-sidebar nav button,.student-command-bottom>button,.student-command-bottom>span{color:var(--premium-muted)!important}
+.stitch-role-grid button.active,.student-command-sidebar nav button.active,.app-nav-active{color:var(--premium-white)!important}
+.stitch-signin-panel .calm-field>span,.stitch-signin-panel .calm-form-options,.stitch-signin-panel .calm-form-options button,.stitch-signin-panel .login-divider{color:var(--premium-muted)!important}
+.stitch-command-main,.student-command-layout>.student-glass-page,.student-command-layout>main{background:linear-gradient(135deg,rgba(18,59,75,.68),rgba(3,21,31,.72))!important}
+.stitch-command-layout .stitch-sidebar,.student-command-sidebar{background:linear-gradient(180deg,rgba(10,39,52,.88),rgba(3,21,31,.92))!important}
+@media(prefers-contrast:more){.text-slate-400,.text-slate-500,.text-slate-600{color:#d7edf3!important}.border-ink-border{border-color:rgba(174,238,252,.42)!important}}

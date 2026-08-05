@@ -5,20 +5,20 @@ export default {
     extend: {
       colors: {
         ink: {
-          950: '#272465', // Main Background (Deep Indigo)
-          900: '#1E1B4B', // Sidebar / Header (Midnight Indigo)
-          850: '#302D68', // Cards (Muted Indigo)
-          800: '#302D68', // Cards (Muted Indigo)
-          700: '#484575', // Border / Lighter Cards
-          600: '#625CA8', // Primary Button approx
-          border: '#484575', // Border (Muted Lavender Grey)
+          950: '#02070B', // Obsidian background
+          900: '#06131D', // Deep glass surface
+          850: '#0A1C27', // Elevated glass card
+          800: '#102A37', // Hovered glass card
+          700: '#1F4655', // Strong divider
+          600: '#2E6576', // Secondary control
+          border: '#285160', // Luminous glass edge
         },
         signal: {
-          red: '#FF453A',
+          red: '#FF5D55',
           redDim: '#7a1a26',
-          green: '#32D74B',
-          amber: '#f2b544',
-          blue: '#0A84FF',
+          green: '#4ADE80',
+          amber: '#F8C65C',
+          blue: '#49D8FF',
         },
         theme: {
           bg: '#272465',
