@@ -1025,12 +1025,12 @@ body.student-portal .student-attendance-card h1,
 body.student-portal :where(main,.student-workspace) :where(h1,h2,h3,h4,p,span,label,small,strong,b,button){color:#edf1f6!important}
 body.student-portal :where(main,.student-workspace) [class*='bg-ink-900']{border-color:#344052!important;background:#1a2230!important}
 
-body.student-portal-light{color-scheme:light;background:#f3f6fa!important}
-body.student-portal-light .student-theme-toggle{color:#475569;border-color:#d7e0ea;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.10)}
+body.student-portal-light { color-scheme: light; background: #F1F5F9 !important; color: #0F172A !important; }
+body.student-portal-light .student-theme-toggle { color: #0F172A; border: 1px solid #CBD5E1; background: #FFFFFF; box-shadow: 0 10px 25px -5px rgba(15,23,42,0.15); }
 body.student-portal-light .student-workspace,
-body.student-portal-light #main-content>div[class*='bg-ink-950']{color:#26364d;background:#f3f6fa!important}
+body.student-portal-light #main-content>div[class*='bg-ink-950'] { color: #1E293B; background: #F1F5F9 !important; }
 body.student-portal-light .student-attendance-card,
-body.student-portal-light main [class*='bg-ink-850']{color:#26364d;border-color:#dfe6ef!important;background:#fff!important;box-shadow:0 18px 45px -32px rgba(28,45,76,.28)!important}
-body.student-portal-light .student-attendance-card h1,
-body.student-portal-light :where(main,.student-workspace) :where(h1,h2,h3,h4,p,span,label,small,strong,b,button){color:#18283f!important}
-body.student-portal-light :where(main,.student-workspace) [class*='bg-ink-900']{border-color:#e0e6ee!important;background:#f4f7fa!important}
+body.student-portal-light main [class*='bg-ink-850'] { color: #1E293B; border-color: #E2E8F0 !important; background: #FFFFFF !important; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.06) !important; }
+body.student-portal-light :where(main,.student-workspace) :where(h1,h2,h3,h4) { color: #0F172A !important; }
+body.student-portal-light :where(main,.student-workspace) :where(p,span,label) { color: #334155; }
+body.student-portal-light :where(main,.student-workspace) [class*='bg-ink-900'] { border-color: #E2E8F0 !important; background: #F8FAFC !important; }

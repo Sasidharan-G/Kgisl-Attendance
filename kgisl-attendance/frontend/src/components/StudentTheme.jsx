@@ -19,11 +19,12 @@ export default function StudentTheme() {
     <button
       type="button"
       onClick={() => setDarkMode((current) => !current)}
-      className="student-theme-toggle fixed right-4 top-4 z-[90] grid h-10 w-10 place-items-center rounded-xl"
+      className="student-theme-toggle fixed bottom-5 right-5 z-[99] flex h-11 items-center gap-2 rounded-2xl px-3.5 shadow-xl transition-all active:scale-95"
       aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       title={darkMode ? 'Light mode' : 'Dark mode'}
     >
-      {darkMode ? <Sun size={17}/> : <Moon size={17}/>}
+      {darkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-blue-400" />}
+      <span className="text-xs font-bold">{darkMode ? 'Light' : 'Dark'}</span>
     </button>
   );
 }
