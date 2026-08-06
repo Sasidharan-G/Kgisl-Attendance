@@ -186,6 +186,7 @@ async function persistAttendance(
       studentName: context.student.name,
       studentRoll: context.student.rollNo,
       scanTime: record.scanTime.toISOString(),
+      distanceMeters: Math.round(context.distanceMeters),
     });
 
     return {

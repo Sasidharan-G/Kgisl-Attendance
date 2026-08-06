@@ -70,7 +70,7 @@ export function broadcastQrUpdate(sessionId: string, payload: QrUpdatePayload) {
 /** Pushed the moment a scan is accepted, so the "Recent Scans" / present-count UI updates live. */
 export function broadcastAttendanceMarked(
   sessionId: string,
-  data: { studentId: string; studentName: string; studentRoll: string; scanTime: string }
+  data: { studentId: string; studentName: string; studentRoll: string; scanTime: string; distanceMeters?: number }
 ) {
   io?.to(sessionRoom(sessionId)).emit('attendance_marked', data);
 }

@@ -1,4 +1,4 @@
-import { CheckCircle2, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, MapPin, ShieldAlert } from 'lucide-react';
 
 export default function RecentScans({ scans }) {
   return (
@@ -22,6 +22,9 @@ export default function RecentScans({ scans }) {
           const scanTimeText = s.scanTime 
             ? new Date(s.scanTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          
+          const rawDist = s.distance ?? s.distanceMeters ?? s.distanceFromCampus ?? s.gpsDistance;
+          const distanceNum = rawDist != null && !isNaN(Number(rawDist)) ? Math.round(Number(rawDist)) : null;
 
           return (
             <div
@@ -39,8 +42,13 @@ export default function RecentScans({ scans }) {
                   <span>•</span>
                   <span className="font-mono text-[10px]">{scanTimeText}</span>
                 </div>
-                {s.isViolation && s.distance && (
-                  <p className="text-[10px] text-red-400/80 mt-1">Geofence violated ({s.distance}m away)</p>
+                {distanceNum !== null && !s.isViolation && !isAbsent && (
+                  <p className="flex items-center gap-1 text-[10px] text-signal-green/90 mt-0.5 font-medium">
+                    <MapPin size={10} /> {distanceNum}m away from class
+                  </p>
+                )}
+                {s.isViolation && (s.distance || distanceNum != null) && (
+                  <p className="text-[10px] text-red-400/80 mt-1">Geofence violated ({s.distance ?? distanceNum}m away)</p>
                 )}
                 {s.isCorrection && <p className="mt-1 text-[10px] text-slate-500">Faculty manual override</p>}
               </div>
@@ -51,9 +59,9 @@ export default function RecentScans({ scans }) {
                   {s.isViolation ? 'Blocked' : 'Absent'}
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-xs font-semibold bg-signal-green/10 text-signal-green px-2 py-0.5 rounded-lg border border-signal-green/20">
+                <span className="flex items-center gap-1.5 text-xs font-semibold bg-signal-green/10 text-signal-green px-2.5 py-1 rounded-lg border border-signal-green/20">
                   <CheckCircle2 size={12} />
-                  Present
+                  Present {distanceNum !== null ? `· ${distanceNum}m` : ''}
                 </span>
               )}
             </div>
