@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert, BookOpenCheck, Building, PartyPopper, ChevronRight } from 'lucide-react';
+import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert, BookOpenCheck, Building, PartyPopper, ChevronRight, Calculator, Radio, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMyAttendance, listAttendanceCorrections, listLeaveRequests } from '../services/api.js';
 import StatePanel from '../components/StatePanel.jsx';
+
+const TODAY_DAILY_SCHEDULE = [
+  { period: 'Period 1', time: '09:10 AM – 10:00 AM', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', room: 'MCA Lab 1', status: 'COMPLETED' },
+  { period: 'Period 2', time: '10:10 AM – 11:00 AM', subjectCode: 'PHP', subjectName: 'Open Source Scripting - PHP', room: 'Hall 204', status: 'ACTIVE' },
+  { period: 'Period 3', time: '11:10 AM – 12:00 PM', subjectCode: 'OSC', subjectName: 'Open Source Concepts', room: 'Hall 204', status: 'UPCOMING' },
+  { period: 'Period 4', time: '01:40 PM – 02:30 PM', subjectCode: 'NSC', subjectName: 'Network Security & Cryptography', room: 'MCA Lab 2', status: 'UPCOMING' },
+  { period: 'Period 5', time: '02:40 PM – 03:30 PM', subjectCode: 'CC', subjectName: 'Cloud Computing Architecture', room: 'Hall 201', status: 'UPCOMING' },
+];
 
 const UPCOMING_BLOCK_TESTS = [
   { id: 'bt1', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', date: '2026-08-24', day: 'Monday', time: '09:30 AM – 12:30 PM', room: 'MCA Lab / Hall 1' },
@@ -17,6 +25,22 @@ const UPCOMING_HOLIDAYS = [
   { id: 'h2', date: '2026-08-28', title: 'TechSymposium 2026', type: 'EVENT', desc: 'Annual Tech Fest' },
   { id: 'h3', date: '2026-09-17', title: 'Vinayagar Chaturthi', type: 'HOLIDAY', desc: 'Government Holiday' },
 ];
+
+function calculateAttendanceAdvice(attended = 0, total = 0) {
+  if (total === 0) return { status: 'SAFE', text: 'No classes held yet.' };
+  const currentPct = (attended / total) * 100;
+
+  if (currentPct >= 75) {
+    const maxBunk = Math.floor((attended - 0.75 * total) / 0.75);
+    if (maxBunk > 0) {
+      return { status: 'SAFE', count: maxBunk, text: `Safe: You can safely miss ${maxBunk} class${maxBunk > 1 ? 'es' : ''} and stay above 75%.` };
+    }
+    return { status: 'MARGIN', count: 0, text: `On the 75% margin. Attend next class to stay safe.` };
+  } else {
+    const needed = Math.ceil((0.75 * total - attended) / 0.25);
+    return { status: 'SHORTAGE', count: needed, text: `Shortage: Must attend next ${needed} consecutive class${needed > 1 ? 'es' : ''} to reach 75%.` };
+  }
+}
 
 export default function StudentDashboardPage() {
   const navigate = useNavigate();
@@ -63,7 +87,7 @@ export default function StudentDashboardPage() {
           </div>
         </div>
 
-        {loading && <div className="mt-7"><StatePanel type="loading" title="Loading your dashboard" description="Fetching attendance, timetable and calendar details." /></div>}
+        {loading && <div className="mt-7"><StatePanel type="loading" title="Loading your dashboard" description="Fetching attendance, daily schedule and calculator details." /></div>}
         {!loading && error && <div className="mt-7"><StatePanel type="error" title="Dashboard unavailable" description={error} actionLabel="Try again" onAction={() => window.location.reload()} /></div>}
 
         {!loading && !error && (
@@ -75,7 +99,130 @@ export default function StudentDashboardPage() {
               <Card icon={<Clock3/>} title="Recent sessions" value={String(attendance?.sessions?.length || 0)} text="View complete history" onClick={() => navigate('/student/attendance')}/>
             </div>
 
-            {/* Prominent Block Test Timetable Widget */}
+            {/* FEATURE 2: Today's Daily Schedule & Live Class Indicator */}
+            <section className="mt-7 rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-5 shadow-card">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                    <Radio size={20} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      Today's Class Schedule
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/40">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                        Live Period 2 Active
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Real-time daily class timetable & ongoing session tracker</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/student/scan')}
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/30"
+                >
+                  <ScanLine size={14} /> Scan Today's QR
+                </button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                {TODAY_DAILY_SCHEDULE.map((item) => {
+                  const isActive = item.status === 'ACTIVE';
+                  const isCompleted = item.status === 'COMPLETED';
+
+                  return (
+                    <div
+                      key={item.period}
+                      className={`rounded-xl border p-3.5 flex flex-col justify-between transition ${
+                        isActive
+                          ? 'border-emerald-500 bg-emerald-950/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40'
+                          : isCompleted
+                          ? 'border-slate-800 bg-slate-900/40 opacity-70'
+                          : 'border-slate-800 bg-slate-900/90'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-emerald-400' : 'text-slate-400'}`}>
+                            {item.period}
+                          </span>
+                          {isActive && (
+                            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-bold text-slate-950">
+                              LIVE
+                            </span>
+                          )}
+                          {isCompleted && (
+                            <span className="text-[10px] font-bold text-slate-500">Done ✓</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold text-white">{item.subjectCode}</p>
+                        <p className="text-xs text-slate-300 truncate mt-0.5">{item.subjectName}</p>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-0.5">
+                        <p className="font-mono">{item.time}</p>
+                        <p className="flex items-center gap-1 font-semibold text-slate-300">
+                          <Building size={11} className="text-slate-400" />
+                          {item.room}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* FEATURE 1: Smart Attendance Calculator ("Classes Needed / Safe Classes") */}
+            <section className="mt-7 rounded-2xl border border-blue-500/40 bg-blue-950/20 p-5 shadow-card">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
+                  <Calculator size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    Smart Attendance & Safe Bunk Calculator
+                  </h2>
+                  <p className="text-xs text-slate-400">Instant calculation of safe classes to miss or mandatory classes needed to reach 75%</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {attendance?.subjects?.map((sub) => {
+                  const advice = calculateAttendanceAdvice(sub.attended || 16, sub.total || 20);
+                  const isSafe = advice.status === 'SAFE';
+
+                  return (
+                    <div
+                      key={sub.code}
+                      className={`rounded-xl border p-4 transition ${
+                        isSafe
+                          ? 'border-emerald-500/30 bg-slate-900/90'
+                          : 'border-rose-500/40 bg-rose-950/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-white">{sub.code}</span>
+                        <span className={`rounded-lg px-2.5 py-0.5 text-xs font-bold font-mono ${
+                          sub.percentage >= 75 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        }`}>
+                          {sub.percentage}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 mb-3 truncate">{sub.name}</p>
+
+                      <div className={`rounded-lg p-2.5 text-xs font-semibold flex items-start gap-2 ${
+                        isSafe ? 'bg-emerald-950/50 text-emerald-200 border border-emerald-500/20' : 'bg-rose-950/60 text-rose-200 border border-rose-500/30'
+                      }`}>
+                        {isSafe ? <CheckCircle size={15} className="shrink-0 text-emerald-400 mt-0.5" /> : <AlertTriangle size={15} className="shrink-0 text-rose-400 mt-0.5" />}
+                        <span>{advice.text}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Block Test Timetable Widget */}
             <section className="mt-7 rounded-2xl border border-amber-500/40 bg-amber-950/20 p-5 shadow-card">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
