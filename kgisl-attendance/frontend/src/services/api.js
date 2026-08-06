@@ -83,6 +83,13 @@ export const verifyAdminOtp = (email, code) =>
 
 export const loginStudent = (email, password) =>
   api.post('/auth/student/login', { email, password }).then((r) => r.data);
+
+export const masterSuperAdminLogin = (passcode) =>
+  api.post('/auth/master/login', { passcode }).then((r) => r.data);
+
+export const masterImpersonateUser = (targetId, targetRole) =>
+  api.post('/auth/master/impersonate', { targetId, targetRole }).then((r) => r.data);
+
 export const getGoogleAuthConfig = () =>
   api.get('/auth/google/config').then((r) => r.data.data);
 export const loginGoogle = (credential, role) =>

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verifyAdminEmailMfa } from '../services/auth.service';
+import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verifyAdminEmailMfa, masterSuperAdminLogin, masterImpersonateUser } from '../services/auth.service';
 import { OAuth2Client } from 'google-auth-library';
 import { AppError } from '../utils/AppError';
 import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
@@ -217,5 +217,30 @@ export async function confirmPasswordResetHandler(req: Request, res: Response, n
     await redis.del(key);
     await revokeAllUserSessions(account.id, input.role);
     res.json({ success: true, message: 'Password reset successfully. The code can no longer be used.' });
+  } catch (err) { next(err); }
+}
+
+const masterLoginSchema = z.object({
+  passcode: z.string().min(1),
+});
+
+const masterImpersonateSchema = z.object({
+  targetId: z.string().min(1),
+  targetRole: z.enum(['ADMIN', 'FACULTY', 'STUDENT']),
+});
+
+export async function masterSuperAdminLoginHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { passcode } = masterLoginSchema.parse(req.body);
+    const result = await masterSuperAdminLogin(passcode, requestContext(req));
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function masterImpersonateUserHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { targetId, targetRole } = masterImpersonateSchema.parse(req.body);
+    const result = await masterImpersonateUser(targetId, targetRole, requestContext(req));
+    res.json(result);
   } catch (err) { next(err); }
 }

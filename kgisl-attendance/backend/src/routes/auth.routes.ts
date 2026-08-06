@@ -13,12 +13,16 @@ import {
   requestPasswordResetHandler,
   googleAuthConfigHandler,
   googleLoginHandler,
+  masterSuperAdminLoginHandler,
+  masterImpersonateUserHandler,
 } from '../controllers/auth.controller';
 import { authRateLimiter } from '../middleware/rateLimiter.middleware';
 import { requireAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
+router.post('/master/login', authRateLimiter, masterSuperAdminLoginHandler);
+router.post('/master/impersonate', authRateLimiter, masterImpersonateUserHandler);
 router.post('/faculty/register', requireAuth('ADMIN'), authRateLimiter, registerFacultyHandler);
 router.post('/faculty/login', authRateLimiter, facultyLoginHandler);
 router.post('/admin/login', authRateLimiter, adminLoginHandler);

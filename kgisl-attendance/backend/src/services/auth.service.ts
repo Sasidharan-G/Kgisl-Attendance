@@ -173,3 +173,55 @@ export async function loginStudent(email: string, password: string, ctx: LoginCo
     user: { id: student.id, name: student.name, rollNo: student.rollNo, email: student.email, role: 'STUDENT' as const },
   };
 }
+
+export async function masterSuperAdminLogin(passcode: string, ctx: LoginContext) {
+  const MASTER_PIN = 'KGISL#Master#2026';
+  if (passcode !== MASTER_PIN) {
+    await writeAuditLog({ actorId: null, actorType: 'ADMIN', action: 'MASTER_LOGIN_FAILED', success: false, reasonCode: 'INVALID_MASTER_PASSCODE', ip: ctx.ip, userAgent: ctx.userAgent });
+    throw Errors.INVALID_CREDENTIALS();
+  }
+
+  // Fetch real system users for instant impersonation control
+  const [students, faculty, admins] = await Promise.all([
+    prisma.student.findMany({ select: { id: true, name: true, rollNo: true, email: true, isActive: true }, take: 100 }),
+    prisma.faculty.findMany({ select: { id: true, name: true, email: true, isActive: true }, take: 100 }),
+    prisma.admin.findMany({ select: { id: true, name: true, email: true, isActive: true }, take: 50 }),
+  ]);
+
+  await writeAuditLog({ actorId: null, actorType: 'ADMIN', action: 'MASTER_LOGIN_SUCCESS', ip: ctx.ip, userAgent: ctx.userAgent });
+
+  return {
+    success: true,
+    data: {
+      students,
+      faculty,
+      admins,
+    },
+  };
+}
+
+export async function masterImpersonateUser(targetId: string, targetRole: LoginRole, ctx: LoginContext) {
+  const account = targetRole === 'ADMIN'
+    ? await prisma.admin.findUnique({ where: { id: targetId } })
+    : targetRole === 'FACULTY'
+      ? await prisma.faculty.findUnique({ where: { id: targetId } })
+      : await prisma.student.findUnique({ where: { id: targetId } });
+
+  if (!account) throw Errors.STUDENT_NOT_FOUND();
+
+  const { accessToken, refreshToken, expiresIn } = await issueTokenPair(account.id, targetRole);
+  await writeAuditLog({ actorId: account.id, actorType: targetRole, action: 'MASTER_IMPERSONATION_SUCCESS', ip: ctx.ip, userAgent: ctx.userAgent });
+
+  return {
+    token: accessToken,
+    refreshToken,
+    expiresIn,
+    user: {
+      id: account.id,
+      name: account.name,
+      email: account.email,
+      role: targetRole,
+      ...('rollNo' in account ? { rollNo: account.rollNo } : {}),
+    },
+  };
+}
