@@ -30,7 +30,7 @@ export default function PortalSelect() {
 
   useEffect(() => {
     if (sessionNotice) { sessionStorage.removeItem('kgisl_session_notice'); setShowEntrance(false); }
-    const timer = setTimeout(() => setShowEntrance(false), 6800);
+    const timer = setTimeout(() => setShowEntrance(false), 3600);
     return () => clearTimeout(timer);
   }, []);
 
