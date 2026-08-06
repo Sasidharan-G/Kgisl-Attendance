@@ -10,12 +10,10 @@ const PortalSelect = lazy(() => import('./pages/PortalSelect.jsx'));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx'));
 const StudentScanPage = lazy(() => import('./pages/StudentScanPage.jsx'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage.jsx'));
-const CoursesPage = lazy(() => import('./pages/CoursesPage.jsx'));
 const TimetablePage = lazy(() => import('./pages/TimetablePage.jsx'));
 const AddFacultyPage = lazy(() => import('./pages/AddFacultyPage.jsx'));
 const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard.jsx'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'));
-const LogsPage = lazy(() => import('./pages/LogsPage.jsx'));
 const StudentAttendancePage = lazy(() => import('./pages/StudentAttendancePage.jsx'));
 const LeaveRequestsPage = lazy(() => import('./pages/LeaveRequestsPage.jsx'));
 const AcademicSetupPage = lazy(() => import('./pages/AcademicSetupPage.jsx'));
@@ -74,14 +72,6 @@ export default function App() {
             element={
               <ProtectedRoute role="FACULTY">
                 <StudentsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/faculty/courses"
-            element={
-              <ProtectedRoute role="FACULTY">
-                <CoursesPage />
               </ProtectedRoute>
             }
           />

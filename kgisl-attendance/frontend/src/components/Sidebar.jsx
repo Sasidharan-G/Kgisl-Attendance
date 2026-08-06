@@ -7,7 +7,6 @@ import {
   BarChart3,
   Bell,
   Settings,
-  FileClock,
   ChevronDown,
   UserPlus,
   Menu,
