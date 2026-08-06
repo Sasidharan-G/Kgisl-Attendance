@@ -7,8 +7,8 @@ html, body, #root {
 }
 
 body {
-  @apply text-slate-200 font-body antialiased;
-  background: #f8fafc;
+  @apply text-slate-100 font-body antialiased;
+  background: #0B0F17;
 }
 
 html { scroll-behavior: smooth; }

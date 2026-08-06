@@ -5,20 +5,20 @@ export default {
     extend: {
       colors: {
         ink: {
-          950: '#02070B', // Obsidian background
-          900: '#06131D', // Deep glass surface
-          850: '#0A1C27', // Elevated glass card
-          800: '#102A37', // Hovered glass card
-          700: '#1F4655', // Strong divider
-          600: '#2E6576', // Secondary control
-          border: '#285160', // Luminous glass edge
+          950: '#0B0F17', // Deep Slate Midnight
+          900: '#111827', // Crisp Card Surface
+          850: '#1F2937', // Elevated Card Surface
+          800: '#374151', // Hovered Card Surface
+          700: '#4B5563', // Divider
+          600: '#6B7280', // Secondary Control
+          border: '#1E293B', // Crisp Border
         },
         signal: {
-          red: '#FF5D55',
-          redDim: '#7a1a26',
-          green: '#4ADE80',
-          amber: '#F8C65C',
-          blue: '#49D8FF',
+          red: '#EF4444',
+          redDim: '#7F1D1D',
+          green: '#10B981',
+          amber: '#F59E0B',
+          blue: '#2563EB',
         },
         theme: {
           bg: '#272465',
