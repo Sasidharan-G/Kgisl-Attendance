@@ -102,14 +102,6 @@ export default function App() {
             }
           />
           <Route
-            path="/faculty/logs"
-            element={
-              <ProtectedRoute role="FACULTY">
-                <LogsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/faculty/add-faculty"
             element={
               <ProtectedRoute role="FACULTY">

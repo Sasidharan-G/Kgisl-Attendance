@@ -30,7 +30,6 @@ const TITLE_MAP = {
   '/faculty/reports': 'Reports & Analytics',
   '/faculty/notifications': 'Notifications Hub',
   '/faculty/settings': 'System Settings',
-  '/faculty/logs': 'System Logs',
   '/faculty/add-faculty': 'Add Faculty Management',
   '/admin/analytics': 'Attendance Reports',
   '/admin/academic': 'Academic Setup',

@@ -25,7 +25,6 @@ const FACULTY_NAV = [
   { icon: CalendarDays, label: 'Academic Calendar', path: '/faculty/calendar' },
   { icon: CalendarDays, label: 'Timetable', path: '/faculty/timetable' },
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
-  { icon: FileClock, label: 'Logs', path: '/faculty/logs' },
   { icon: Bell, label: 'Leave / On Duty', path: '/faculty/leave' },
   { icon: ClipboardCheck, label: 'Corrections', path: '/faculty/corrections' },
 ];
