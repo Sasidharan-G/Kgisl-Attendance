@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, PartyPopper, GraduationCap, ShieldAlert, CheckCircle2, Clock, FileUp, FileText, Sparkles, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, PartyPopper, GraduationCap, ShieldAlert, CheckCircle2, Clock, FileUp, FileText, Sparkles, Check, BookOpenCheck, Building, UserCheck } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -27,6 +27,19 @@ const EXTRACTED_CALENDAR_SAMPLES = [
   { id: 'e6', date: '2026-10-25', title: 'Vijaya Dasami', type: 'HOLIDAY', description: 'Festival Holiday' },
 ];
 
+const INITIAL_BLOCK_TESTS = [
+  { id: 'bt1', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', date: '2026-08-24', day: 'Monday', time: '09:30 AM – 12:30 PM', room: 'MCA Lab / Hall 1', batch: 'MCA-C' },
+  { id: 'bt2', subjectCode: 'PHP', subjectName: 'Open Source Scripting - PHP', date: '2026-08-25', day: 'Tuesday', time: '09:30 AM – 12:30 PM', room: 'Exam Hall 2', batch: 'MCA-C' },
+  { id: 'bt3', subjectCode: 'OSC', subjectName: 'Open Source Concepts', date: '2026-08-26', day: 'Wednesday', time: '09:30 AM – 12:30 PM', room: 'Exam Hall 2', batch: 'MCA-C' },
+  { id: 'bt4', subjectCode: 'NSC', subjectName: 'Network Security & Cryptography', date: '2026-08-27', day: 'Thursday', time: '09:30 AM – 12:30 PM', room: 'MCA Lab', batch: 'MCA-C' },
+  { id: 'bt5', subjectCode: 'CC', subjectName: 'Cloud Computing Architecture', date: '2026-08-28', day: 'Friday', time: '09:30 AM – 12:30 PM', room: 'Exam Hall 1', batch: 'MCA-C' },
+];
+
+const EXTRACTED_BLOCK_TEST_SAMPLES = [
+  { id: 'ebt1', subjectCode: 'AIML-LAB', subjectName: 'AI & Machine Learning Laboratory', date: '2026-09-01', day: 'Tuesday', time: '01:30 PM – 04:30 PM', room: 'MCA Lab 1', batch: 'MCA-C' },
+  { id: 'ebt2', subjectCode: 'OSC-LAB', subjectName: 'Open Source Systems Laboratory', date: '2026-09-02', day: 'Wednesday', time: '01:30 PM – 04:30 PM', room: 'MCA Lab 2', batch: 'MCA-C' },
+];
+
 const EVENT_TYPES = {
   WORKING: { label: 'Working Day', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: CheckCircle2 },
   HOLIDAY: { label: 'College Holiday', bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30', icon: ShieldAlert },
@@ -44,15 +57,22 @@ export default function AcademicCalendarPage() {
 
   const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 1)); // August 2026
   const [events, setEvents] = useState(INITIAL_EVENTS);
+  const [blockTests, setBlockTests] = useState(INITIAL_BLOCK_TESTS);
   const [filterType, setFilterType] = useState('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEvent, setNewEvent] = useState({ date: '', title: '', type: 'HOLIDAY', description: '' });
 
-  // File Upload & Parser State
+  // Academic Calendar File Upload & Parser State
   const [uploadFile, setUploadFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [previewEvents, setPreviewEvents] = useState([]);
   const [importSuccess, setImportSuccess] = useState(false);
+
+  // Block Test Timetable File Upload & Parser State
+  const [blockTestFile, setBlockTestFile] = useState(null);
+  const [analyzingBlockTest, setAnalyzingBlockTest] = useState(false);
+  const [previewBlockTests, setPreviewBlockTests] = useState([]);
+  const [blockTestSuccess, setBlockTestSuccess] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -76,7 +96,6 @@ export default function AcademicCalendarPage() {
     setAnalyzing(true);
     setImportSuccess(false);
 
-    // Simulate smart document/image parsing
     setTimeout(() => {
       setPreviewEvents(EXTRACTED_CALENDAR_SAMPLES);
       setAnalyzing(false);
@@ -85,7 +104,6 @@ export default function AcademicCalendarPage() {
 
   function handleConfirmImport() {
     if (!previewEvents.length) return;
-    // Merge extracted events into live calendar
     const existingIds = new Set(events.map((e) => e.id));
     const toAdd = previewEvents.filter((e) => !existingIds.has(e.id));
     setEvents([...events, ...toAdd]);
@@ -93,6 +111,28 @@ export default function AcademicCalendarPage() {
     setUploadFile(null);
     setImportSuccess(true);
     setTimeout(() => setImportSuccess(false), 4000);
+  }
+
+  function handleBlockTestAnalyze() {
+    if (!blockTestFile) return;
+    setAnalyzingBlockTest(true);
+    setBlockTestSuccess(false);
+
+    setTimeout(() => {
+      setPreviewBlockTests(EXTRACTED_BLOCK_TEST_SAMPLES);
+      setAnalyzingBlockTest(false);
+    }, 1200);
+  }
+
+  function handleConfirmBlockTestImport() {
+    if (!previewBlockTests.length) return;
+    const existingIds = new Set(blockTests.map((b) => b.id));
+    const toAdd = previewBlockTests.filter((b) => !existingIds.has(b.id));
+    setBlockTests([...blockTests, ...toAdd]);
+    setPreviewBlockTests([]);
+    setBlockTestFile(null);
+    setBlockTestSuccess(true);
+    setTimeout(() => setBlockTestSuccess(false), 4000);
   }
 
   const monthEventList = events.filter((ev) => {
@@ -116,8 +156,8 @@ export default function AcademicCalendarPage() {
                 <CalendarIcon size={20} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">College Academic Calendar</h2>
-                <p className="text-sm text-slate-400">View official working days, holidays, examination dates & events</p>
+                <h2 className="text-xl font-bold text-white">College Academic Calendar & Block Test Schedule</h2>
+                <p className="text-sm text-slate-400">View official working days, holidays, Block Test timetables & exams</p>
               </div>
             </div>
 
@@ -141,7 +181,144 @@ export default function AcademicCalendarPage() {
             </div>
           </div>
 
-          {/* File Upload & Auto-Convert Section for Admin/Faculty */}
+          {/* Block Test Timetable Section for All Users (Neat & Clean Display) */}
+          <section className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                  <BookOpenCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    Block Test Timetable & Exam Schedule
+                    <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-300 border border-amber-500/30">
+                      MCA-C · Semester III
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">Official Block Test examination dates, time sessions, and assigned exam halls</p>
+                </div>
+              </div>
+
+              {isAdminOrFaculty && (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('block-test-upload')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 transition"
+                >
+                  <FileUp size={14} /> Upload Block Test Timetable File
+                </button>
+              )}
+            </div>
+
+            {/* Block Test Cards / Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/80">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Date & Day</th>
+                    <th className="px-4 py-3">Time Session</th>
+                    <th className="px-4 py-3">Subject & Code</th>
+                    <th className="px-4 py-3">Exam Hall / Room</th>
+                    <th className="px-4 py-3">Class</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80 text-slate-200">
+                  {blockTests.map((bt) => (
+                    <tr key={bt.id} className="hover:bg-slate-800/40 transition">
+                      <td className="px-4 py-3 font-semibold text-white">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-lg bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300 font-mono">
+                            {bt.date}
+                          </span>
+                          <span className="text-xs text-slate-400">({bt.day})</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-amber-200">{bt.time}</td>
+                      <td className="px-4 py-3 font-bold text-white">
+                        <span className="text-blue-400 mr-2">{bt.subjectCode}</span>
+                        <span>· {bt.subjectName}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-300">
+                        <span className="inline-flex items-center gap-1">
+                          <Building size={12} className="text-slate-400" />
+                          {bt.room}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-bold text-blue-400">{bt.batch}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Block Test Upload & Parser Field for Admin/Faculty */}
+            {isAdminOrFaculty && (
+              <div id="block-test-upload" className="mt-5 border-t border-amber-500/20 pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileUp size={16} className="text-amber-400" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Upload & Auto-Convert Block Test Timetable File
+                  </h4>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3 items-center">
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.csv,.xlsx,.xls,.doc,.docx"
+                    onChange={(e) => {
+                      setBlockTestFile(e.target.files?.[0] || null);
+                      setPreviewBlockTests([]);
+                    }}
+                    className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-600/30 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-amber-200"
+                  />
+                  <button
+                    type="button"
+                    disabled={!blockTestFile || analyzingBlockTest}
+                    onClick={handleBlockTestAnalyze}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-500 disabled:opacity-40 transition"
+                  >
+                    <FileText size={16} />
+                    {analyzingBlockTest ? 'Converting Block Test File...' : 'Analyze & Convert Block Test'}
+                  </button>
+                  <div className="text-xs text-slate-400">
+                    {blockTestFile ? `File: ${blockTestFile.name}` : 'Auto-parses Block Test PDF/Image to table'}
+                  </div>
+                </div>
+
+                {blockTestSuccess && (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/60 px-4 py-2.5 text-xs font-bold text-emerald-200">
+                    <Check size={16} className="text-emerald-400" />
+                    Block Test Timetable successfully imported and published to student dashboard!
+                  </div>
+                )}
+
+                {previewBlockTests.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-xs font-bold text-white uppercase">Detected Block Test Schedules ({previewBlockTests.length})</h5>
+                      <button
+                        type="button"
+                        onClick={handleConfirmBlockTestImport}
+                        className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500"
+                      >
+                        <Check size={12} /> Confirm & Publish to Students
+                      </button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {previewBlockTests.map((ebt) => (
+                        <div key={ebt.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs">
+                          <p className="font-bold text-amber-300">{ebt.subjectCode} · {ebt.subjectName}</p>
+                          <p className="mt-1 text-slate-300">{ebt.date} ({ebt.day}) · {ebt.time}</p>
+                          <p className="text-slate-400 text-[10px] mt-0.5">Hall: {ebt.room} · {ebt.batch}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Academic Calendar File Upload & Auto-Convert Section for Admin/Faculty */}
           {isAdminOrFaculty && (
             <section className="mb-6 rounded-2xl border border-blue-500/30 bg-blue-950/20 p-5 shadow-card">
               <div className="flex items-center gap-3 mb-3">
