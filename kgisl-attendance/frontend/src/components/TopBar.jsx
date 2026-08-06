@@ -23,6 +23,8 @@ const TITLE_MAP = {
   '/faculty/dashboard': 'Attendance',
   '/faculty/analytics': 'Dashboard',
   '/faculty/students': 'Students Database',
+  '/faculty/calendar': 'Academic Calendar',
+  '/admin/calendar': 'Academic Calendar',
   '/faculty/courses': 'Courses Catalog',
   '/faculty/timetable': 'Timetable',
   '/faculty/reports': 'Reports & Analytics',

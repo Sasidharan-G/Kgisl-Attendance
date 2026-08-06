@@ -22,6 +22,7 @@ const AcademicSetupPage = lazy(() => import('./pages/AcademicSetupPage.jsx'));
 const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage.jsx'));
 const CorrectionRequestsPage = lazy(() => import('./pages/CorrectionRequestsPage.jsx'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
+const AcademicCalendarPage = lazy(() => import('./pages/AcademicCalendarPage.jsx'));
 
 function ProtectedRoute({ role, children }) {
   const { user } = useAuth();
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/admin/timetable" element={<ProtectedRoute role="ADMIN"><TimetablePage /></ProtectedRoute>} />
           <Route path="/admin/academic" element={<ProtectedRoute role="ADMIN"><AcademicSetupPage /></ProtectedRoute>} />
+          <Route path="/admin/calendar" element={<ProtectedRoute role="ADMIN"><AcademicCalendarPage /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute role="ADMIN"><StudentsPage /></ProtectedRoute>} />
           <Route path="/admin/faculty" element={<ProtectedRoute role="ADMIN"><AddFacultyPage /></ProtectedRoute>} />
           <Route path="/admin/analytics" element={<ProtectedRoute role="ADMIN"><AnalyticsDashboard /></ProtectedRoute>} />
@@ -116,8 +118,20 @@ export default function App() {
             }
           />
           <Route
+            path="/faculty/calendar"
+            element={
+              <ProtectedRoute role="FACULTY">
+                <AcademicCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/student/dashboard"
             element={<ProtectedRoute role="STUDENT"><StudentDashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/student/calendar"
+            element={<ProtectedRoute role="STUDENT"><AcademicCalendarPage /></ProtectedRoute>}
           />
           <Route
             path="/student/scan"

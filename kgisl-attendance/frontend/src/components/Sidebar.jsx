@@ -22,7 +22,7 @@ const FACULTY_NAV = [
   { icon: ScanLine, label: 'Attendance', path: '/faculty/dashboard' },
   { icon: LayoutGrid, label: 'Dashboard', path: '/faculty/analytics' },
   { icon: Users, label: 'My Students', path: '/faculty/students' },
-  { icon: BookOpen, label: 'Courses', path: '/faculty/courses' },
+  { icon: CalendarDays, label: 'Academic Calendar', path: '/faculty/calendar' },
   { icon: CalendarDays, label: 'Timetable', path: '/faculty/timetable' },
   { icon: Settings, label: 'Settings', path: '/faculty/settings' },
   { icon: FileClock, label: 'Logs', path: '/faculty/logs' },
@@ -31,6 +31,7 @@ const FACULTY_NAV = [
 ];
 const ADMIN_NAV = [
   { icon: BookOpen, label: 'Academic Setup', path: '/admin/academic' },
+  { icon: CalendarDays, label: 'Academic Calendar', path: '/admin/calendar' },
   { icon: CalendarDays, label: 'Upload Timetable', path: '/admin/timetable' },
   { icon: Users, label: 'Student Database', path: '/admin/students' },
   { icon: UserPlus, label: 'Faculty', path: '/admin/faculty' },

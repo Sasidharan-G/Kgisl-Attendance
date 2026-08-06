@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { CalendarCheck, Clock3, ScanLine, ShieldAlert } from 'lucide-react';
+import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMyAttendance, listAttendanceCorrections, listLeaveRequests } from '../services/api.js';
 import StatePanel from '../components/StatePanel.jsx';
@@ -30,7 +29,7 @@ export default function StudentDashboardPage() {
     : 100;
 
   return <div className="min-h-screen bg-ink-950 px-5 py-8 text-slate-200"><main className="mx-auto max-w-5xl">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-slate-400">Welcome back</p><h1 className="text-2xl font-bold text-white">{attendance?.student?.name || 'Student Dashboard'}</h1><p className="mt-1 text-sm text-slate-500">{attendance ? `${attendance.student.rollNo} · ${attendance.student.batchName}` : 'Your academic snapshot'}</p></div><button onClick={() => navigate('/student/scan')} className="flex items-center gap-2 rounded-xl bg-signal-red px-4 py-2.5 text-sm font-bold text-white"><ScanLine size={17}/>Mark attendance</button></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-slate-400">Welcome back</p><h1 className="text-2xl font-bold text-white">{attendance?.student?.name || 'Student Dashboard'}</h1><p className="mt-1 text-sm text-slate-500">{attendance ? `${attendance.student.rollNo} · ${attendance.student.batchName}` : 'Your academic snapshot'}</p></div><div className="flex flex-wrap items-center gap-2.5"><button onClick={() => navigate('/student/calendar')} className="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-950/60 px-4 py-2.5 text-sm font-bold text-blue-200 hover:bg-blue-900/80 transition shadow-sm"><Calendar size={17}/>Academic Calendar</button><button onClick={() => navigate('/student/scan')} className="flex items-center gap-2 rounded-xl bg-signal-red px-4 py-2.5 text-sm font-bold text-white shadow-sm"><ScanLine size={17}/>Mark attendance</button></div></div>
     {loading && <div className="mt-7"><StatePanel type="loading" title="Loading your dashboard" description="Fetching attendance, leave and correction updates." /></div>}
     {!loading && error && <div className="mt-7"><StatePanel type="error" title="Dashboard unavailable" description={error} actionLabel="Try again" onAction={() => window.location.reload()} /></div>}
     {!loading && !error && <>
