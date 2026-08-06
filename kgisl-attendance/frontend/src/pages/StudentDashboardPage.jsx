@@ -68,7 +68,7 @@ export default function StudentDashboardPage() {
     : 100;
 
   return (
-    <div className="min-h-screen bg-ink-950 px-5 py-8 text-slate-200">
+    <div className="student-workspace min-h-screen px-4 sm:px-8 py-8">
       <main className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">

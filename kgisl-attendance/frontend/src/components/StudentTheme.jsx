@@ -5,9 +5,13 @@ export default function StudentTheme() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('kgisl_workspace_theme') !== 'light');
 
   useEffect(() => {
-    document.body.classList.toggle('workspace-dark', darkMode);
-    document.body.classList.toggle('student-portal-light', !darkMode);
-    document.body.classList.add('student-portal');
+    if (darkMode) {
+      document.body.classList.add('workspace-dark', 'student-portal');
+      document.body.classList.remove('student-portal-light');
+    } else {
+      document.body.classList.add('student-portal-light');
+      document.body.classList.remove('workspace-dark', 'student-portal');
+    }
     localStorage.setItem('kgisl_workspace_theme', darkMode ? 'dark' : 'light');
 
     return () => {
