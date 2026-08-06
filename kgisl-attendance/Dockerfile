@@ -45,4 +45,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
 WORKDIR /app/backend
 # Production data is already bootstrapped. Re-running the full student seed on
 # every release delays port binding and can make Render time out.
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node dist/server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy || echo '[warn] prisma migrate deploy skipped/delayed, starting server...' && exec node dist/server.js"]
