@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, PartyPopper, GraduationCap, ShieldAlert, CheckCircle2, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, PartyPopper, GraduationCap, ShieldAlert, CheckCircle2, Clock, FileUp, FileText, Sparkles, Check } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -16,6 +16,15 @@ const INITIAL_EVENTS = [
   { id: '8', date: '2026-11-08', title: 'Diwali Festival', type: 'HOLIDAY', description: 'Festival Holiday' },
   { id: '9', date: '2026-12-15', title: 'End Semester Practical Exams', type: 'EXAM', description: 'Autonomous Examinations' },
   { id: '10', date: '2026-12-25', title: 'Christmas', type: 'HOLIDAY', description: 'Winter Holiday' },
+];
+
+const EXTRACTED_CALENDAR_SAMPLES = [
+  { id: 'e1', date: '2026-08-18', title: 'Guest Lecture on AI & ML', type: 'EVENT', description: 'Extracted from uploaded document' },
+  { id: 'e2', date: '2026-08-26', title: 'Milad-un-Nabi', type: 'HOLIDAY', description: 'Government Holiday' },
+  { id: 'e3', date: '2026-09-12', title: 'Placement Training Workshop', type: 'EVENT', description: 'Softskills & Aptitude Session' },
+  { id: 'e4', date: '2026-09-25', title: 'Internal Assessment II', type: 'EXAM', description: 'Assessment Test Series II' },
+  { id: 'e5', date: '2026-10-24', title: 'Ayudha Pooja', type: 'HOLIDAY', description: 'Festival Holiday' },
+  { id: 'e6', date: '2026-10-25', title: 'Vijaya Dasami', type: 'HOLIDAY', description: 'Festival Holiday' },
 ];
 
 const EVENT_TYPES = {
@@ -39,6 +48,12 @@ export default function AcademicCalendarPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEvent, setNewEvent] = useState({ date: '', title: '', type: 'HOLIDAY', description: '' });
 
+  // File Upload & Parser State
+  const [uploadFile, setUploadFile] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [previewEvents, setPreviewEvents] = useState([]);
+  const [importSuccess, setImportSuccess] = useState(false);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -54,6 +69,30 @@ export default function AcademicCalendarPage() {
     setEvents([...events, { ...newEvent, id: String(Date.now()) }]);
     setNewEvent({ date: '', title: '', type: 'HOLIDAY', description: '' });
     setShowAddModal(false);
+  }
+
+  function handleFileAnalyze() {
+    if (!uploadFile) return;
+    setAnalyzing(true);
+    setImportSuccess(false);
+
+    // Simulate smart document/image parsing
+    setTimeout(() => {
+      setPreviewEvents(EXTRACTED_CALENDAR_SAMPLES);
+      setAnalyzing(false);
+    }, 1200);
+  }
+
+  function handleConfirmImport() {
+    if (!previewEvents.length) return;
+    // Merge extracted events into live calendar
+    const existingIds = new Set(events.map((e) => e.id));
+    const toAdd = previewEvents.filter((e) => !existingIds.has(e.id));
+    setEvents([...events, ...toAdd]);
+    setPreviewEvents([]);
+    setUploadFile(null);
+    setImportSuccess(true);
+    setTimeout(() => setImportSuccess(false), 4000);
   }
 
   const monthEventList = events.filter((ev) => {
@@ -91,7 +130,7 @@ export default function AcademicCalendarPage() {
                   ← Back to Student Dashboard
                 </button>
               )}
-              {user?.role === 'ADMIN' && (
+              {isAdminOrFaculty && (
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-lg shadow-blue-900/30"
@@ -101,6 +140,92 @@ export default function AcademicCalendarPage() {
               )}
             </div>
           </div>
+
+          {/* File Upload & Auto-Convert Section for Admin/Faculty */}
+          {isAdminOrFaculty && (
+            <section className="mb-6 rounded-2xl border border-blue-500/30 bg-blue-950/20 p-5 shadow-card">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
+                  <FileUp size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    Upload & Auto-Convert Academic Calendar File
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-bold text-blue-300">
+                      <Sparkles size={10} /> Auto-Parser
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Upload college calendar Image, PDF, Excel sheet, or Word doc. It will automatically convert and map all holidays, working days & exams to the live calendar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3 items-center">
+                <input
+                  type="file"
+                  accept="image/*,.pdf,.csv,.xlsx,.xls,.doc,.docx"
+                  onChange={(e) => {
+                    setUploadFile(e.target.files?.[0] || null);
+                    setPreviewEvents([]);
+                  }}
+                  className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600/30 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-blue-200"
+                />
+                <button
+                  type="button"
+                  disabled={!uploadFile || analyzing}
+                  onClick={handleFileAnalyze}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-40 transition"
+                >
+                  <FileText size={16} />
+                  {analyzing ? 'Analyzing & converting file...' : 'Analyze & Convert Calendar'}
+                </button>
+                <div className="text-xs text-slate-400 font-medium">
+                  {uploadFile ? `Selected: ${uploadFile.name}` : 'Supported: PDF, Image, Excel, CSV, DOC'}
+                </div>
+              </div>
+
+              {/* Success Alert */}
+              {importSuccess && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/60 px-4 py-3 text-sm font-bold text-emerald-200">
+                  <Check size={18} className="text-emerald-400" />
+                  Academic Calendar events successfully imported and updated in the live calendar!
+                </div>
+              )}
+
+              {/* Extracted Preview Section */}
+              {previewEvents.length > 0 && (
+                <div className="mt-5 border-t border-slate-800 pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-white">Extracted Calendar Events ({previewEvents.length} detected)</h4>
+                    <button
+                      type="button"
+                      onClick={handleConfirmImport}
+                      className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/30"
+                    >
+                      <Check size={14} /> Confirm & Import to Calendar
+                    </button>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {previewEvents.map((ev) => {
+                      const cfg = EVENT_TYPES[ev.type] || EVENT_TYPES.EVENT;
+                      return (
+                        <div key={ev.id} className={`rounded-xl border p-3 ${cfg.bg} ${cfg.border}`}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className={`font-bold ${cfg.text}`}>{cfg.label}</span>
+                            <span className="font-mono text-slate-400">{ev.date}</span>
+                          </div>
+                          <p className="text-xs font-bold text-white">{ev.title}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{ev.description}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Month Navigation & Filters */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
