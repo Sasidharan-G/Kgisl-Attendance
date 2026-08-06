@@ -5,20 +5,20 @@ export default {
     extend: {
       colors: {
         ink: {
-          950: '#0B0F17', // Deep Slate Midnight
-          900: '#111827', // Crisp Card Surface
-          850: '#1F2937', // Elevated Card Surface
-          800: '#374151', // Hovered Card Surface
-          700: '#4B5563', // Divider
-          600: '#6B7280', // Secondary Control
-          border: '#1E293B', // Crisp Border
+          950: '#0F172A', // Slate 900 - Calm Executive Background
+          900: '#1E293B', // Slate 800 - Crisp Card Surface
+          850: '#334155', // Slate 700 - Elevated Card Surface
+          800: '#475569', // Hovered Card Surface
+          700: '#64748B', // Muted Divider
+          600: '#94A3B8', // Secondary Text Control
+          border: '#334155', // Clean Slate Border
         },
         signal: {
           red: '#EF4444',
-          redDim: '#7F1D1D',
+          redDim: '#991B1B',
           green: '#10B981',
           amber: '#F59E0B',
-          blue: '#2563EB',
+          blue: '#3B82F6',
         },
         theme: {
           bg: '#272465',
