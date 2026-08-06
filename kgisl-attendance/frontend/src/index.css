@@ -1025,12 +1025,104 @@ body.student-portal .student-attendance-card h1,
 body.student-portal :where(main,.student-workspace) :where(h1,h2,h3,h4,p,span,label,small,strong,b,button){color:#edf1f6!important}
 body.student-portal :where(main,.student-workspace) [class*='bg-ink-900']{border-color:#344052!important;background:#1a2230!important}
 
-body.student-portal-light { color-scheme: light; background: #F1F5F9 !important; color: #0F172A !important; }
-body.student-portal-light .student-theme-toggle { color: #0F172A; border: 1px solid #CBD5E1; background: #FFFFFF; box-shadow: 0 10px 25px -5px rgba(15,23,42,0.15); }
-body.student-portal-light .student-workspace,
-body.student-portal-light #main-content>div[class*='bg-ink-950'] { color: #1E293B; background: #F1F5F9 !important; }
-body.student-portal-light .student-attendance-card,
-body.student-portal-light main [class*='bg-ink-850'] { color: #1E293B; border-color: #E2E8F0 !important; background: #FFFFFF !important; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.06) !important; }
-body.student-portal-light :where(main,.student-workspace) :where(h1,h2,h3,h4) { color: #0F172A !important; }
-body.student-portal-light :where(main,.student-workspace) :where(p,span,label) { color: #334155; }
-body.student-portal-light :where(main,.student-workspace) [class*='bg-ink-900'] { border-color: #E2E8F0 !important; background: #F8FAFC !important; }
+/* ----------------------------------------------------
+   Light Mode Theme System (Bulletproof High Contrast)
+   ---------------------------------------------------- */
+body.student-portal-light {
+  color-scheme: light !important;
+  background: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+body.student-portal-light .student-theme-toggle {
+  color: #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15) !important;
+}
+
+body.student-portal-light #main-content,
+body.student-portal-light main,
+body.student-portal-light .student-workspace {
+  background: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+/* Outer Section Cards */
+body.student-portal-light :where(main, .student-workspace) section,
+body.student-portal-light :where(main, .student-workspace) [class*='bg-ink-850'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-blue-950'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-amber-950'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-emerald-950'] {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Inner Sub-Cards & Tiles */
+body.student-portal-light :where(main, .student-workspace) [class*='bg-slate-900'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-slate-950'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-ink-900'] {
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Red & Shortage Alert Cards */
+body.student-portal-light :where(main, .student-workspace) [class*='bg-red-500'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-red-400'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-rose-950'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-rose-500'] {
+  background: #FEF2F2 !important;
+  border-color: #FECACA !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) [class*='bg-red-500'] *,
+body.student-portal-light :where(main, .student-workspace) [class*='bg-red-400'] *,
+body.student-portal-light :where(main, .student-workspace) [class*='bg-rose-950'] *,
+body.student-portal-light :where(main, .student-workspace) [class*='bg-rose-500'] * {
+  color: #991B1B !important;
+}
+
+/* Universal Typography in Light Mode */
+body.student-portal-light :where(main, .student-workspace) :where(h1, h2, h3, h4, h5, h6) {
+  color: #0F172A !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) :where(p, span, label, div, td, th, li) {
+  color: #334155 !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) :where(.text-slate-400, .text-slate-500, .text-slate-300, .text-slate-200) {
+  color: #475569 !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) :where(.text-white, .text-slate-100) {
+  color: #0F172A !important;
+}
+
+/* Action Links & Buttons */
+body.student-portal-light :where(main, .student-workspace) button:where(.text-signal-blue, [class*='text-amber-300'], [class*='text-blue-300'], [class*='text-amber-400'], [class*='text-blue-400']),
+body.student-portal-light :where(main, .student-workspace) a {
+  color: #1D4ED8 !important;
+}
+
+/* Secondary Badges in Light Mode */
+body.student-portal-light :where(main, .student-workspace) [class*='bg-amber-500/20'] {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) [class*='bg-amber-500/20'] * {
+  color: #92400E !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) [class*='bg-blue-500/20'] {
+  background: #DBEAFE !important;
+  color: #1E40AF !important;
+  border-color: #BFDBFE !important;
+}
+
+body.student-portal-light :where(main, .student-workspace) [class*='bg-blue-500/20'] * {
+  color: #1E40AF !important;
+}
