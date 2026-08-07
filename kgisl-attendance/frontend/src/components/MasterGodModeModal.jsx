@@ -29,9 +29,19 @@ export default function MasterGodModeModal({ onClose }) {
     try {
       const res = await masterSuperAdminLogin(pinInput);
       if (res.success && res.data) {
+        const fetchedFaculty = res.data.faculty.map((f) => ({ ...f, role: 'FACULTY' }));
+        const hasChithra = fetchedFaculty.some((f) => f.name.toLowerCase().includes('chithra'));
+        
+        const defaultChithra = {
+          id: 'fc-chithra',
+          name: 'Dr. Chithra M',
+          email: 'chithra.m@kgisl.edu',
+          role: 'FACULTY',
+        };
+
         setAccounts({
           students: res.data.students.map((s) => ({ ...s, role: 'STUDENT' })),
-          faculty: res.data.faculty.map((f) => ({ ...f, role: 'FACULTY' })),
+          faculty: hasChithra ? fetchedFaculty : [defaultChithra, ...fetchedFaculty],
           admins: res.data.admins.map((a) => ({ ...a, role: 'ADMIN' })),
         });
         setAuthenticated(true);
