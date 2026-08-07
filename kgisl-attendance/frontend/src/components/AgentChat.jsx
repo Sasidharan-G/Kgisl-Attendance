@@ -1,16 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Sparkles, ArrowRight, Download, CheckCircle2, Calendar, FileSpreadsheet, Zap, Compass } from 'lucide-react';
+import { Bot, Send, X, Sparkles, ArrowRight, Download, CheckCircle2, Calendar, FileSpreadsheet, Zap, Compass, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
-// Fuzzy token similarity score (0.0 to 1.0)
+// Fuzzy token similarity score
 function computeTokenSimilarity(str1, str2) {
   const s1 = str1.toLowerCase().trim();
   const s2 = str2.toLowerCase().trim();
   if (s1 === s2) return 1.0;
   if (s1.includes(s2) || s2.includes(s1)) return 0.85;
 
-  // Partial word boundary / n-gram match
   let matches = 0;
   const words1 = s1.split(/\s+/);
   const words2 = s2.split(/\s+/);
@@ -40,10 +39,10 @@ export default function AgentChat() {
     {
       sender: 'agent',
       text: role === 'ADMIN'
-        ? `Vanakkam ${user?.name || 'Admin'}! Enkitta 50% broken Tanglish-la keta kooda ("chitra m ai", "mca c rep") fuzzy AI language module auto-predict panni class assign & report download panni tharum!`
+        ? `Vanakkam ${user?.name || 'Admin'}! Enkitta "my today sessions", "assign AIML to Chithra M", or "mca-c report" nu enna kettalum smart-a decode panni response tharuvean!`
         : role === 'FACULTY'
-        ? `Vanakkam ${user?.name || 'Faculty'}! Tanglish / short words ("rep", "absnt", "defaltr") edhu kettalum smart NLP engine predict panni downloadable CSV report-a chat-laye tharum!`
-        : `Vanakkam ${user?.name || 'Student'}! "bnk", "atdn", "tst date" nu short-a type pannaalum AI engine smart-a purinjittu immediate advice & exam timetable kaattum!`,
+        ? `Vanakkam ${user?.name || 'Faculty'}! "my today sessions", "absent list", or "2 days report kudu" nu kettalum instant-a exact timetable & CSV report tharuvean!`
+        : `Vanakkam ${user?.name || 'Student'}! "my today sessions", "en attendance evlo", or "bunk adikkalaama" nu kettalum immediate live schedule & advice tharuvean!`,
     },
   ]);
 
@@ -56,10 +55,10 @@ export default function AgentChat() {
   }, [messages, isOpen]);
 
   const quickPrompts = role === 'ADMIN'
-    ? ['Assign AIML to Dr Chithra M', 'mca-c rep download', 'defaulters 75%']
+    ? ['my today sessions', 'Assign AIML to Dr Chithra M', 'mca-c report download']
     : role === 'FACULTY'
-    ? ['mca c 2 days report', 'absent list today', 'shortage defaulters']
-    : ['en atdn %', 'bnk adikkalaama', 'exam tst date'];
+    ? ['my today sessions', 'absent list today', 'mca c 2 days report']
+    : ['my today sessions', 'en atdn %', 'bnk adikkalaama'];
 
   const downloadReportFile = (filename, content) => {
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
@@ -71,32 +70,36 @@ export default function AgentChat() {
     URL.revokeObjectURL(url);
   };
 
-  // Advanced Fuzzy NLP Engine & 50% Prediction Understander
+  // Advanced Fuzzy NLP Engine & Precision Intent Classifier
   const predictFuzzyIntentAndExecute = (rawQuery) => {
     const q = rawQuery.toLowerCase().trim();
     const today = new Date().toLocaleDateString('en-IN');
 
-    // INTENT DICTIONARY WITH SYNONYMS & SHORTCODES
+    // INTENT DICTIONARY WITH SPECIFIC KEYWORDS
     const INTENTS = [
       {
+        id: 'TODAY_SESSIONS',
+        keywords: ['today', 'session', 'sessions', 'my today', 'my sessions', 'class', 'classes', 'period', 'periods', 'innaki', 'schedule'],
+      },
+      {
         id: 'REPORT_GENERATE',
-        keywords: ['report', 'rep', 'rprt', 'csv', 'excel', 'sheet', 'downld', 'downlod', 'download', '2 days', 'mca-c', 'mcac'],
+        keywords: ['report', 'rep', 'rprt', 'csv', 'excel', 'sheet', 'downld', 'downlod', 'download', '2 days'],
       },
       {
         id: 'ASSIGN_CLASS',
-        keywords: ['assign', 'asgn', 'asin', 'chithra', 'chitra', 'citra', 'aiml', 'ai', 'ml', 'schedule', 'slot', 'period'],
+        keywords: ['assign', 'asgn', 'asin', 'chithra', 'chitra', 'citra', 'aiml', 'ai', 'ml'],
       },
       {
         id: 'ABSENT_LIST',
-        keywords: ['absent', 'absnt', 'absen', 'today', 'innaki', 'varala', 'yaaru', 'who'],
+        keywords: ['absent', 'absnt', 'absen', 'varala', 'yaaru', 'who is absent'],
       },
       {
         id: 'SHORTAGE_DEFAULTERS',
-        keywords: ['shortage', 'shrtge', 'defaulter', 'dfltr', 'defaltr', '75%', '75', 'low', 'warning'],
+        keywords: ['shortage', 'shrtge', 'defaulter', 'dfltr', 'defaltr', '75%', '75', 'low warning'],
       },
       {
         id: 'STUDENT_ATTENDANCE',
-        keywords: ['attendance', 'atdn', 'atndance', 'evlo', 'per', 'pct', '%', 'my'],
+        keywords: ['attendance', 'atdn', 'atndance', 'evlo', 'per', 'pct', '%', 'my attendance'],
       },
       {
         id: 'SAFE_BUNK',
@@ -104,7 +107,7 @@ export default function AgentChat() {
       },
       {
         id: 'EXAM_TIMETABLE',
-        keywords: ['test', 'tst', 'exam', 'exm', 'block', 'blck', 'blok', 'date', 'schedule'],
+        keywords: ['test', 'tst', 'exam', 'exm', 'block', 'blck', 'blok', 'date'],
       },
     ];
 
@@ -116,10 +119,10 @@ export default function AgentChat() {
       let score = 0;
       for (const kw of intent.keywords) {
         if (q.includes(kw)) {
-          score += 0.45;
+          score += 0.55;
         } else {
           const sim = computeTokenSimilarity(q, kw);
-          if (sim > 0.4) score += sim * 0.3;
+          if (sim > 0.45) score += sim * 0.3;
         }
       }
       if (score > highestScore) {
@@ -128,8 +131,31 @@ export default function AgentChat() {
       }
     }
 
-    // 1. REPORT GENERATION INTENT
-    if (bestIntent === 'REPORT_GENERATE' || highestScore >= 0.3) {
+    // 1. TODAY'S SESSIONS INTENT ("my today sessions", "today class", "schedule")
+    if (bestIntent === 'TODAY_SESSIONS' || (q.includes('session') && q.includes('today')) || (q.includes('my') && q.includes('today'))) {
+      if (role === 'FACULTY') {
+        return {
+          prediction: 'Today\'s Faculty Class Sessions',
+          text: `📅 **Today's Assigned Sessions (Dr. Chithra M - ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}):**\n\n1. **Period 1** (09:10 AM – 10:50 AM): **AIML Lab** · MCA-C (MCA Lab 1)\n2. **Period 2** (10:50 AM – 11:40 AM): **PHP Programming** · MCA-C (Hall 204)\n3. **Period 4** (01:40 PM – 02:30 PM): **Network Security** · MCA-A (MCA Lab 2)`,
+          action: { label: 'Start Attendance Scanner', path: '/faculty/dashboard' },
+        };
+      } else if (role === 'STUDENT') {
+        return {
+          prediction: 'Today\'s Student Class Schedule',
+          text: `📅 **Today's Live Schedule (MCA-C - ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}):**\n\n• **09:10 AM – 10:50 AM**: AIML Lab (MCA Lab 1) 🟢 *Active Now*\n• **10:50 AM – 11:40 AM**: PHP Web Development (Hall 204)\n• **01:40 PM – 02:30 PM**: Network Security (MCA Lab 2)`,
+          action: { label: 'View Full Timetable', path: '/student/dashboard' },
+        };
+      } else {
+        return {
+          prediction: 'Today\'s College Timetable Summary',
+          text: `📅 **Today's Department Sessions Overview:**\n• Total Active Sessions Today: **8 Sessions**\n• Morning Period: AIML & PHP\n• Afternoon Period: Network Security & Cloud Computing`,
+          action: { label: 'Manage Timetable', path: '/admin/academic' },
+        };
+      }
+    }
+
+    // 2. REPORT GENERATION INTENT ("report", "csv", "download", "excel")
+    if (bestIntent === 'REPORT_GENERATE') {
       const csvData = `\uFEFFKGISL INSTITUTE OF INFORMATION MANAGEMENT
 OFFICIAL MCA-C ATTENDANCE REPORT (LAST 2 DAYS) - Generated on ${today}
 Batch: MCA-C | Subject: AIML & PHP
@@ -155,7 +181,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
       };
     }
 
-    // 2. ASSIGN CLASS INTENT
+    // 3. ASSIGN CLASS INTENT
     if (bestIntent === 'ASSIGN_CLASS') {
       if (role !== 'ADMIN' && role !== 'FACULTY') {
         return {
@@ -171,7 +197,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
       };
     }
 
-    // 3. ABSENT / SHORTAGE INTENT
+    // 4. ABSENT / SHORTAGE INTENT
     if (bestIntent === 'ABSENT_LIST' || bestIntent === 'SHORTAGE_DEFAULTERS') {
       return {
         prediction: 'Absentees & Defaulters Query',
@@ -180,7 +206,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
       };
     }
 
-    // 4. STUDENT ATTENDANCE INTENT
+    // 5. STUDENT ATTENDANCE INTENT
     if (bestIntent === 'STUDENT_ATTENDANCE') {
       return {
         prediction: 'Student Attendance Lookup',
@@ -189,7 +215,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
       };
     }
 
-    // 5. SAFE BUNK INTENT
+    // 6. SAFE BUNK INTENT
     if (bestIntent === 'SAFE_BUNK') {
       return {
         prediction: 'Safe Bunk Calculator',
@@ -198,7 +224,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
       };
     }
 
-    // 6. EXAM TIMETABLE INTENT
+    // 7. EXAM TIMETABLE INTENT
     if (bestIntent === 'EXAM_TIMETABLE') {
       return {
         prediction: 'Block Test Timetable Lookup',
@@ -210,7 +236,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
     // Smart Fallback
     return {
       prediction: 'General Tanglish Assistance',
-      text: `💡 **AI Prediction Module:**\nUnnga input-a decode panna muyarchi pannen. Neenga:\n• *"chitra m ai"* (Assign Class)\n• *"rep"* or *"sheet"* (Download CSV Report)\n• *"bnk"* (Safe Bunk Calculation)\n• *"absnt"* (Defaulters List)\n\nnu 50% short-a type pannaalum exact-a predict panni work panni tharuvean!`,
+      text: `💡 **AI Prediction Module:**\nUnnga input-a decode panna muyarchi pannen. Neenga:\n• *"my today sessions"* (Today's Class Timetable)\n• *"chitra m ai"* (Assign Class)\n• *"rep"* or *"sheet"* (Download CSV Report)\n• *"bnk"* (Safe Bunk Calculation)\n\nnu short-a type pannaalum exact-a predict panni response tharuvean!`,
     };
   };
 
@@ -235,7 +261,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
         },
       ]);
       setIsTyping(false);
-    }, 450);
+    }, 400);
   };
 
   return (
@@ -376,7 +402,7 @@ S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Even 50% short words work! (e.g. rep / chitra m / bnk)..."
+                placeholder="Type query (e.g. my today sessions / report / assign)..."
                 className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
               />
               <button
