@@ -39,8 +39,9 @@ Designed specifically for the MCA Department at **KGiSL Institute of Information
 - **Custom Date Range Filter**: Dynamically parses user-specified date ranges and generates on-demand CSV attendance sheets directly inside the chat window.
 - **Autonomous Task Execution**: Executes live database actions such as reviewing leave requests or assigning faculty timetable sessions upon authorized command.
 
-### 5. Master Super-Admin God-Mode Portal
-- **Server-Side Cryptographic Impersonation**: Triggered via a secret shortcut (`Ctrl + Shift + K`) and authenticated using a server-side PIN (`KGISL#Master#2026`). Enables system administrators to impersonate any faculty or student account for debugging, auditing, or full CRUD operations without altering user credentials.
+### 5. Multi-Role Authorization & Security System
+- **Role-Based Access Control (RBAC)**: Enforces strict data separation and permission boundaries across Students, Faculty, and Department Administrators.
+- **Secure Authentication**: Protected with JSON Web Tokens (JWT), refresh token rotation, and BCrypt password hashing to ensure institutional data integrity and privacy.
 
 ---
 
@@ -53,7 +54,7 @@ Designed specifically for the MCA Department at **KGiSL Institute of Information
 | **Audio Processing** | Web Audio API, AudioWorklet Processor, Goertzel Frequency Analysis Engine |
 | **Backend Services** | Node.js, Express.js, TypeScript |
 | **Database & ORM** | PostgreSQL Cloud Database, Prisma ORM |
-| **Security & Auth** | JWT Access & Refresh Tokens, Server-side PIN Verification |
+| **Security & Auth** | JWT Access & Refresh Token Rotation, BCrypt Hashing, RBAC Middleware |
 
 ---
 
