@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import AgentChat from './components/AgentChat.jsx';
@@ -31,7 +31,10 @@ function ProtectedRoute({ role, children }) {
 
 function GlobalAgent() {
   const { user } = useAuth();
-  return user?.role === 'ADMIN' || user?.role === 'FACULTY' ? <AgentChat /> : null;
+  const location = useLocation();
+  const isPublicPage = location.pathname === '/' || location.pathname === '/privacy';
+  if (!user || isPublicPage) return null;
+  return <AgentChat />;
 }
 
 export default function App() {
