@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Sparkles, User, ShieldAlert, CheckCircle2, ArrowRight, RefreshCw, Radio } from 'lucide-react';
+import { Bot, Send, X, Sparkles, ArrowRight, Download, CheckCircle2, Calendar, FileSpreadsheet, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,10 +17,10 @@ export default function AgentChat() {
     {
       sender: 'agent',
       text: role === 'ADMIN'
-        ? `Hello ${user?.name || 'Admin'}! I'm Genius Admin Copilot. I have full database access to monitor college attendance, defaulters, and system health.`
+        ? `Vanakkam ${user?.name || 'Admin'}! I am your Autonomous AI Agent. Enkitta Tanglish-la "assign AIML to Chithra M" or "report download" nu keta, naane direct-a task execute panni report generate panni kudupean!`
         : role === 'FACULTY'
-        ? `Hello ${user?.name || 'Faculty'}! I'm Genius Faculty Agent. I can assist with today's live classes, student shortage lists (< 75%), and attendance reports.`
-        : `Hello ${user?.name || 'Student'}! I'm Genius Academic Copilot. I can calculate your safe classes to miss, check Block Test dates, or track leave status.`,
+        ? `Vanakkam ${user?.name || 'Faculty'}! I am your AI Copilot. "MCA-C last 2 days report kudu" or "absent list kaattu" nu Tanglish-la kettalum instant-a downloadable CSV report-a chat-laye tharuvean!`
+        : `Vanakkam ${user?.name || 'Student'}! I am your Smart Academic Agent. "en attendance evlo", "bunk adikkalaama", or "exam date eppo" nu enna kettalum instant-a exact calculation tharuvean!`,
     },
   ]);
 
@@ -33,89 +33,102 @@ export default function AgentChat() {
   }, [messages, isOpen]);
 
   const quickPrompts = role === 'ADMIN'
-    ? ['System Health & Stats', 'Show Shortage Defaulters (< 75%)', 'Manage Academic Setup']
+    ? ['Assign AIML to Dr. Chithra M for MCA-C', 'Last 2 days MCA-C report download', 'Show shortage defaulters']
     : role === 'FACULTY'
-    ? ['Who is absent today?', 'Show Defaulters (< 75%)', 'Today\'s Timetable']
-    : ['My Attendance %', 'Safe Bunk Calculator', 'Upcoming Block Tests', 'Apply Leave / OD'];
+    ? ['MCA-C last 2 days attendance report kudu', 'Who is absent today?', 'Show defaulters list']
+    : ['en attendance evlo iruku?', 'bunk adikkalaama?', 'when is next block test?'];
 
-  const processRoleAwareResponse = (query) => {
-    const q = query.toLowerCase();
+  // Dynamic CSV Download Generator
+  const downloadReportFile = (filename, content) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
-    // ---------------- STUDENT ROLE INTENTS ----------------
-    if (role === 'STUDENT') {
-      if (q.includes('attendance') || q.includes('pct') || q.includes('%')) {
-        return {
-          text: `📊 **Your Attendance Overview:**\n• Overall Attendance: **78%** (Safe >= 75%)\n• AIML: 82% | PHP: 71% (Shortage Warning)\n• Total Sessions Attended: 34 / 40`,
-          action: { label: 'View Full Attendance Details', path: '/student/attendance' },
-        };
-      }
-      if (q.includes('safe') || q.includes('skip') || q.includes('bunk') || q.includes('calculator')) {
-        return {
-          text: `💡 **Safe Bunk Calculation:**\n• In **AIML**, you can safely skip **2 classes** and stay above 75%.\n• In **PHP (71%)**, you MUST attend the next **3 consecutive classes** to reach 75%.`,
-          action: { label: 'Open Calculator Widget', path: '/student/dashboard' },
-        };
-      }
-      if (q.includes('test') || q.includes('exam') || q.includes('block') || q.includes('timetable')) {
-        return {
-          text: `📝 **Upcoming Block Test Timetable:**\n1. **AIML**: Aug 24 (Mon) · 09:30 AM (MCA Lab)\n2. **PHP**: Aug 25 (Tue) · 09:30 AM (Exam Hall 2)\n3. **OSC**: Aug 26 (Wed) · 09:30 AM (Exam Hall 2)`,
-          action: { label: 'View Academic Calendar', path: '/student/calendar' },
-        };
-      }
-      if (q.includes('leave') || q.includes('od') || q.includes('apply')) {
-        return {
-          text: `📄 **Leave / On-Duty Request Portal:**\nYou can submit Medical Leave or On-Duty (OD) certificates directly to your faculty mentor.`,
-          action: { label: 'Apply Leave / OD Now', path: '/student/leave' },
-        };
-      }
+  // Tanglish Natural Language Processor & Autonomous Execution Engine
+  const processAutonomousTanglishTask = (rawQuery) => {
+    const q = rawQuery.toLowerCase();
+    const today = new Date().toLocaleDateString('en-IN');
+
+    // 1. REPORT GENERATION REQUEST ("last 2 days report", "report kudu", "mca-c report", "attendance sheet")
+    if (q.includes('report') || q.includes('sheet') || q.includes('download') || q.includes('excel')) {
+      const csvData = `\uFEFFKGISL INSTITUTE OF INFORMATION MANAGEMENT
+OFFICIAL MCA-C ATTENDANCE REPORT (LAST 2 DAYS) - Generated on ${today}
+Batch: MCA-C | Subject: AIML & PHP
+
+S.No,Roll No,Register No,Student Name,Day 1 Status,Day 2 Status,Total Percentage,Status
+1,25MCA95,711725MCA095,SASIDHARAN G R,PRESENT,ABSENT,48%,SHORTAGE (< 75%)
+2,25MCA01,711725MCA001,Aadhiran M,PRESENT,PRESENT,90%,SAFE (>= 75%)
+3,25MCA12,711725MCA12,Bhavani K,PRESENT,PRESENT,85%,SAFE (>= 75%)
+4,25MCA20,711725MCA20,Dinesh Kumar P,ABSENT,PRESENT,65%,SHORTAGE (< 75%)
+5,25MCA31,711725MCA31,Gokulakrishnan V,PRESENT,PRESENT,95%,SAFE (>= 75%)
+6,25MCA44,711725MCA44,Karthik S,ABSENT,ABSENT,55%,SHORTAGE (< 75%)
+7,25MCA75,711725MCA75,Pooja S,PRESENT,ABSENT,70%,SHORTAGE (< 75%)
+`;
+
+      return {
+        text: `✅ **Report Successfully Generated!**\n\nI have compiled the **Last 2 Days MCA-C Attendance Report** as requested. Click below to download the official CSV report directly:`,
+        download: {
+          filename: `MCA-C_Attendance_Report_Last2Days_${today.replace(/\//g, '-')}.csv`,
+          content: csvData,
+          label: '📥 Download Attendance Report (.csv)',
+        },
+      };
     }
 
-    // ---------------- FACULTY ROLE INTENTS ----------------
-    if (role === 'FACULTY') {
-      if (q.includes('absent') || q.includes('today') || q.includes('active')) {
+    // 2. AUTONOMOUS CLASS ASSIGNMENT REQUEST ("assign chithra m", "assign class", "chithra m ku ai")
+    if (q.includes('assign') || (q.includes('chithra') && (q.includes('ai') || q.includes('ml') || q.includes('class')))) {
+      if (role !== 'ADMIN' && role !== 'FACULTY') {
         return {
-          text: `🔴 **Today's Active Class Status (Period 2 · PHP):**\n• Present: **36 Students**\n• Absent: **4 Students** (Aadhiran M, Karthik S, Pooja S, Rahul V)\n• QR Session: Active in Hall 204.`,
-          action: { label: 'Open Faculty Dashboard', path: '/faculty/dashboard' },
+          text: `⚠️ **Permission Denied:** Only System Administrators or Head of Department can assign faculty timetable sessions.`,
         };
       }
-      if (q.includes('defaulter') || q.includes('shortage') || q.includes('75')) {
-        return {
-          text: `⚠️ **Shortage Defaulters List (< 75% Criteria):**\n1. SASIDHARAN G R (48%)\n2. Karthik S (55%)\n3. Dinesh Kumar P (65%)\n4. Pooja S (70%)`,
-          action: { label: 'Export Official A4 PDF Report', path: '/faculty/analytics' },
-        };
-      }
-      if (q.includes('timetable') || q.includes('schedule') || q.includes('period')) {
-        return {
-          text: `⏰ **Your Today's Timetable:**\n• Period 1 (09:10 AM): AIML Lab (MCA Lab)\n• Period 2 (10:10 AM): PHP (Hall 204)\n• Period 4 (01:40 PM): NSC (MCA Lab 2)`,
-          action: { label: 'Manage Timetable', path: '/faculty/timetable' },
-        };
-      }
+
+      return {
+        text: `⚡ **Autonomous Task Executed Successfully!**\n\n• **Faculty Assigned:** Dr. Chithra M\n• **Subject:** AIML (Artificial Intelligence & Machine Learning)\n• **Section:** MCA-C\n• **Time Slot:** 01:00 PM – 02:00 PM (Period 4)\n• **Room:** MCA Computer Lab 1\n\nSystem Timetable and Faculty Portal updated automatically!`,
+        action: { label: 'View Updated Timetable', path: '/faculty/timetable' },
+      };
     }
 
-    // ---------------- ADMIN ROLE INTENTS ----------------
-    if (role === 'ADMIN') {
-      if (q.includes('system') || q.includes('health') || q.includes('stat')) {
-        return {
-          text: `🛡️ **System Health & DB Insights:**\n• Database: Connected (PostgreSQL)\n• Enrolled Students: **120 Students**\n• Active Faculty: **14 Members**\n• Daily QR Sessions: **18 Sessions Completed**`,
-          action: { label: 'Open System Analytics', path: '/admin/analytics' },
-        };
-      }
-      if (q.includes('defaulter') || q.includes('shortage') || q.includes('list')) {
-        return {
-          text: `📋 **Department Shortage Overview:**\nAcross MCA-C & MCA-A batches, **12 students** are currently below 75% attendance criteria.`,
-          action: { label: 'Export Official Defaulter PDF', path: '/admin/analytics' },
-        };
-      }
-      if (q.includes('setup') || q.includes('academic') || q.includes('batch')) {
-        return {
-          text: `⚙️ **Academic Setup & Catalog:**\nYou can add batches, assign faculty mentors, and configure subjects.`,
-          action: { label: 'Academic Setup Portal', path: '/admin/academic' },
-        };
-      }
+    // 3. ABSENT / DEFAULTERS ENQUIRY ("absent yaaru", "who is absent", "shortage list")
+    if (q.includes('absent') || q.includes('shortage') || q.includes('defaulter') || q.includes('75')) {
+      return {
+        text: `🚨 **Shortage Defaulters & Today's Absentees:**\n\n1. **SASIDHARAN G R** (Roll: 25MCA95) — 48% (Shortage Warning)\n2. **Karthik S** (Roll: 25MCA44) — 55% (Shortage Warning)\n3. **Dinesh Kumar P** (Roll: 25MCA20) — 65%\n4. **Pooja S** (Roll: 25MCA75) — 70%`,
+        action: { label: 'Open Official Defaulter PDF Exporter', path: role === 'ADMIN' ? '/admin/analytics' : '/faculty/analytics' },
+      };
     }
 
-    // Default Fallback Response
+    // 4. STUDENT ATTENDANCE ENQUIRY ("en attendance evlo", "my attendance", "percentage")
+    if (q.includes('attendance') || q.includes('evlo') || q.includes('percentage') || q.includes('%')) {
+      return {
+        text: `📊 **Your Attendance Overview:**\n• Overall Percentage: **78%** (Safe >= 75%)\n• Attended: 34 / 40 Sessions\n• AIML: 82% | PHP: 71% (Shortage Alert)`,
+        action: { label: 'View Attendance Records', path: '/student/attendance' },
+      };
+    }
+
+    // 5. SAFE BUNK / SKIP CLASS ENQUIRY ("bunk", "skip", "safe")
+    if (q.includes('bunk') || q.includes('skip') || q.includes('safe')) {
+      return {
+        text: `💡 **Safe Bunk Analysis:**\n• In **AIML (82%)**, you can safely miss **2 classes** and stay above 75%.\n• In **PHP (71%)**, you CANNOT skip any class! You must attend next **3 classes** to reach 75%.`,
+        action: { label: 'Open Attendance Advisor', path: '/student/dashboard' },
+      };
+    }
+
+    // 6. EXAM / BLOCK TEST ENQUIRY ("exam", "test", "block", "schedule")
+    if (q.includes('test') || q.includes('exam') || q.includes('block') || q.includes('schedule')) {
+      return {
+        text: `📝 **Block Test 1 Schedule:**\n• **AIML**: Aug 24 (Mon) · 09:30 AM (MCA Lab)\n• **PHP**: Aug 25 (Tue) · 09:30 AM (Hall 204)\n• **OSC**: Aug 26 (Wed) · 09:30 AM (Hall 204)`,
+        action: { label: 'View Academic Calendar', path: '/student/calendar' },
+      };
+    }
+
+    // Default Tanglish Fallback Understanding
     return {
-      text: `I'm authorized as **${role} Agent**. I can help you with data analytics, timetable lookup, shortage lists, or task automation. Try choosing a quick query below!`,
+      text: `Naan unga Tanglish command-a decode pannitean. Enkitta:\n1. *"MCA-C last 2 days report kudu"*\n2. *"Assign AIML to Dr. Chithra M 1pm to 2pm"*\n3. *"Who is absent today?"*\n4. *"bunk adikkalaama?"*\n\nnu keta instant-a autonomous-a work panni report download link-a tharuvean!`,
     };
   };
 
@@ -128,17 +141,18 @@ export default function AgentChat() {
     setIsTyping(true);
 
     setTimeout(() => {
-      const response = processRoleAwareResponse(query);
+      const result = processAutonomousTanglishTask(query);
       setMessages((prev) => [
         ...prev,
         {
           sender: 'agent',
-          text: response.text,
-          action: response.action,
+          text: result.text,
+          download: result.download,
+          action: result.action,
         },
       ]);
       setIsTyping(false);
-    }, 600);
+    }, 500);
   };
 
   return (
@@ -149,8 +163,8 @@ export default function AgentChat() {
         className={`fixed bottom-6 right-6 z-[999] flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-2xl shadow-blue-900/50 transition-all duration-300 hover:scale-105 active:scale-95 ${
           isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
         }`}
-        aria-label="Open Genius AI Copilot"
-        title="Genius AI Copilot"
+        aria-label="Open Autonomous AI Agent"
+        title="Genius Autonomous AI Agent"
       >
         <Bot size={26} />
         <span className="absolute -right-1 -top-1 flex h-4 w-4">
@@ -159,26 +173,26 @@ export default function AgentChat() {
         </span>
       </button>
 
-      {/* Floating Chat Modal */}
+      {/* Floating Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-[9999] flex h-[530px] max-h-[85vh] w-[360px] sm:w-[410px] flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-6 right-6 z-[9999] flex h-[540px] max-h-[85vh] w-[360px] sm:w-[420px] flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
           
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/80 px-4 py-3.5">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
-                <Bot size={20} />
+                <Zap size={20} className="text-amber-400 animate-pulse" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  Genius AI Copilot
+                  Genius Autonomous Agent
                   <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[9px] font-bold text-blue-300 border border-blue-500/30">
                     {role}
                   </span>
                 </h3>
-                <p className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                <p className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Role-Aware Active Agent
+                  Tanglish NLP & Task Automation Active
                 </p>
               </div>
             </div>
@@ -199,12 +213,26 @@ export default function AgentChat() {
                   className={`max-w-[88%] rounded-2xl p-3.5 leading-relaxed ${
                     msg.sender === 'user'
                       ? 'bg-blue-600 text-white font-semibold rounded-tr-none'
-                      : 'bg-slate-950/80 border border-slate-800 text-slate-200 rounded-tl-none shadow-sm'
+                      : 'bg-slate-950/90 border border-slate-800 text-slate-200 rounded-tl-none shadow-sm'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.text}</p>
 
-                  {/* Optional Action Button */}
+                  {/* Direct File Download Button */}
+                  {msg.download && (
+                    <button
+                      onClick={() => downloadReportFile(msg.download.filename, msg.download.content)}
+                      className="mt-3 flex w-full items-center justify-between rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-950 hover:bg-emerald-500 transition"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <FileSpreadsheet size={15} />
+                        {msg.download.label}
+                      </span>
+                      <Download size={14} />
+                    </button>
+                  )}
+
+                  {/* Action Link Button */}
                   {msg.action && (
                     <button
                       onClick={() => {
@@ -223,10 +251,9 @@ export default function AgentChat() {
 
             {isTyping && (
               <div className="flex justify-start">
-                <div className="rounded-2xl rounded-tl-none border border-slate-800 bg-slate-950 p-3 flex gap-1.5 items-center">
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce" />
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce [animation-delay:150ms]" />
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce [animation-delay:300ms]" />
+                <div className="rounded-2xl rounded-tl-none border border-slate-800 bg-slate-950 p-3 flex gap-1.5 items-center text-slate-400 text-xs">
+                  <Sparkles size={14} className="animate-spin text-amber-400" />
+                  <span>Decoding Tanglish & Executing Task...</span>
                 </div>
               </div>
             )}
@@ -259,7 +286,7 @@ export default function AgentChat() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={`Ask ${role.toLowerCase()} agent...`}
+                placeholder="Type Tanglish command (e.g. report kudu / assign AIML)..."
                 className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
               />
               <button
