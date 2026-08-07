@@ -13,7 +13,7 @@ class AcousticReceiverProcessor extends AudioWorkletProcessor {
 
   constructor(options?: ReceiverOptions) {
     super();
-    this.frequencies = options?.processorOptions?.frequencies ?? [4_800, 5_400, 6_000, 6_600];
+    this.frequencies = options?.processorOptions?.frequencies ?? [18_200, 18_700, 19_200, 19_700];
     this.samplesPerObservation = Math.max(128, Math.round((options?.processorOptions?.observationSeconds ?? 0.007) * sampleRate));
     this.buffer = new Float32Array(this.samplesPerObservation);
   }
@@ -49,8 +49,9 @@ class AcousticReceiverProcessor extends AudioWorkletProcessor {
     for (const sample of this.buffer) squareSum += sample * sample;
     const rms = Math.sqrt(squareSum / this.buffer.length);
     const confidence = powers[bestIndex] / Math.max(secondPower, 1e-12);
-    const symbol = rms >= 0.00008 && confidence >= 1.8 ? bestIndex : -1;
-    this.port.postMessage({ type: 'observation', symbol, confidence, level: Math.min(1, rms * 80) });
+    // Tuned sensitivity threshold for classroom long-distance pickup
+    const symbol = rms >= 0.00001 && confidence >= 1.25 ? bestIndex : -1;
+    this.port.postMessage({ type: 'observation', symbol, confidence, level: Math.min(1, rms * 150) });
   }
 
   process(inputs: Float32Array[][]): boolean {

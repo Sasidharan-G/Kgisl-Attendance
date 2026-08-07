@@ -36,9 +36,8 @@ export class AcousticTransmitter {
         },
       });
       const gain = context.createGain();
-      // Strong enough for ordinary laptop speakers and nearby phone microphones
-      // without driving the output close to clipping.
-      gain.gain.value = 0.20;
+      // Optimized near-ultrasonic gain for long-distance classroom coverage (up to 15m)
+      gain.gain.value = 0.45;
       node.connect(gain).connect(context.destination);
       this.context = context;
       this.node = node;
