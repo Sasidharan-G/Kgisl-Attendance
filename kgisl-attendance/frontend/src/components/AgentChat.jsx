@@ -23,6 +23,15 @@ function extractCustomDateRange(prompt) {
   const q = prompt.toLowerCase();
   const today = new Date();
 
+  // Pattern 0: "today" / "innaki"
+  if (q.includes('today') || q.includes('innaki')) {
+    const todayStr = today.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    return {
+      label: `${todayStr} (Today)`,
+      slug: `Today_${today.toLocaleDateString('en-CA')}`,
+    };
+  }
+
   // Pattern 1: Explicit Range "Aug 1 to Aug 5" / "1st Aug to 7th Aug" / "01/08 to 05/08"
   const rangeMatch = q.match(/([0-9]{1,2}\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|[0-[#\/.-]))\s*(?:to|till|until|-)\s*([0-9]{1,2}\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|[0-[#\/.-]))/i);
   if (rangeMatch) {
