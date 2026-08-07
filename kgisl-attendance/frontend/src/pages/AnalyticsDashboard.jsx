@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { LayoutGrid, BarChart3, TrendingUp, Users, Calendar, Download, Search, FileSpreadsheet, Printer } from 'lucide-react';
+import { LayoutGrid, BarChart3, TrendingUp, Users, Calendar, Download, Search, FileSpreadsheet, Printer, FileText } from 'lucide-react';
 import { correctAttendance, getSessionAttendance, listAllocations, listBatches, listHistory, listStudents } from '../services/api.js';
+import OfficialReportModal from '../components/OfficialReportModal.jsx';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState({ history: [], students: [], batches: [], allocations: [] });
@@ -11,6 +12,7 @@ export default function AnalyticsDashboard() {
   const [filters, setFilters] = useState({ date: '', batchId: '', sessionId: '', status: 'ALL' });
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [showOfficialModal, setShowOfficialModal] = useState(false);
 
   useEffect(() => {
     Promise.all([listHistory(), listStudents(), listBatches(), listAllocations()])
@@ -83,7 +85,18 @@ export default function AnalyticsDashboard() {
 
   return <div className="flex min-h-screen bg-ink-950"><Sidebar /><main className="flex-1 min-w-0 pb-10"><TopBar connected={!loading && !error} />
     <div className="px-8 mt-6">
-      <div className="flex items-center gap-3 mb-6"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-signal-blue/10 border border-signal-blue/20 text-signal-blue"><LayoutGrid size={20}/></div><div><h2 className="text-xl font-bold text-white">Department Analytics</h2><p className="text-sm text-slate-400">Live database-backed class and attendance insights</p></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-signal-blue/10 border border-signal-blue/20 text-signal-blue"><LayoutGrid size={20}/></div>
+          <div><h2 className="text-xl font-bold text-white">Department Analytics</h2><p className="text-sm text-slate-400">Live database-backed class and attendance insights</p></div>
+        </div>
+        <button
+          onClick={() => setShowOfficialModal(true)}
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-950 hover:bg-blue-500 transition"
+        >
+          <FileText size={16}/> Export Official PDF & Defaulters List
+        </button>
+      </div>
       {error && <p className="mb-5 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-300">{error}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
@@ -108,5 +121,9 @@ export default function AnalyticsDashboard() {
         {report && <><div className="my-5 flex flex-wrap items-center gap-3"><span className="rounded-lg border border-signal-green/20 bg-signal-green/10 px-3 py-1.5 text-xs font-bold text-signal-green">Present: {report.students.filter((s) => s.attendanceStatus === 'PRESENT').length}</span><span className="rounded-lg border border-signal-red/20 bg-signal-red/10 px-3 py-1.5 text-xs font-bold text-signal-red">Absent: {report.students.filter((s) => s.attendanceStatus === 'ABSENT').length}</span><select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} className="ml-auto rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-xs text-white"><option value="ALL">Present + Absent</option><option value="PRESENT">Present only</option><option value="ABSENT">Absent only</option></select></div>
           <div className="overflow-x-auto rounded-xl border border-ink-border"><table className="w-full min-w-[950px] text-left text-sm"><thead><tr className="text-slate-400">{['Roll No','Register No','Student','Email','Status','Check-in Time','Location','Correction'].map((heading) => <th key={heading} className="px-4 py-3">{heading}</th>)}</tr></thead><tbody>{visibleStudents.map((student) => <tr key={student.rollNo} className="border-t border-ink-border"><td className="px-4 py-3 font-mono text-slate-300">{student.rollNo}</td><td className="px-4 py-3 font-mono text-slate-400">{student.regNo}</td><td className="px-4 py-3 font-semibold text-white">{student.name}</td><td className="px-4 py-3 text-slate-400">{student.email}</td><td className="px-4 py-3"><span className={student.attendanceStatus === 'PRESENT' ? 'rounded-full bg-signal-green/10 px-2 py-1 text-xs font-bold text-signal-green' : 'rounded-full bg-signal-red/10 px-2 py-1 text-xs font-bold text-signal-red'}>{student.attendanceStatus}</span></td><td className="px-4 py-3 text-slate-300">{student.scanTime ? new Date(student.scanTime).toLocaleString('en-IN') : '—'}</td><td className="px-4 py-3 text-slate-400">{student.locationVerified ? 'Verified' : '—'}</td><td className="px-4 py-3"><button onClick={() => changeAttendance(student)} className="rounded-lg border border-signal-blue/30 px-2 py-1 text-xs font-semibold text-signal-blue">Mark {student.attendanceStatus === 'PRESENT' ? 'Absent' : 'Present'}</button></td></tr>)}</tbody></table></div></>}
       </section>
+
+      {showOfficialModal && (
+        <OfficialReportModal onClose={() => setShowOfficialModal(false)} />
+      )}
     </div></main></div>;
 }
