@@ -107,44 +107,37 @@ export default function PortalSelect() {
         <p className="calm-brand-footer text-slate-400">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
       </section>
 
-      {/* Right Side Glass Mirror Authentication Card */}
+      {/* Right Side Glass Authentication Card matching uploaded mockup */}
       <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
-        <div className="calm-auth-card backdrop-blur-xl bg-slate-900/75 border border-slate-700/60 shadow-2xl rounded-3xl p-6 sm:p-8">
-          <header className="calm-card-header mb-5">
-            <div>
-              <p className="calm-card-kicker text-blue-400 font-semibold text-xs tracking-wider uppercase">Welcome to the portal</p>
-              <h2 className="text-2xl font-bold text-white mt-1">Sign in to your account</h2>
-              <p className="text-xs text-slate-400 mt-1">Select your role and enter your credentials.</p>
-            </div>
-            <div className="calm-mobile-logo"><LoginBrandLockup /></div>
+        <div className="calm-auth-card backdrop-blur-2xl bg-slate-900/60 border border-slate-700/50 shadow-2xl rounded-3xl p-8 max-w-md w-full">
+          {/* Card Header matching exact mockup image */}
+          <header className="text-center mb-6">
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome Back</h2>
+            <p className="text-sm text-slate-300 mt-1">Sign in to continue</p>
+            <div className="calm-mobile-logo mt-3 justify-center"><LoginBrandLockup /></div>
           </header>
 
           {sessionNotice && <div className="mb-4"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
 
           {/* Role Switcher Tabs */}
-          <div className="calm-role-switch mb-5 flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800" role="tablist" aria-label="Choose your role">
+          <div className="calm-role-switch mb-6 flex rounded-2xl bg-slate-950/70 p-1 border border-slate-800/80" role="tablist" aria-label="Choose your role">
             {portals.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 type="button"
                 role="tab"
                 aria-selected={portal === id}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
                   portal === id
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 onClick={() => setPortal(id)}
               >
-                <Icon size={16} />
+                <Icon size={15} />
                 <span>{label}</span>
               </button>
             ))}
-          </div>
-
-          <div className="calm-role-context mb-4 flex items-center gap-2 rounded-xl bg-slate-950/40 p-2.5 border border-slate-800/60 text-xs text-slate-300">
-            <selectedPortal.Icon size={16} className="text-blue-400 shrink-0" />
-            <div><strong className="text-slate-100">{selectedPortal.label} Access</strong> — <span>{selectedPortal.description}</span></div>
           </div>
 
           {/* Login Input Forms */}
@@ -154,9 +147,11 @@ export default function PortalSelect() {
               : <AdminLogin key={portal} portal={portal} active />}
           </div>
 
-          <p className="calm-security mt-5 flex items-center justify-center gap-1.5 text-[11px] text-slate-400"><ShieldCheck size={14} className="text-emerald-400" /> Your connection is encrypted & protected</p>
+          <div className="mt-6 text-center text-xs text-slate-400">
+            Don't have an account? <span className="text-blue-400 font-semibold cursor-pointer hover:underline">Sign Up</span>
+          </div>
         </div>
-        <p className="calm-help mt-3 text-center text-xs text-slate-400">Need help signing in? Contact your department administrator.</p>
+        <p className="calm-help mt-4 text-center text-xs text-slate-400">Need help signing in? Contact your department administrator.</p>
       </section>
     </main>
 
