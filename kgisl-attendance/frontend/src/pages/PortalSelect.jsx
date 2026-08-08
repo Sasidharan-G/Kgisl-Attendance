@@ -109,7 +109,7 @@ export default function PortalSelect() {
 
       {/* Right Side Glass Authentication Card matching uploaded mockup */}
       <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
-        <div className="calm-auth-card backdrop-blur-2xl bg-slate-900/60 border border-slate-700/50 shadow-2xl rounded-3xl p-8 max-w-md w-full">
+        <div className="calm-auth-card bg-white/10 border border-white/20 backdrop-blur-lg shadow-2xl rounded-3xl p-8 max-w-md w-full text-slate-100">
           {/* Card Header matching exact mockup image */}
           <header className="text-center mb-6">
             <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome Back</h2>

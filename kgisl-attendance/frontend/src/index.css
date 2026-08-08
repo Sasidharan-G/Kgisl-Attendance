@@ -594,7 +594,7 @@ body:has(aside) ::-webkit-scrollbar-thumb:hover { background-color: rgba(56, 189
 .calm-trust-row span { display:flex; align-items:center; gap:.5rem; }
 .calm-brand-footer { margin:0; color:#8498ba; font-size:.68rem; }
 .calm-auth-area { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:clamp(2rem,5vw,5rem); background:transparent !important; }
-.calm-auth-card { width:100%; max-width:31rem; padding:clamp(1.5rem,3vw,2.25rem); border:1px solid rgba(255,255,255,0.12); border-radius:1.5rem; background:rgba(15,23,42,0.75) !important; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); color:#f8fafc; box-shadow:0 24px 70px -35px rgba(0,0,0,0.8); }
+.calm-auth-card { width:100%; max-width:31rem; padding:clamp(1.5rem,3vw,2.25rem); border:1px solid rgba(255,255,255,0.2) !important; border-radius:1.5rem; background:rgba(255,255,255,0.1) !important; backdrop-filter:blur(16px) !important; -webkit-backdrop-filter:blur(16px) !important; color:#f8fafc !important; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5) !important; }
 .calm-card-header { display:flex; justify-content:space-between; gap:1rem; }
 .calm-card-kicker { margin:0 0 .4rem; color:#60a5fa; font-size:.69rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
 .calm-card-header h2 { margin:0; color:#ffffff; font-size:1.65rem; line-height:1.2; letter-spacing:-.025em; }
