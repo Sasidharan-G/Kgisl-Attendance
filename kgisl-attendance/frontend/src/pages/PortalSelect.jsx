@@ -114,7 +114,6 @@ export default function PortalSelect() {
           <header className="text-center mb-6">
             <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome Back</h2>
             <p className="text-sm text-slate-300 mt-1">Sign in to continue</p>
-            <div className="calm-mobile-logo mt-3 justify-center"><LoginBrandLockup /></div>
           </header>
 
           {sessionNotice && <div className="mb-4"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
