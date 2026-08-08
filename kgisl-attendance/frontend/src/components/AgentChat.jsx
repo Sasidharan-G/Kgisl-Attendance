@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Sparkles, ArrowRight, Download, CheckCircle2, Calendar, FileSpreadsheet, Zap, Compass, RefreshCw, Check, XCircle, Database } from 'lucide-react';
+import { Bot, Send, X, Sparkles, ArrowRight, Download, CheckCircle2, Calendar, FileSpreadsheet, Zap, Compass, RefreshCw, Check, XCircle, Database, Mic, MicOff, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { printInstitutionalPDF } from '../utils/reportGenerator.js';
 import {
   listStudents,
   listFaculty,
@@ -89,6 +90,8 @@ export default function AgentChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
   const [liveDbData, setLiveDbData] = useState({
     students: [],
     faculty: [],
@@ -104,6 +107,61 @@ export default function AgentChat() {
   const messagesEndRef = useRef(null);
 
   const role = user?.role || 'STUDENT';
+
+  const toggleVoiceListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is supported in Chrome & Edge browsers.');
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+
+    rec.onresult = (event) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+
+      const lower = transcript.toLowerCase();
+      if (lower.includes(' dot') || lower.endsWith('dot') || lower.includes('.')) {
+        const cleanQuery = transcript.replace(/(\bdot\b|\.)/gi, '').trim();
+        rec.stop();
+        setIsListening(false);
+        if (cleanQuery) {
+          handleSend(cleanQuery);
+        }
+      }
+    };
+
+    rec.onerror = () => setIsListening(false);
+    rec.onend = () => setIsListening(false);
+
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (isOpen && e.code === 'Space' && (e.ctrlKey || e.altKey)) {
+        e.preventDefault();
+        toggleVoiceListening();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isListening]);
 
   useEffect(() => {
     if (isOpen) {
@@ -419,18 +477,30 @@ ${studentRows}
                     </div>
                   )}
 
-                  {/* Direct File Download Button */}
+                  {/* Direct File Download Buttons */}
                   {msg.download && (
-                    <button
-                      onClick={() => downloadReportFile(msg.download.filename, msg.download.content)}
-                      className="mt-3 flex w-full items-center justify-between rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-950 hover:bg-emerald-500 transition"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <FileSpreadsheet size={15} />
-                        {msg.download.label}
-                      </span>
-                      <Download size={14} />
-                    </button>
+                    <div className="mt-3 space-y-2">
+                      <button
+                        onClick={() => downloadReportFile(msg.download.filename, msg.download.content)}
+                        className="flex w-full items-center justify-between rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-lg shadow-emerald-950 hover:bg-emerald-500 transition"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <FileSpreadsheet size={15} />
+                          {msg.download.label}
+                        </span>
+                        <Download size={14} />
+                      </button>
+                      <button
+                        onClick={() => printInstitutionalPDF({ title: 'INSTITUTIONAL ATTENDANCE MATRIX', period: 'Current Term' })}
+                        className="flex w-full items-center justify-between rounded-xl bg-blue-600/30 border border-blue-500/50 px-3.5 py-2 text-xs font-bold text-blue-200 hover:bg-blue-600 hover:text-white transition"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Printer size={15} />
+                          🖨️ Print Institutional PDF Certificate
+                        </span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
                   )}
 
                   {/* Action Link Button */}
@@ -476,6 +546,16 @@ ${studentRows}
 
           {/* Form Input */}
           <div className="p-3 border-t border-slate-800 bg-slate-950">
+            {isListening && (
+              <div className="mb-2 flex items-center justify-between rounded-xl bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 text-[11px] text-rose-300 animate-pulse">
+                <span className="flex items-center gap-1.5 font-bold">
+                  <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                  Voice Listening (Say "dot" to execute command)...
+                </span>
+                <span className="font-mono text-[10px]">Hold Spacebar or Click Mic</span>
+              </div>
+            )}
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -483,11 +563,24 @@ ${studentRows}
               }}
               className="flex items-center gap-2"
             >
+              <button
+                type="button"
+                onClick={toggleVoiceListening}
+                className={`flex h-9 w-9 items-center justify-center rounded-xl transition shrink-0 ${
+                  isListening
+                    ? 'bg-rose-600 text-white animate-pulse shadow-lg shadow-rose-900/50'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+                title="Voice Assistant (Click or Hold Spacebar - Say 'dot' to run)"
+              >
+                {isListening ? <Mic size={16} /> : <MicOff size={16} />}
+              </button>
+
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type prompt with date (e.g. Aug 1 to Aug 5 report)..."
+                placeholder={isListening ? "Listening... Say 'dot' at the end..." : "Type or speak prompt (e.g. Aug 1 to Aug 5 report dot)..."}
                 className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
               />
               <button

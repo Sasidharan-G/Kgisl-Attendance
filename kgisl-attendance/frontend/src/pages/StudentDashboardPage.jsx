@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert, BookOpenCheck, Building, PartyPopper, ChevronRight, Calculator, Radio, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMyAttendance, listAttendanceCorrections, listLeaveRequests } from '../services/api.js';
-import StatePanel from '../components/StatePanel.jsx';
+import BadgesWidget from '../components/BadgesWidget.jsx';
 
 const TODAY_DAILY_SCHEDULE = [
   { period: 'Period 1', time: '09:10 AM – 10:00 AM', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', room: 'MCA Lab 1', status: 'COMPLETED' },
@@ -97,6 +97,11 @@ export default function StudentDashboardPage() {
               <Card icon={<CalendarCheck/>} title="Overall attendance" value={`${average}%`} text="Across enrolled subjects"/>
               <Card icon={<ShieldAlert/>} title="Shortage alerts" value={String(shortage.length)} text={shortage.length ? shortage.map((item) => item.code).join(', ') : 'You are on track'}/>
               <Card icon={<Clock3/>} title="Recent sessions" value={String(attendance?.sessions?.length || 0)} text="View complete history" onClick={() => navigate('/student/attendance')}/>
+            </div>
+
+            {/* GAMIFIED ATTENDANCE STREAKS & PUNCTUALITY BADGES */}
+            <div className="mt-7">
+              <BadgesWidget attendancePercentage={average} streakDays={7} />
             </div>
 
             {/* FEATURE 2: Today's Daily Schedule & Live Class Indicator */}

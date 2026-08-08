@@ -10,6 +10,7 @@ import ValidationStrip from '../components/ValidationStrip.jsx';
 import StatTile from '../components/StatTile.jsx';
 import ManualAttendance from '../components/ManualAttendance';
 import AcousticBroadcastPanel from '../components/AcousticBroadcastPanel';
+import SeatingGridHeatmap from '../components/SeatingGridHeatmap.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { startSession, endSession, pauseSession, resumeSession, getActiveSession, getSessionStats, listAllocations } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
@@ -401,6 +402,10 @@ export default function FacultyDashboard() {
           </div>
 
           <RecentScans scans={scans} />
+        </div>
+
+        <div className="mt-6">
+          <SeatingGridHeatmap activeSession={sessionMeta} />
         </div>
 
         <div className="mt-6">

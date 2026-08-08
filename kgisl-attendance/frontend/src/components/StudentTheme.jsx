@@ -23,7 +23,7 @@ export default function StudentTheme() {
     <button
       type="button"
       onClick={() => setDarkMode((current) => !current)}
-      className="student-theme-toggle fixed bottom-5 right-5 z-[99] flex h-11 items-center gap-2 rounded-2xl px-3.5 shadow-xl transition-all active:scale-95"
+      className="student-theme-toggle fixed bottom-5 left-5 z-[99] flex h-11 items-center gap-2 rounded-2xl px-3.5 shadow-xl transition-all active:scale-95 bg-slate-900/90 border border-slate-700 text-white backdrop-blur-md"
       aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       title={darkMode ? 'Light mode' : 'Dark mode'}
     >

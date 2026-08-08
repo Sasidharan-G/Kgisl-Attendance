@@ -1083,12 +1083,21 @@ body.student-portal-light :where(main, .student-workspace) [class*='bg-rose-500'
   color: #991B1B !important;
 }
 
-/* Universal Typography in Light Mode */
+/* Universal Typography in Light Mode - High Contrast Fix */
+body.student-portal-light {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+body.student-portal-light :where(main, .student-workspace, div) {
+  color: #1E293B;
+}
+
 body.student-portal-light :where(main, .student-workspace) :where(h1, h2, h3, h4, h5, h6) {
   color: #0F172A !important;
 }
 
-body.student-portal-light :where(main, .student-workspace) :where(p, span, label, div, td, th, li) {
+body.student-portal-light :where(main, .student-workspace) :where(p, span, label, div, td, th, li, font) {
   color: #334155 !important;
 }
 
@@ -1106,7 +1115,13 @@ body.student-portal-light :where(main, .student-workspace) a {
   color: #1D4ED8 !important;
 }
 
-/* Secondary Badges in Light Mode */
+/* Status Badges in Light Mode */
+body.student-portal-light :where(main, .student-workspace) [class*='bg-emerald-500'],
+body.student-portal-light :where(main, .student-workspace) [class*='bg-emerald-600'] {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+}
+
 body.student-portal-light :where(main, .student-workspace) [class*='bg-amber-500/20'] {
   background: #FEF3C7 !important;
   color: #92400E !important;
