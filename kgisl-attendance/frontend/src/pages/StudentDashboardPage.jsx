@@ -3,6 +3,7 @@ import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert, BookOpenCheck, 
 import { useNavigate } from 'react-router-dom';
 import { getMyAttendance, listAttendanceCorrections, listLeaveRequests } from '../services/api.js';
 import BadgesWidget from '../components/BadgesWidget.jsx';
+import StatePanel from '../components/StatePanel.jsx';
 
 const TODAY_DAILY_SCHEDULE = [
   { period: 'Period 1', time: '09:10 AM – 10:00 AM', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', room: 'MCA Lab 1', status: 'COMPLETED' },
