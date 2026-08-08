@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileSpreadsheet, Printer, X, ShieldAlert, CheckCircle2, FileText, Download, Building } from 'lucide-react';
+import { FileSpreadsheet, Printer, X, ShieldAlert, FileText, Building } from 'lucide-react';
 
 const MOCK_REPORT_STUDENTS = [
   { rollNo: '25MCA95', regNo: '711725MCA095', name: 'SASIDHARAN G R', total: 40, attended: 19, percentage: 48, shortage: true },
@@ -141,7 +141,7 @@ export default function OfficialReportModal({ onClose, batchName = 'MCA-C', subj
           {/* Official Attendance Table */}
           <table className="w-full text-left text-xs border-collapse border border-slate-400">
             <thead>
-              <tr className="bg-slate-200 text-slate-900 font-bold border-b border-slate-400">
+              <tr className="bg-slate-200 text-slate-950 font-bold border-b border-slate-400">
                 <th className="p-2 border border-slate-400 text-center w-10">S.No</th>
                 <th className="p-2 border border-slate-400">Roll No</th>
                 <th className="p-2 border border-slate-400">Register No</th>
@@ -154,21 +154,21 @@ export default function OfficialReportModal({ onClose, batchName = 'MCA-C', subj
             </thead>
             <tbody>
               {displayedStudents.map((st, idx) => (
-                <tr key={st.rollNo} className={`border-b border-slate-300 ${st.shortage ? 'bg-rose-50' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                <tr key={st.rollNo} className={`border-b border-slate-300 ${st.shortage ? 'bg-red-50 text-red-900' : idx % 2 === 0 ? 'bg-white text-slate-900' : 'bg-slate-50 text-slate-900'}`}>
                   <td className="p-2 border border-slate-300 text-center font-mono">{idx + 1}</td>
-                  <td className="p-2 border border-slate-300 font-mono font-bold text-slate-900">{st.rollNo}</td>
-                  <td className="p-2 border border-slate-300 font-mono text-slate-700">{st.regNo}</td>
-                  <td className="p-2 border border-slate-300 font-bold text-slate-900">{st.name}</td>
+                  <td className="p-2 border border-slate-300 font-mono font-bold">{st.rollNo}</td>
+                  <td className="p-2 border border-slate-300 font-mono">{st.regNo}</td>
+                  <td className="p-2 border border-slate-300 font-bold">{st.name}</td>
                   <td className="p-2 border border-slate-300 text-center font-mono">{st.total}</td>
                   <td className="p-2 border border-slate-300 text-center font-mono font-bold">{st.attended}</td>
-                  <td className="p-2 border border-slate-300 text-center font-mono font-bold text-slate-950">{st.percentage}%</td>
+                  <td className="p-2 border border-slate-300 text-center font-mono font-bold">{st.percentage}%</td>
                   <td className="p-2 border border-slate-300 text-center font-bold">
                     {st.shortage ? (
-                      <span className="inline-block rounded bg-rose-200 px-2 py-0.5 text-[10px] text-rose-900 font-extrabold border border-rose-400">
+                      <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-extrabold border border-red-400">
                         SHORTAGE (&lt; 75%)
                       </span>
                     ) : (
-                      <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-900 font-bold border border-emerald-300">
+                      <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-800 font-bold border border-emerald-300">
                         SAFE (75%+)
                       </span>
                     )}
@@ -198,8 +198,27 @@ export default function OfficialReportModal({ onClose, batchName = 'MCA-C', subj
               </div>
             </div>
           </div>
-
         </div>
+
+        {/* Bottom Controls Bar matching Top Controls Bar (Hidden during Print) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-950 px-6 py-4 print:hidden">
+          <p className="text-xs text-slate-400">Scroll-down submission controls</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadCsv}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/60 px-3.5 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-900/80 transition"
+            >
+              <FileSpreadsheet size={15} /> Export Excel (.csv)
+            </button>
+            <button
+              onClick={handlePrintPdf}
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500 transition shadow-lg shadow-blue-950"
+            >
+              <Printer size={15} /> Print / Save as PDF
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
