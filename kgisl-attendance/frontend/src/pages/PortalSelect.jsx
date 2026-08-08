@@ -6,6 +6,9 @@ import StatePanel from '../components/StatePanel.jsx';
 import MasterGodModeModal from '../components/MasterGodModeModal.jsx';
 import { GradientBackground } from '../components/ui/sign-up.jsx';
 
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+
 const portals = [
   { id: 'STUDENT', label: 'Student', description: 'Mark attendance and view records', Icon: GraduationCap },
   { id: 'FACULTY', label: 'Faculty', description: 'Manage classes and attendance', Icon: UserRoundCog },
@@ -25,11 +28,21 @@ function LoginBrandLockup() {
 }
 
 export default function PortalSelect() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [portal, setPortal] = useState('STUDENT');
   const [showEntrance, setShowEntrance] = useState(true);
   const [sessionNotice, setSessionNotice] = useState(() => sessionStorage.getItem('kgisl_session_notice') || '');
   const [showMasterGodMode, setShowMasterGodMode] = useState(false);
   const selectedPortal = portals.find((item) => item.id === portal);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'STUDENT') navigate('/student/dashboard', { replace: true });
+      else if (user.role === 'FACULTY') navigate('/faculty/dashboard', { replace: true });
+      else if (user.role === 'ADMIN') navigate('/admin/timetable', { replace: true });
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (sessionNotice) { sessionStorage.removeItem('kgisl_session_notice'); setShowEntrance(false); }
