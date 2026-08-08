@@ -107,7 +107,7 @@ const GlassButton = React.forwardRef(({ className, children, size, contentClassN
 GlassButton.displayName = "GlassButton";
 
 // --- THEME-AWARE SVG GRADIENT BACKGROUND ---
-const GradientBackground = () => (
+export const GradientBackground = () => (
     <>
         <style>
             {` @keyframes float1 { 0% { transform: translate(0, 0); } 50% { transform: translate(-10px, 10px); } 100% { transform: translate(0, 0); } } @keyframes float2 { 0% { transform: translate(0, 0); } 50% { transform: translate(10px, -10px); } 100% { transform: translate(0, 0); } } `}
