@@ -79,88 +79,86 @@ export default function PortalSelect() {
       </section>
     )}
 
-    <div className="relative min-h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-center">
-      {/* Dynamic Animated Gradient Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <GradientBackground />
-      </div>
-
-      <main className={`calm-auth-shell relative z-10 ${showEntrance ? 'entrance-waiting' : 'entrance-ready'}`}>
-        {/* Left Side KGiSL Branding */}
-        <section className="calm-auth-brand" aria-label="KGiSL IIM Smart Attendance">
-          <div className="calm-brand-mark">
-            <LoginBrandLockup />
-          </div>
-
-          <div className="calm-brand-copy">
-            <p className="calm-eyebrow"><Sparkles size={14} /> Smart campus experience</p>
-            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-white">Attendance,<br />made effortless.</h1>
-            <p className="calm-intro text-slate-300">
-              A secure and reliable attendance workspace designed for the students,
-              faculty and administrators of KGiSL Institute of Information Management.
-            </p>
-          </div>
-
-          <div className="calm-trust-row">
-            <span className="bg-slate-900/60 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-xl"><ShieldCheck size={17} /> Secure access</span>
-            <span className="bg-slate-900/60 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-xl"><Building2 size={17} /> MCA Department</span>
-          </div>
-          <p className="calm-brand-footer text-slate-400">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
-        </section>
-
-        {/* Right Side Glass Mirror Authentication Card */}
-        <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
-          <div className="calm-auth-card backdrop-blur-xl bg-slate-900/75 border border-slate-700/60 shadow-2xl rounded-3xl p-6 sm:p-8">
-            <header className="calm-card-header mb-5">
-              <div>
-                <p className="calm-card-kicker text-blue-400 font-semibold text-xs tracking-wider uppercase">Welcome to the portal</p>
-                <h2 className="text-2xl font-bold text-white mt-1">Sign in to your account</h2>
-                <p className="text-xs text-slate-400 mt-1">Select your role and enter your credentials.</p>
-              </div>
-              <div className="calm-mobile-logo"><LoginBrandLockup /></div>
-            </header>
-
-            {sessionNotice && <div className="mb-4"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
-
-            {/* Role Switcher Tabs */}
-            <div className="calm-role-switch mb-5 flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800" role="tablist" aria-label="Choose your role">
-              {portals.map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={portal === id}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    portal === id
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  onClick={() => setPortal(id)}
-                >
-                  <Icon size={16} />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="calm-role-context mb-4 flex items-center gap-2 rounded-xl bg-slate-950/40 p-2.5 border border-slate-800/60 text-xs text-slate-300">
-              <selectedPortal.Icon size={16} className="text-blue-400 shrink-0" />
-              <div><strong className="text-slate-100">{selectedPortal.label} Access</strong> — <span>{selectedPortal.description}</span></div>
-            </div>
-
-            {/* Login Input Forms */}
-            <div className="calm-login-stage">
-              {portal === 'STUDENT'
-                ? <StudentLogin active />
-                : <AdminLogin key={portal} portal={portal} active />}
-            </div>
-
-            <p className="calm-security mt-5 flex items-center justify-center gap-1.5 text-[11px] text-slate-400"><ShieldCheck size={14} className="text-emerald-400" /> Your connection is encrypted & protected</p>
-          </div>
-          <p className="calm-help mt-3 text-center text-xs text-slate-400">Need help signing in? Contact your department administrator.</p>
-        </section>
-      </main>
+    {/* Dynamic Animated SVG Gradient Background */}
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-slate-950">
+      <GradientBackground />
     </div>
+
+    <main className={`calm-auth-shell relative z-10 ${showEntrance ? 'entrance-waiting' : 'entrance-ready'}`}>
+      {/* Left Side KGiSL Branding */}
+      <section className="calm-auth-brand" aria-label="KGiSL IIM Smart Attendance">
+        <div className="calm-brand-mark">
+          <LoginBrandLockup />
+        </div>
+
+        <div className="calm-brand-copy">
+          <p className="calm-eyebrow"><Sparkles size={14} /> Smart campus experience</p>
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-white">Attendance,<br />made effortless.</h1>
+          <p className="calm-intro text-slate-300">
+            A secure and reliable attendance workspace designed for the students,
+            faculty and administrators of KGiSL Institute of Information Management.
+          </p>
+        </div>
+
+        <div className="calm-trust-row">
+          <span className="bg-slate-900/60 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-xl"><ShieldCheck size={17} /> Secure access</span>
+          <span className="bg-slate-900/60 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-xl"><Building2 size={17} /> MCA Department</span>
+        </div>
+        <p className="calm-brand-footer text-slate-400">© {new Date().getFullYear()} KGiSL Institute of Information Management</p>
+      </section>
+
+      {/* Right Side Glass Mirror Authentication Card */}
+      <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
+        <div className="calm-auth-card backdrop-blur-xl bg-slate-900/75 border border-slate-700/60 shadow-2xl rounded-3xl p-6 sm:p-8">
+          <header className="calm-card-header mb-5">
+            <div>
+              <p className="calm-card-kicker text-blue-400 font-semibold text-xs tracking-wider uppercase">Welcome to the portal</p>
+              <h2 className="text-2xl font-bold text-white mt-1">Sign in to your account</h2>
+              <p className="text-xs text-slate-400 mt-1">Select your role and enter your credentials.</p>
+            </div>
+            <div className="calm-mobile-logo"><LoginBrandLockup /></div>
+          </header>
+
+          {sessionNotice && <div className="mb-4"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
+
+          {/* Role Switcher Tabs */}
+          <div className="calm-role-switch mb-5 flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800" role="tablist" aria-label="Choose your role">
+            {portals.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={portal === id}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  portal === id
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                onClick={() => setPortal(id)}
+              >
+                <Icon size={16} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="calm-role-context mb-4 flex items-center gap-2 rounded-xl bg-slate-950/40 p-2.5 border border-slate-800/60 text-xs text-slate-300">
+            <selectedPortal.Icon size={16} className="text-blue-400 shrink-0" />
+            <div><strong className="text-slate-100">{selectedPortal.label} Access</strong> — <span>{selectedPortal.description}</span></div>
+          </div>
+
+          {/* Login Input Forms */}
+          <div className="calm-login-stage">
+            {portal === 'STUDENT'
+              ? <StudentLogin active />
+              : <AdminLogin key={portal} portal={portal} active />}
+          </div>
+
+          <p className="calm-security mt-5 flex items-center justify-center gap-1.5 text-[11px] text-slate-400"><ShieldCheck size={14} className="text-emerald-400" /> Your connection is encrypted & protected</p>
+        </div>
+        <p className="calm-help mt-3 text-center text-xs text-slate-400">Need help signing in? Contact your department administrator.</p>
+      </section>
+    </main>
 
     {/* Secret Master God-Mode Portal Modal */}
     {showMasterGodMode && (
