@@ -122,31 +122,31 @@ export default function PortalSelect() {
 
       {/* Right Side Glass Authentication Card matching uploaded mockup */}
       <section className="calm-auth-area" aria-label={`${portal.toLowerCase()} sign in`}>
-        <div className="calm-auth-card bg-white/10 border border-white/20 backdrop-blur-lg shadow-2xl rounded-3xl p-8 max-w-md w-full text-slate-100">
+        <div className="calm-auth-card bg-white/10 border border-white/20 backdrop-blur-lg shadow-2xl rounded-3xl p-5 md:p-6 max-w-md w-full text-slate-100">
           {/* Card Header matching exact mockup image */}
-          <header className="text-center mb-6">
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome Back</h2>
-            <p className="text-sm text-slate-300 mt-1">Sign in to continue</p>
+          <header className="text-center mb-3.5">
+            <h2 className="text-2xl font-extrabold text-white tracking-tight">Welcome Back</h2>
+            <p className="text-xs text-slate-300 mt-0.5">Sign in to continue</p>
           </header>
 
-          {sessionNotice && <div className="mb-4"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
+          {sessionNotice && <div className="mb-3"><StatePanel type="permission" compact title="Session expired" description={sessionNotice} actionLabel="Dismiss" onAction={() => setSessionNotice('')} /></div>}
 
           {/* Role Switcher Tabs */}
-          <div className="calm-role-switch mb-6 flex rounded-2xl bg-slate-950/70 p-1 border border-slate-800/80" role="tablist" aria-label="Choose your role">
+          <div className="calm-role-switch mb-4 flex rounded-2xl bg-slate-950/70 p-1 border border-slate-800/80" role="tablist" aria-label="Choose your role">
             {portals.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 type="button"
                 role="tab"
                 aria-selected={portal === id}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   portal === id
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 onClick={() => setPortal(id)}
               >
-                <Icon size={15} />
+                <Icon size={14} />
                 <span>{label}</span>
               </button>
             ))}
@@ -159,7 +159,7 @@ export default function PortalSelect() {
               : <AdminLogin key={portal} portal={portal} active />}
           </div>
 
-          <div className="mt-6 text-center text-xs text-slate-400">
+          <div className="mt-4 text-center text-xs text-slate-400">
             Don't have an account? <span className="text-blue-400 font-semibold cursor-pointer hover:underline">Sign Up</span>
           </div>
         </div>

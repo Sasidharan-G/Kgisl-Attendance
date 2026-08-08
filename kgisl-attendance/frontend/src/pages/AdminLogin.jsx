@@ -82,16 +82,16 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
   }
 
   return (
-    <div className="w-full space-y-6">
-      <form onSubmit={otpRequired ? verifyOtp : handleSubmit} className="space-y-5">
+    <div className="w-full space-y-4">
+      <form onSubmit={otpRequired ? verifyOtp : handleSubmit} className="space-y-3.5">
         {otpRequired ? (
           <div className="space-y-3">
             <p className="text-xs text-slate-300">
               A 6-digit sign-in code was sent to <strong className="text-white">{email}</strong>.
             </p>
-            <div className="relative pt-1">
-              <div className="flex items-center border-b border-slate-600/80 focus-within:border-blue-500 py-2 transition-colors">
-                <Lock className="h-5 w-5 text-slate-300 mr-3 shrink-0" />
+            <div className="relative pt-0.5">
+              <div className="flex items-center border-b border-slate-600/80 focus-within:border-blue-500 py-1.5 transition-colors">
+                <Lock className="h-4.5 w-4.5 text-slate-300 mr-2.5 shrink-0" />
                 <input
                   required
                   inputMode="numeric"
@@ -100,7 +100,7 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   placeholder="6-digit OTP code"
-                  className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 focus:outline-none font-mono"
+                  className="w-full bg-transparent text-xs text-slate-100 placeholder-slate-400 focus:outline-none font-mono"
                 />
               </div>
             </div>
@@ -108,9 +108,9 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
         ) : (
           <>
             {/* Email Address Underline Input matching mockup */}
-            <div className="relative pt-1">
-              <div className="flex items-center border-b border-slate-600/80 focus-within:border-blue-500 py-2 transition-colors">
-                <User className="h-5 w-5 text-slate-300 mr-3 shrink-0" />
+            <div className="relative pt-0.5">
+              <div className="flex items-center border-b border-slate-600/80 focus-within:border-blue-500 py-1.5 transition-colors">
+                <User className="h-4.5 w-4.5 text-slate-300 mr-2.5 shrink-0" />
                 <input
                   type="email"
                   required
@@ -118,15 +118,15 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email Address"
-                  className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 focus:outline-none"
+                  className="w-full bg-transparent text-xs text-slate-100 placeholder-slate-400 focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Password Underline Input matching mockup */}
-            <div className="relative pt-1">
-              <div className="flex items-center border-b border-slate-600/80 focus-within:border-blue-500 py-2 transition-colors">
-                <Lock className="h-5 w-5 text-slate-300 mr-3 shrink-0" />
+            <div className="relative pt-0.5">
+              <div className="flex items-center border-b border-slate-600/80 focus-within:border-blue-500 py-1.5 transition-colors">
+                <Lock className="h-4.5 w-4.5 text-slate-300 mr-2.5 shrink-0" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -134,21 +134,21 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
-                  className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 focus:outline-none"
+                  className="w-full bg-transparent text-xs text-slate-100 placeholder-slate-400 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="text-slate-400 hover:text-slate-200 transition-colors p-1"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
             {/* Forgot Password Link on Left matching mockup */}
             {portal === 'FACULTY' && (
-              <div className="flex items-center justify-start text-xs pt-0.5">
+              <div className="flex items-center justify-start text-[11px] pt-0.5">
                 <button
                   type="button"
                   onClick={() => setShowForgot(true)}
@@ -163,8 +163,8 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
 
         {/* Error Alert */}
         {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-            <AlertCircle size={16} className="shrink-0" />
+          <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-[11px] text-rose-300">
+            <AlertCircle size={15} className="shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -173,22 +173,22 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
         <button
           type="submit"
           disabled={loading || isSuccess}
-          className="group relative flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] py-3.5 text-base font-bold text-white shadow-lg shadow-blue-600/40 transition-all disabled:opacity-50 mt-2"
+          className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/40 transition-all disabled:opacity-50 mt-1"
         >
           {loading ? (
             <span className="flex items-center gap-2">
-              <Loader size={18} className="animate-spin text-white" />
+              <Loader size={16} className="animate-spin text-white" />
               Verifying Credentials...
             </span>
           ) : isSuccess ? (
             <span className="flex items-center gap-2 text-emerald-300 font-bold">
-              <CheckCircle2 size={18} />
+              <CheckCircle2 size={16} />
               Welcome Back!
             </span>
           ) : (
             <>
               Sign In
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </>
           )}
         </button>
@@ -196,10 +196,10 @@ export default function AdminLogin({ portal = 'ADMIN', active = true }) {
 
       {/* Social Google OAuth Divider matching mockup */}
       {active && portal !== 'ADMIN' && (
-        <div className="space-y-4 pt-1">
-          <div className="flex items-center gap-3">
+        <div className="space-y-3 pt-0.5">
+          <div className="flex items-center gap-2.5">
             <hr className="flex-1 border-slate-700/60" />
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">OR CONTINUE WITH</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">OR CONTINUE WITH</span>
             <hr className="flex-1 border-slate-700/60" />
           </div>
           <GoogleSignIn role={portal} onError={setError} />
