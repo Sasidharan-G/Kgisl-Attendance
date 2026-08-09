@@ -6,12 +6,32 @@ import BadgesWidget from '../components/BadgesWidget.jsx';
 import StatePanel from '../components/StatePanel.jsx';
 
 const TODAY_DAILY_SCHEDULE = [
-  { period: 'Period 1', time: '09:10 AM – 10:00 AM', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', room: 'MCA Lab 1', status: 'COMPLETED' },
-  { period: 'Period 2', time: '10:10 AM – 11:00 AM', subjectCode: 'PHP', subjectName: 'Open Source Scripting - PHP', room: 'Hall 204', status: 'ACTIVE' },
-  { period: 'Period 3', time: '11:10 AM – 12:00 PM', subjectCode: 'OSC', subjectName: 'Open Source Concepts', room: 'Hall 204', status: 'UPCOMING' },
-  { period: 'Period 4', time: '01:40 PM – 02:30 PM', subjectCode: 'NSC', subjectName: 'Network Security & Cryptography', room: 'MCA Lab 2', status: 'UPCOMING' },
-  { period: 'Period 5', time: '02:40 PM – 03:30 PM', subjectCode: 'CC', subjectName: 'Cloud Computing Architecture', room: 'Hall 201', status: 'UPCOMING' },
+  { period: 'Period 1', time: '09:10 AM – 10:00 AM', start: '09:10', end: '10:00', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', room: 'MCA Lab 1' },
+  { period: 'Period 2', time: '10:10 AM – 11:00 AM', start: '10:10', end: '11:00', subjectCode: 'PHP', subjectName: 'Open Source Scripting - PHP', room: 'Hall 204' },
+  { period: 'Period 3', time: '11:10 AM – 12:00 PM', start: '11:10', end: '12:00', subjectCode: 'OSC', subjectName: 'Open Source Concepts', room: 'Hall 204' },
+  { period: 'Period 4', time: '01:40 PM – 02:30 PM', start: '13:40', end: '14:30', subjectCode: 'NSC', subjectName: 'Network Security & Cryptography', room: 'MCA Lab 2' },
+  { period: 'Period 5', time: '02:40 PM – 03:30 PM', start: '14:40', end: '15:30', subjectCode: 'CC', subjectName: 'Cloud Computing Architecture', room: 'Hall 201' },
 ];
+
+function getPeriodStatus(startStr, endStr) {
+  const now = new Date();
+  const [startH, startM] = startStr.split(':').map(Number);
+  const [endH, endM] = endStr.split(':').map(Number);
+  
+  const startTime = new Date(now);
+  startTime.setHours(startH, startM, 0, 0);
+  
+  const endTime = new Date(now);
+  endTime.setHours(endH, endM, 0, 0);
+  
+  if (now >= startTime && now <= endTime) {
+    return 'ACTIVE';
+  } else if (now > endTime) {
+    return 'COMPLETED';
+  } else {
+    return 'UPCOMING';
+  }
+}
 
 const UPCOMING_BLOCK_TESTS = [
   { id: 'bt1', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', date: '2026-08-24', day: 'Monday', time: '09:30 AM – 12:30 PM', room: 'MCA Lab / Hall 1' },
@@ -68,6 +88,13 @@ export default function StudentDashboardPage() {
     ? Math.round(attendance.subjects.reduce((sum, item) => sum + item.percentage, 0) / attendance.subjects.length)
     : 100;
 
+  const todayScheduleWithStatus = TODAY_DAILY_SCHEDULE.map(item => {
+    const status = getPeriodStatus(item.start, item.end);
+    return { ...item, status };
+  });
+
+  const activePeriod = todayScheduleWithStatus.find(item => item.status === 'ACTIVE');
+
   return (
     <div className="student-workspace min-h-screen px-4 sm:px-8 py-8">
       <main className="mx-auto max-w-5xl">
@@ -115,10 +142,17 @@ export default function StudentDashboardPage() {
                   <div>
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       Today's Class Schedule
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/40">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                        Live Period 2 Active
-                      </span>
+                      {activePeriod ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/40">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                          Live {activePeriod.period} Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/80 px-2.5 py-0.5 text-xs font-bold text-slate-400 border border-slate-700/60">
+                          <span className="h-2 w-2 rounded-full bg-slate-550" />
+                          No Active Period
+                        </span>
+                      )}
                     </h2>
                     <p className="text-xs text-slate-400">Real-time daily class timetable & ongoing session tracker</p>
                   </div>
@@ -132,7 +166,7 @@ export default function StudentDashboardPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {TODAY_DAILY_SCHEDULE.map((item) => {
+                {todayScheduleWithStatus.map((item) => {
                   const isActive = item.status === 'ACTIVE';
                   const isCompleted = item.status === 'COMPLETED';
 
