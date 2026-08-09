@@ -12,6 +12,23 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('Unhandled UI Error caught by ErrorBoundary:', error, errorInfo);
+    
+    // Automatically recover from chunk/dynamic-import load failures (caused by updates/deployments)
+    const isChunkError = 
+      error?.name === 'ChunkLoadError' || 
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Loading chunk') ||
+      error?.message?.includes('dynamic-import');
+
+    if (isChunkError) {
+      console.warn('Chunk load error captured. Executing page reload to fetch latest assets...');
+      const lastReload = sessionStorage.getItem('kgisl_last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        sessionStorage.setItem('kgisl_last_chunk_reload', String(now));
+        window.location.reload();
+      }
+    }
   }
 
   handleReload = () => {

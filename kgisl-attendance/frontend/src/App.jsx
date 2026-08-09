@@ -8,22 +8,39 @@ import StudentTheme from './components/StudentTheme.jsx';
 
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 
-const PortalSelect = lazy(() => import('./pages/PortalSelect.jsx'));
-const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx'));
-const StudentScanPage = lazy(() => import('./pages/StudentScanPage.jsx'));
-const StudentsPage = lazy(() => import('./pages/StudentsPage.jsx'));
-const TimetablePage = lazy(() => import('./pages/TimetablePage.jsx'));
-const AddFacultyPage = lazy(() => import('./pages/AddFacultyPage.jsx'));
-const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard.jsx'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'));
-const StudentAttendancePage = lazy(() => import('./pages/StudentAttendancePage.jsx'));
-const LeaveRequestsPage = lazy(() => import('./pages/LeaveRequestsPage.jsx'));
-const AcademicSetupPage = lazy(() => import('./pages/AcademicSetupPage.jsx'));
-const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage.jsx'));
-const CorrectionRequestsPage = lazy(() => import('./pages/CorrectionRequestsPage.jsx'));
-const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
-const AcademicCalendarPage = lazy(() => import('./pages/AcademicCalendarPage.jsx'));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'));
+function safeLazy(importFunc) {
+  return lazy(async () => {
+    try {
+      return await importFunc();
+    } catch (err) {
+      console.error('Lazy load chunk failed, reloading page to fetch latest version...', err);
+      const lastReload = sessionStorage.getItem('kgisl_last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        sessionStorage.setItem('kgisl_last_chunk_reload', String(now));
+        window.location.reload();
+      }
+      throw err;
+    }
+  });
+}
+
+const PortalSelect = safeLazy(() => import('./pages/PortalSelect.jsx'));
+const FacultyDashboard = safeLazy(() => import('./pages/FacultyDashboard.jsx'));
+const StudentScanPage = safeLazy(() => import('./pages/StudentScanPage.jsx'));
+const StudentsPage = safeLazy(() => import('./pages/StudentsPage.jsx'));
+const TimetablePage = safeLazy(() => import('./pages/TimetablePage.jsx'));
+const AddFacultyPage = safeLazy(() => import('./pages/AddFacultyPage.jsx'));
+const AnalyticsDashboard = safeLazy(() => import('./pages/AnalyticsDashboard.jsx'));
+const SettingsPage = safeLazy(() => import('./pages/SettingsPage.jsx'));
+const StudentAttendancePage = safeLazy(() => import('./pages/StudentAttendancePage.jsx'));
+const LeaveRequestsPage = safeLazy(() => import('./pages/LeaveRequestsPage.jsx'));
+const AcademicSetupPage = safeLazy(() => import('./pages/AcademicSetupPage.jsx'));
+const StudentDashboardPage = safeLazy(() => import('./pages/StudentDashboardPage.jsx'));
+const CorrectionRequestsPage = safeLazy(() => import('./pages/CorrectionRequestsPage.jsx'));
+const PrivacyPolicyPage = safeLazy(() => import('./pages/PrivacyPolicyPage.jsx'));
+const AcademicCalendarPage = safeLazy(() => import('./pages/AcademicCalendarPage.jsx'));
+const NotFoundPage = safeLazy(() => import('./pages/NotFoundPage.jsx'));
 
 function ProtectedRoute({ role, children }) {
   const { user } = useAuth();
