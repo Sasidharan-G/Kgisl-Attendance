@@ -1,10 +1,48 @@
-import React from 'react';
-import { UserCheck, UserX, Grid, ShieldAlert } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { UserCheck, UserX, Grid } from 'lucide-react';
 
-export default function SeatingGridHeatmap({ activeSession }) {
-  // Generate 24 classroom seats (6 columns x 4 rows layout)
-  const totalSeats = 24;
-  const scannedSeats = [1, 2, 4, 5, 8, 9, 11, 14, 15, 17, 18, 20, 21, 23];
+export default function SeatingGridHeatmap({ activeSession, students = [], sessionActive }) {
+  // If no session is active or no students, do not render the component
+  if (!sessionActive || !activeSession || !students || students.length === 0) {
+    return null;
+  }
+
+  // Deterministically assign a stable random seat to each student based on sessionId
+  const assignedSeats = useMemo(() => {
+    // Generate simple seed hash from sessionId to keep shuffling stable on re-renders
+    const seed = activeSession.sessionId || 'default-seed';
+    let numSeed = 0;
+    for (let j = 0; j < seed.length; j++) {
+      numSeed = (numSeed << 5) - numSeed + seed.charCodeAt(j);
+      numSeed |= 0;
+    }
+    
+    // Deterministic random generator
+    const random = () => {
+      const x = Math.sin(numSeed++) * 10000;
+      return x - Math.floor(x);
+    };
+
+    // Create array of indices matching the students array
+    const indices = Array.from({ length: students.length }, (_, i) => i);
+    
+    // Fisher-Yates Shuffle with deterministic LCG
+    for (let j = indices.length - 1; j > 0; j--) {
+      const randIdx = Math.floor(random() * (j + 1));
+      const temp = indices[j];
+      indices[j] = indices[randIdx];
+      indices[randIdx] = temp;
+    }
+
+    // Map each seat index to the corresponding shuffled student
+    return indices.map((studentIdx, seatIdx) => ({
+      seatNo: seatIdx + 1,
+      student: students[studentIdx],
+    }));
+  }, [students, activeSession.sessionId]);
+
+  const presentCount = students.filter(s => ['PRESENT', 'LATE', 'ON_DUTY'].includes(s.attendanceStatus)).length;
+  const absentCount = students.length - presentCount;
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl backdrop-blur-md">
@@ -20,18 +58,20 @@ export default function SeatingGridHeatmap({ activeSession }) {
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" /> Real-Time Grid
               </span>
             </h3>
-            <p className="text-xs text-slate-400">Visual occupancy layout as students scan dynamic QR</p>
+            <p className="text-xs text-slate-400 flex items-center gap-1">
+              Section: <span className="font-bold text-white">{activeSession.batch || '—'}</span>
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4 text-xs font-bold">
           <div className="flex items-center gap-1.5 text-emerald-400">
             <span className="h-3 w-3 rounded-md bg-emerald-500 shadow-sm shadow-emerald-500/50" />
-            <span>Present ({scannedSeats.length})</span>
+            <span>Present ({presentCount})</span>
           </div>
           <div className="flex items-center gap-1.5 text-rose-400">
             <span className="h-3 w-3 rounded-md bg-slate-800 border border-rose-500/40" />
-            <span>Empty / Absent ({totalSeats - scannedSeats.length})</span>
+            <span>Empty / Absent ({absentCount})</span>
           </div>
         </div>
       </div>
@@ -41,18 +81,17 @@ export default function SeatingGridHeatmap({ activeSession }) {
         🖥️ CLASSROOM FRONT / PROJECTOR SCREEN
       </div>
 
-      {/* 6x4 Grid Layout */}
+      {/* Dynamic Grid Layout matching student count */}
       <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
-        {Array.from({ length: totalSeats }).map((_, idx) => {
-          const seatNo = idx + 1;
-          const isPresent = scannedSeats.includes(seatNo);
+        {assignedSeats.map(({ seatNo, student }) => {
+          const isPresent = ['PRESENT', 'LATE', 'ON_DUTY'].includes(student.attendanceStatus);
 
           return (
             <div
               key={seatNo}
               className={`flex flex-col items-center justify-center rounded-xl p-3 border transition-all duration-300 ${
                 isPresent
-                  ? 'border-emerald-500/50 bg-emerald-950/40 shadow-lg shadow-emerald-950/40 hover:scale-105'
+                  ? 'border-emerald-500 bg-emerald-950/40 shadow-lg shadow-emerald-950/40 hover:scale-105'
                   : 'border-slate-800 bg-slate-950/40 opacity-60'
               }`}
             >
@@ -66,8 +105,11 @@ export default function SeatingGridHeatmap({ activeSession }) {
               <span className={`text-[11px] font-bold ${isPresent ? 'text-emerald-300' : 'text-slate-400'}`}>
                 Seat #{seatNo}
               </span>
+              <span className="text-[10px] font-bold text-center truncate max-w-full text-slate-200 mt-0.5">
+                {isPresent ? student.name : 'Empty'}
+              </span>
               <span className="text-[9px] font-semibold text-slate-400">
-                {isPresent ? 'Present' : 'Empty'}
+                {isPresent ? student.attendanceStatus : 'Absent'}
               </span>
             </div>
           );

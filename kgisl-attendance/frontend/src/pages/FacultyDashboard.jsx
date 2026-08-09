@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Users2, ShieldAlert, Timer, GraduationCap } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
@@ -12,7 +12,7 @@ import ManualAttendance from '../components/ManualAttendance';
 import AcousticBroadcastPanel from '../components/AcousticBroadcastPanel';
 import SeatingGridHeatmap from '../components/SeatingGridHeatmap.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { startSession, endSession, pauseSession, resumeSession, getActiveSession, getSessionStats, listAllocations } from '../services/api.js';
+import { startSession, endSession, pauseSession, resumeSession, getActiveSession, getSessionStats, listAllocations, getSessionAttendance } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
 import { format12Hour, format12HourRange } from '../utils/timeFormat.js';
 
@@ -46,6 +46,19 @@ export default function FacultyDashboard() {
   const [connected, setConnected] = useState(false);
   const [showStartConfirm, setShowStartConfirm] = useState(false);
   const [cancelGraceUntil, setCancelGraceUntil] = useState(0);
+  const [sessionStudents, setSessionStudents] = useState([]);
+
+  const refreshSessionStudents = useCallback(async (sessionId) => {
+    if (!sessionId) return;
+    try {
+      const data = await getSessionAttendance(sessionId);
+      if (data && data.students) {
+        setSessionStudents(data.students);
+      }
+    } catch (err) {
+      console.error('Failed to load session students:', err);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setTimeLabel(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })), 1000);
@@ -75,6 +88,7 @@ export default function FacultyDashboard() {
         setSessionMeta(null);
         setQr(null);
         currentSessionIdRef.current = null;
+        setSessionStudents([]);
         return;
       }
       currentSessionIdRef.current = session.sessionId;
@@ -83,6 +97,7 @@ export default function FacultyDashboard() {
       setSessionPaused(session.status === 'PAUSED');
       const currentStats = await getSessionStats(session.sessionId);
       setStats(currentStats.data);
+      await refreshSessionStudents(session.sessionId);
       socketRef.current?.emit('join_session', session.sessionId);
     }).catch(() => void 0);
   }, [user.name]);
@@ -98,6 +113,7 @@ export default function FacultyDashboard() {
           setSessionMeta(null);
           setQr(null);
           currentSessionIdRef.current = null;
+          setSessionStudents([]);
           return;
         }
 
@@ -115,6 +131,7 @@ export default function FacultyDashboard() {
           });
           socketRef.current?.emit('join_session', session.sessionId);
         }
+        await refreshSessionStudents(session.sessionId);
       } catch {
         // A temporary network failure must not incorrectly mark a live session idle.
       }
@@ -122,7 +139,7 @@ export default function FacultyDashboard() {
 
     const timer = setInterval(reconcile, 5000);
     return () => clearInterval(timer);
-  }, [user.name]);
+  }, [user.name, refreshSessionStudents]);
 
   // Load real Subject/Room/Batch options from the backend on mount so the
   // session-start request sends actual UUIDs, not display labels.
@@ -173,6 +190,7 @@ export default function FacultyDashboard() {
       setConnected(true);
       if (currentSessionIdRef.current) {
         socket.emit('join_session', currentSessionIdRef.current);
+        refreshSessionStudents(currentSessionIdRef.current);
       }
     });
     socket.on('disconnect', () => setConnected(false));
@@ -184,6 +202,9 @@ export default function FacultyDashboard() {
 
     socket.on('attendance_marked', (data) => {
       setScans((prev) => [data, ...prev].slice(0, 50));
+      if (currentSessionIdRef.current) {
+        refreshSessionStudents(currentSessionIdRef.current);
+      }
     });
 
     socket.on('attendance_corrected', (data) => {
@@ -191,6 +212,7 @@ export default function FacultyDashboard() {
       const sessionId = currentSessionIdRef.current;
       if (sessionId) {
         getSessionStats(sessionId).then((currentStats) => setStats(currentStats.data)).catch(() => void 0);
+        refreshSessionStudents(sessionId);
       }
     });
 
@@ -204,6 +226,7 @@ export default function FacultyDashboard() {
       setSessionPaused(false);
       setQr(null);
       currentSessionIdRef.current = null;
+      setSessionStudents([]);
     });
 
     socket.on('session_paused', () => {
@@ -214,7 +237,7 @@ export default function FacultyDashboard() {
     return () => {
       disconnectSocket();
     };
-  }, []);
+  }, [refreshSessionStudents]);
 
   function handleStart() {
     const allocation = allocations.find((x) => x.id === subjectId);
@@ -251,6 +274,7 @@ export default function FacultyDashboard() {
       setTimeout(() => setCancelGraceUntil(0), 10_000);
 
       socketRef.current?.emit('join_session', session.sessionId);
+      await refreshSessionStudents(session.sessionId);
     } catch (err) {
       alert(err.message || 'Could not start session');
     } finally {
@@ -267,6 +291,7 @@ export default function FacultyDashboard() {
       setSessionMeta(null);
       setQr(null);
       currentSessionIdRef.current = null;
+      setSessionStudents([]);
     } catch (err) {
       alert(err.message || 'Could not end session');
     }
@@ -300,6 +325,7 @@ export default function FacultyDashboard() {
     try {
       const currentStats = await getSessionStats(sessionMeta.sessionId);
       setStats(currentStats.data);
+      await refreshSessionStudents(sessionMeta.sessionId);
     } catch {
       // The websocket remains the primary live update path. A temporary stats
       // refresh failure must not hide the successfully saved manual override.
@@ -404,9 +430,11 @@ export default function FacultyDashboard() {
           <RecentScans scans={scans} />
         </div>
 
-        <div className="mt-6">
-          <SeatingGridHeatmap activeSession={sessionMeta} />
-        </div>
+        {sessionActive && (
+          <div className="mt-6">
+            <SeatingGridHeatmap activeSession={sessionMeta} students={sessionStudents} sessionActive={sessionActive} />
+          </div>
+        )}
 
         <div className="mt-6">
           <ValidationStrip active={sessionActive} connected={connected} />
