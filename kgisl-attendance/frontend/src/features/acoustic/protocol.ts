@@ -1,8 +1,8 @@
 export type AcousticSymbol = 0 | 1 | 2 | 3;
 
-// Near-ultrasonic FSK frequencies (18.2 kHz - 19.7 kHz): Completely silent to human ears,
+// Near-ultrasonic FSK frequencies (16.2 kHz - 17.7 kHz): Completely silent to human ears,
 // while easily picked up by phone microphones across an entire classroom/lecture hall.
-export const ACOUSTIC_FREQUENCIES_HZ = [18_200, 18_700, 19_200, 19_700] as const;
+export const ACOUSTIC_FREQUENCIES_HZ = [16_200, 16_700, 17_200, 17_700] as const;
 export const SYMBOL_SECONDS = 0.035;
 export const OBSERVATION_SECONDS = 0.007;
 export const OBSERVATIONS_PER_SYMBOL = Math.round(SYMBOL_SECONDS / OBSERVATION_SECONDS);
