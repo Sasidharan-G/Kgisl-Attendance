@@ -104,10 +104,12 @@ export class AcousticReceiver {
         for (const symbol of block) if (symbol >= 0 && symbol <= 3) counts[symbol] += 1;
         let winner = 0;
         for (let index = 1; index < counts.length; index += 1) if (counts[index] > counts[winner]) winner = index;
-        if (counts[winner] < Math.ceil(OBSERVATIONS_PER_SYMBOL / 2)) {
+        
+        if (counts[winner] < 2) {
           contiguous = [];
           continue;
         }
+        
         contiguous.push(winner as AcousticSymbol);
         const token = decodeTokenFrame(contiguous);
         if (token) return token;
