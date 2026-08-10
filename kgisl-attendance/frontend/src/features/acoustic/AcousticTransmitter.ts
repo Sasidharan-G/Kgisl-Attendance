@@ -36,8 +36,8 @@ export class AcousticTransmitter {
         },
       });
       const gain = context.createGain();
-      // Optimized near-ultrasonic gain for long-distance classroom coverage (up to 15m)
-      gain.gain.value = 0.45;
+      // Maximized near-ultrasonic gain for long-distance classroom coverage (up to 20m)
+      gain.gain.value = 0.95;
       node.connect(gain).connect(context.destination);
       this.context = context;
       this.node = node;

@@ -49,9 +49,9 @@ class AcousticReceiverProcessor extends AudioWorkletProcessor {
     for (const sample of this.buffer) squareSum += sample * sample;
     const rms = Math.sqrt(squareSum / this.buffer.length);
     const confidence = powers[bestIndex] / Math.max(secondPower, 1e-12);
-    // Tuned sensitivity threshold for classroom long-distance pickup
-    const symbol = rms >= 0.00001 && confidence >= 1.25 ? bestIndex : -1;
-    this.port.postMessage({ type: 'observation', symbol, confidence, level: Math.min(1, rms * 150) });
+    // Extremely sensitive thresholds for long-distance classroom pickup (up to 20m)
+    const symbol = rms >= 0.0000005 && confidence >= 1.15 ? bestIndex : -1;
+    this.port.postMessage({ type: 'observation', symbol, confidence, level: Math.min(1, rms * 300) });
   }
 
   process(inputs: Float32Array[][]): boolean {
