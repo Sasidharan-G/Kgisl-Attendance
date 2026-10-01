@@ -12,7 +12,16 @@ export default function AcademicSetupPage() {
   const [rooms, setRooms] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '' });
-  const [roomForm, setRoomForm] = useState({ name: '', latitude: '', longitude: '', geofenceRadiusM: 120 });
+  const [roomForm, setRoomForm] = useState({
+    name: '',
+    latitude: '',
+    longitude: '',
+    geofenceRadiusM: 120,
+    c1Lat: '', c1Lng: '',
+    c2Lat: '', c2Lng: '',
+    c3Lat: '', c3Lng: '',
+    c4Lat: '', c4Lng: '',
+  });
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +40,39 @@ export default function AcademicSetupPage() {
   }
   function edit(row) { setEditing(row.id); setForm({ name: row.name, department: row.department, programme: row.programme, semester: row.semester, academicYear: row.academicYear, mentorId: row.mentorId || '', completionDate: row.completionDate ? new Date(row.completionDate).toISOString().slice(0, 10) : '' }); }
   async function addSubject(event) { event.preventDefault(); setError(''); try { await createSubject(subjectForm); setSubjectForm({ name: '', code: '' }); await load(); } catch (e) { setError(e.message || 'Could not add subject'); } }
-  async function addRoom(event) { event.preventDefault(); setError(''); try { await createRoom({ ...roomForm, latitude: Number(roomForm.latitude), longitude: Number(roomForm.longitude), geofenceRadiusM: Number(roomForm.geofenceRadiusM), wifiBssidWhitelist: [] }); setRoomForm({ name: '', latitude: '', longitude: '', geofenceRadiusM: 120 }); await load(); } catch (e) { setError(e.message || 'Could not add room'); } }
+  async function addRoom(event) {
+    event.preventDefault();
+    setError('');
+    try {
+      let polygon = null;
+      if (roomForm.c1Lat && roomForm.c1Lng && roomForm.c2Lat && roomForm.c2Lng && roomForm.c3Lat && roomForm.c3Lng && roomForm.c4Lat && roomForm.c4Lng) {
+        polygon = [
+          { lat: Number(roomForm.c1Lat), lng: Number(roomForm.c1Lng) },
+          { lat: Number(roomForm.c2Lat), lng: Number(roomForm.c2Lng) },
+          { lat: Number(roomForm.c3Lat), lng: Number(roomForm.c3Lng) },
+          { lat: Number(roomForm.c4Lat), lng: Number(roomForm.c4Lng) },
+        ];
+      }
+      await createRoom({
+        name: roomForm.name,
+        latitude: Number(roomForm.latitude),
+        longitude: Number(roomForm.longitude),
+        geofenceRadiusM: Number(roomForm.geofenceRadiusM),
+        polygon,
+        wifiBssidWhitelist: []
+      });
+      setRoomForm({
+        name: '', latitude: '', longitude: '', geofenceRadiusM: 120,
+        c1Lat: '', c1Lng: '',
+        c2Lat: '', c2Lng: '',
+        c3Lat: '', c3Lng: '',
+        c4Lat: '', c4Lng: '',
+      });
+      await load();
+    } catch (e) {
+      setError(e.message || 'Could not add room');
+    }
+  }
   const field = (key, label, props = {}) => <label className="space-y-1 text-xs text-slate-400"><span>{label}</span><input required value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="w-full rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white" {...props}/></label>;
 
   return <div className="flex min-h-screen bg-ink-950"><Sidebar/><main className="min-w-0 flex-1 pb-10"><TopBar connected/><div className="mx-auto mt-6 max-w-6xl px-6">
@@ -44,6 +85,12 @@ export default function AcademicSetupPage() {
       <div className="flex items-end gap-2"><button disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-signal-blue px-4 py-2 font-semibold text-white disabled:opacity-50">{editing ? <Save size={16}/> : <Plus size={16}/>} {saving ? 'Saving...' : editing ? 'Update section' : 'Add section'}</button>{editing && <button type="button" onClick={() => { setEditing(''); setForm(empty); }} className="rounded-lg border border-ink-border p-2.5 text-slate-300"><X size={16}/></button>}</div>
     </form>
     <div className="overflow-x-auto rounded-2xl border border-ink-border"><table className="w-full text-left text-sm"><thead className="bg-ink-850 text-xs uppercase text-slate-500"><tr><th className="p-4">Section</th><th className="p-4">Department</th><th className="p-4">Mentor</th><th className="p-4">Academic year</th><th className="p-4">Completion</th><th className="p-4">Status</th><th className="p-4"></th></tr></thead><tbody className="divide-y divide-ink-border bg-ink-900/60">{batches.map((row) => <tr key={row.id} className="text-slate-300"><td className="p-4 font-semibold text-white">{row.name}</td><td className="p-4">{row.department} · {row.programme} S{row.semester}</td><td className="p-4">{row.mentor?.name || 'Unassigned'}</td><td className="p-4">{row.academicYear}</td><td className="p-4">{row.completionDate ? new Date(row.completionDate).toLocaleDateString() : 'Not set'}</td><td className="p-4"><span className="rounded-full border border-ink-border px-2 py-1 text-xs">{row.lifecycle.replace('_', ' ')}</span></td><td className="p-4"><button onClick={() => edit(row)} className="rounded-lg border border-ink-border p-2 hover:text-white" aria-label={`Edit ${row.name}`}><Pencil size={15}/></button></td></tr>)}</tbody></table></div>
-    <div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="rounded-2xl border border-ink-border bg-ink-850/60 p-5"><h2 className="font-bold text-white">Subjects</h2><form onSubmit={addSubject} className="mt-4 flex gap-2"><input required value={subjectForm.code} onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })} placeholder="Code (MCA101)" className="min-w-0 rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required value={subjectForm.name} onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })} placeholder="Subject name" className="min-w-0 flex-1 rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><button className="rounded-lg bg-signal-blue px-3 text-white"><Plus size={16}/></button></form><div className="mt-4 space-y-2">{subjects.map((item) => <p key={item.id} className="rounded-lg bg-ink-900 px-3 py-2 text-sm text-slate-300"><b className="text-white">{item.code}</b> · {item.name}</p>)}</div></section><section className="rounded-2xl border border-ink-border bg-ink-850/60 p-5"><h2 className="font-bold text-white">Classrooms & geofence</h2><form onSubmit={addRoom} className="mt-4 grid gap-2 sm:grid-cols-2"><input required value={roomForm.name} onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })} placeholder="Room name" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required type="number" step="any" value={roomForm.latitude} onChange={(e) => setRoomForm({ ...roomForm, latitude: e.target.value })} placeholder="Latitude" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required type="number" step="any" value={roomForm.longitude} onChange={(e) => setRoomForm({ ...roomForm, longitude: e.target.value })} placeholder="Longitude" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><button className="rounded-lg bg-signal-blue px-3 py-2 text-white">Add room</button></form><div className="mt-4 space-y-2">{rooms.map((item) => <p key={item.id} className="rounded-lg bg-ink-900 px-3 py-2 text-sm text-slate-300"><b className="text-white">{item.name}</b> · {item.geofenceRadiusM}m radius</p>)}</div></section></div>
+    <div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="rounded-2xl border border-ink-border bg-ink-850/60 p-5"><h2 className="font-bold text-white">Subjects</h2><form onSubmit={addSubject} className="mt-4 flex gap-2"><input required value={subjectForm.code} onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })} placeholder="Code (MCA101)" className="min-w-0 rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required value={subjectForm.name} onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })} placeholder="Subject name" className="min-w-0 flex-1 rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><button className="rounded-lg bg-signal-blue px-3 text-white"><Plus size={16}/></button></form><div className="mt-4 space-y-2">{subjects.map((item) => <p key={item.id} className="rounded-lg bg-ink-900 px-3 py-2 text-sm text-slate-300"><b className="text-white">{item.code}</b> · {item.name}</p>)}</div></section><section className="rounded-2xl border border-ink-border bg-ink-850/60 p-5"><h2 className="font-bold text-white">Classrooms & geofence</h2><form onSubmit={addRoom} className="mt-4 grid gap-2 sm:grid-cols-2"><input required value={roomForm.name} onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })} placeholder="Room name" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required type="number" step="any" value={roomForm.latitude} onChange={(e) => setRoomForm({ ...roomForm, latitude: e.target.value })} placeholder="Approx Center Latitude" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required type="number" step="any" value={roomForm.longitude} onChange={(e) => setRoomForm({ ...roomForm, longitude: e.target.value })} placeholder="Approx Center Longitude" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><input required type="number" value={roomForm.geofenceRadiusM} onChange={(e) => setRoomForm({ ...roomForm, geofenceRadiusM: e.target.value })} placeholder="Fallback Geofence Radius (meters)" className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"/><div className="sm:col-span-2 border-t border-slate-800 pt-3 mt-1"><p className="text-[11px] font-bold text-slate-300 mb-2">Room Bounding Box: 4 Corners (Optional - for high accuracy geofencing)</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><div className="space-y-1"><span className="text-[9px] font-bold text-slate-500 block">Corner 1</span><input type="number" step="any" value={roomForm.c1Lat} onChange={(e) => setRoomForm({ ...roomForm, c1Lat: e.target.value })} placeholder="Latitude 1" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/><input type="number" step="any" value={roomForm.c1Lng} onChange={(e) => setRoomForm({ ...roomForm, c1Lng: e.target.value })} placeholder="Longitude 1" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/></div><div className="space-y-1"><span className="text-[9px] font-bold text-slate-500 block">Corner 2</span><input type="number" step="any" value={roomForm.c2Lat} onChange={(e) => setRoomForm({ ...roomForm, c2Lat: e.target.value })} placeholder="Latitude 2" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/><input type="number" step="any" value={roomForm.c2Lng} onChange={(e) => setRoomForm({ ...roomForm, c2Lng: e.target.value })} placeholder="Longitude 2" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/></div><div className="space-y-1"><span className="text-[9px] font-bold text-slate-500 block">Corner 3</span><input type="number" step="any" value={roomForm.c3Lat} onChange={(e) => setRoomForm({ ...roomForm, c3Lat: e.target.value })} placeholder="Latitude 3" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/><input type="number" step="any" value={roomForm.c3Lng} onChange={(e) => setRoomForm({ ...roomForm, c3Lng: e.target.value })} placeholder="Longitude 3" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/></div><div className="space-y-1"><span className="text-[9px] font-bold text-slate-500 block">Corner 4</span><input type="number" step="any" value={roomForm.c4Lat} onChange={(e) => setRoomForm({ ...roomForm, c4Lat: e.target.value })} placeholder="Latitude 4" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/><input type="number" step="any" value={roomForm.c4Lng} onChange={(e) => setRoomForm({ ...roomForm, c4Lng: e.target.value })} placeholder="Longitude 4" className="w-full rounded-lg border border-ink-border bg-ink-900 px-2 py-1 text-xs text-white"/></div></div></div><button className="sm:col-span-2 rounded-lg bg-signal-blue px-3 py-2 text-white mt-2">Add classroom</button></form><div className="mt-4 space-y-2">{rooms.map((item) => {
+  let cornersStr = '';
+  if (item.polygon && Array.isArray(item.polygon)) {
+    cornersStr = item.polygon.map((c, i) => `C${i+1}: [${Number(c.lat).toFixed(6)}, ${Number(c.lng).toFixed(6)}]`).join(' | ');
+  }
+  return <div key={item.id} className="rounded-lg bg-ink-900 px-3 py-2 text-xs text-slate-400"><div className="flex justify-between items-center"><b className="text-white text-sm">{item.name}</b><span className="font-semibold text-slate-500">{item.geofenceRadiusM}m radius {item.polygon ? '· Accurate Polygon Set' : '· Approx Center Only'}</span></div><div className="mt-1">Center: [{Number(item.latitude).toFixed(6)}, {Number(item.longitude).toFixed(6)}]</div>{cornersStr && <div className="mt-1 font-mono text-[10px] text-emerald-400 overflow-x-auto whitespace-nowrap">Polygon: {cornersStr}</div>}</div>;
+})}</div></section></div>
   </div></main></div>;
 }

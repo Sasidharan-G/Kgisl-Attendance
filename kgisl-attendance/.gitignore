@@ -37,3 +37,13 @@ lerna-debug.log*
 # System files
 .DS_Store
 Thumbs.db
+
+# Hardware / mobile build output
+esp32-firmware/.pio/
+student-android/.gradle/
+student-android/.kotlin/
+student-android/build/
+student-android/app/build/
+student-android/local.properties
+smartboard-helper/node_modules/
+smartboard-helper/.env

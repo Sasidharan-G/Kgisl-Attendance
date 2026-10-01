@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
-import { listSubjectsHandler, listRoomsHandler, listBatchesHandler, createBatchHandler, updateBatchHandler, createSubjectHandler, updateSubjectHandler, createRoomHandler, updateRoomHandler, approveBatchArchiveHandler, retrieveBatchHandler } from '../controllers/catalog.controller';
+import { listSubjectsHandler, listRoomsHandler, listBatchesHandler, createBatchHandler, updateBatchHandler, createSubjectHandler, updateSubjectHandler, createRoomHandler, updateRoomHandler, approveBatchArchiveHandler, retrieveBatchHandler, listBeaconsHandler, createBeaconHandler, updateBeaconHandler } from '../controllers/catalog.controller';
 
 const router = Router();
 
@@ -15,5 +15,8 @@ router.post('/subjects', requireAuth('ADMIN'), createSubjectHandler);
 router.patch('/subjects/:id', requireAuth('ADMIN'), updateSubjectHandler);
 router.post('/rooms', requireAuth('ADMIN'), createRoomHandler);
 router.patch('/rooms/:id', requireAuth('ADMIN'), updateRoomHandler);
+router.get('/beacons', requireAuth('ADMIN', 'FACULTY'), listBeaconsHandler);
+router.post('/beacons', requireAuth('ADMIN'), createBeaconHandler);
+router.patch('/beacons/:id', requireAuth('ADMIN'), updateBeaconHandler);
 
 export default router;

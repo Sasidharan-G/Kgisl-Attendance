@@ -134,10 +134,27 @@ model Room {
   longitude          Float
   geofenceRadiusM    Int                   @default(120) @map("geofence_radius_m")
   wifiBssidWhitelist String[]              @map("wifi_bssid_whitelist")
+  polygon            Json?                 @map("polygon") // Array of 4 corners coordinates
   sessions           AttendanceSession[]
   allocations        TimetableAllocation[]
+  beacons            ClassroomBeacon[]
 
   @@map("room")
+}
+
+model ClassroomBeacon {
+  id        String   @id @default(uuid())
+  beaconId  Int      @unique @map("beacon_id")
+  name      String
+  roomId    String   @map("room_id")
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, enabled])
+  @@map("classroom_beacon")
 }
 
 model TimetableAllocation {
@@ -238,6 +255,7 @@ enum AttendanceStatus {
 enum AttendanceMethod {
   QR
   ACOUSTIC
+  BEACON
   FACULTY_MANUAL
 }
 

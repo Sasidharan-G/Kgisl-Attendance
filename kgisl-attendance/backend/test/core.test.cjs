@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { distanceMeters } = require('../dist/utils/geo.js');
+const { distanceMeters, isPointInPolygon } = require('../dist/utils/geo.js');
 const {
   generateNonce,
   generateSecureToken,
@@ -14,6 +14,12 @@ const {
 } = require('../dist/utils/crypto.js');
 const { signAccessToken } = require('../dist/middleware/auth.middleware.js');
 const jwt = require('jsonwebtoken');
+const {
+  BEACON_PACKET_LENGTH,
+  BeaconPacketError,
+  encodeBeaconPacket,
+  verifyBeaconPacket,
+} = require('../dist/utils/beaconProtocol.js');
 
 test('distanceMeters returns zero for the same coordinate', () => {
   assert.equal(distanceMeters(11.0834, 76.997, 11.0834, 76.997), 0);
@@ -22,6 +28,21 @@ test('distanceMeters returns zero for the same coordinate', () => {
 test('distanceMeters produces a realistic short campus distance', () => {
   const distance = distanceMeters(11.0834, 76.997, 11.0843, 76.997);
   assert.ok(distance > 95 && distance < 105);
+});
+
+test('isPointInPolygon accurately detects points inside and outside a room boundary', () => {
+  const polygon = [
+    { lat: 11.0830, lng: 76.9970 },
+    { lat: 11.0835, lng: 76.9970 },
+    { lat: 11.0835, lng: 76.9975 },
+    { lat: 11.0830, lng: 76.9975 }
+  ];
+  // Inside points
+  assert.equal(isPointInPolygon(11.0832, 76.9972, polygon), true);
+  assert.equal(isPointInPolygon(11.0834, 76.9974, polygon), true);
+  // Outside points
+  assert.equal(isPointInPolygon(11.0829, 76.9972, polygon), false);
+  assert.equal(isPointInPolygon(11.0836, 76.9974, polygon), false);
 });
 
 test('secure QR primitives have the required entropy and stable hash', () => {
@@ -67,4 +88,32 @@ test('acoustic token lookup uses a normalized keyed digest', () => {
   assert.equal(acousticTokenDigest(`  ${token.toLowerCase()}  `), digest);
   assert.equal(normalizeAcousticToken(` ${token.toLowerCase()} `), token);
   assert.notEqual(digest, sha256Hex(token));
+});
+
+test('BLE beacon packet round-trips in the legacy advertisement budget', () => {
+  const now = Math.floor(Date.now() / 1000) * 1000;
+  const token = generateAcousticToken();
+  const encoded = encodeBeaconPacket({ beaconId: 42, issuedAt: now, token });
+  assert.equal(Buffer.from(encoded, 'base64url').length, BEACON_PACKET_LENGTH);
+  assert.equal(encoded.length, 28);
+  assert.deepEqual(verifyBeaconPacket(encoded, now + 1000), {
+    beaconId: 42,
+    issuedAt: now,
+    token,
+  });
+});
+
+test('BLE beacon packet rejects tampering and stale replay', () => {
+  const now = Math.floor(Date.now() / 1000) * 1000;
+  const encoded = encodeBeaconPacket({ beaconId: 7, issuedAt: now, token: generateAcousticToken() });
+  const packet = Buffer.from(encoded, 'base64url');
+  packet[10] ^= 1;
+  assert.throws(
+    () => verifyBeaconPacket(packet.toString('base64url'), now),
+    (error) => error instanceof BeaconPacketError && error.code === 'AUTH_FAILED'
+  );
+  assert.throws(
+    () => verifyBeaconPacket(encoded, now + 31_000),
+    (error) => error instanceof BeaconPacketError && error.code === 'EXPIRED'
+  );
 });

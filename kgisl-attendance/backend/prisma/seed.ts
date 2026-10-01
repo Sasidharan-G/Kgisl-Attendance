@@ -177,7 +177,15 @@ async function main() {
     }
   });
 
-  console.log('Created sample Faculty, Subject, Room for testing.');
+  // ESP32 BLE classroom beacon (beaconId is broadcast inside the signed packet).
+  const mcaLab = await prisma.room.findUniqueOrThrow({ where: { name: 'MCA Lab' } });
+  await prisma.classroomBeacon.upsert({
+    where: { beaconId: 1 },
+    update: { roomId: mcaLab.id, enabled: true },
+    create: { beaconId: 1, name: 'MCA Lab ESP32', roomId: mcaLab.id, enabled: true },
+  });
+
+  console.log('Created sample Faculty, Subject, Room, Beacon for testing.');
 }
 
 main()

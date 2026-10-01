@@ -1,0 +1,6 @@
+<resources>
+  <style name="Theme.KgislAttendance" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <item name="colorPrimary">#0F766E</item>
+    <item name="colorSecondary">#14B8A6</item>
+  </style>
+</resources>

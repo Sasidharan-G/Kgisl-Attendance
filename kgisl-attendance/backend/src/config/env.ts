@@ -5,6 +5,7 @@ import { z } from 'zod';
 dotenv.config();
 
 const DEVELOPMENT_ACOUSTIC_PEPPER = 'development-only-acoustic-pepper-do-not-use-in-production';
+const DEVELOPMENT_BEACON_HMAC_SECRET = '11'.repeat(32);
 
 const envSchema = z.object({
   PORT: z.string().default('4000'),
@@ -35,6 +36,18 @@ const envSchema = z.object({
   // the QR signing key so compromise of one channel does not expose the other.
   ACOUSTIC_TOKEN_PEPPER: z.string().min(32, 'ACOUSTIC_TOKEN_PEPPER must be at least 32 chars').optional(),
   ACOUSTIC_TOKEN_TTL_SECONDS: z.coerce.number().int().min(15).max(60).default(30),
+
+  // Independent signing key for compact ESP32 BLE advertisements. Keeping it
+  // separate limits the impact of a QR/acoustic key compromise.
+  BEACON_HMAC_SECRET: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, 'BEACON_HMAC_SECRET must be a 64-char hex string (256-bit)')
+    .optional(),
+  BEACON_PACKET_TTL_SECONDS: z.coerce.number().int().min(5).max(60).default(30),
+  BEACON_CLOCK_SKEW_SECONDS: z.coerce.number().int().min(0).max(10).default(3),
+  // RSSI is supporting telemetry, not a cryptographic distance proof. The
+  // conservative default rejects only extremely weak/out-of-room receptions.
+  BEACON_MIN_RSSI_DBM: z.coerce.number().int().min(-127).max(-20).default(-95),
 
   // Geofence / GPS settings
   DEFAULT_GEOFENCE_RADIUS_M: z.coerce.number().int().positive().default(120),
@@ -72,6 +85,9 @@ const envSchema = z.object({
   if (value.NODE_ENV === 'production' && !value.ACOUSTIC_TOKEN_PEPPER) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['ACOUSTIC_TOKEN_PEPPER'], message: 'ACOUSTIC_TOKEN_PEPPER is required in production' });
   }
+  if (value.NODE_ENV === 'production' && !value.BEACON_HMAC_SECRET) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['BEACON_HMAC_SECRET'], message: 'BEACON_HMAC_SECRET is required in production' });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -88,6 +104,7 @@ export const env = {
   // Local development stays zero-setup; production is rejected above unless
   // it supplies an independent secret.
   ACOUSTIC_TOKEN_PEPPER: parsed.data.ACOUSTIC_TOKEN_PEPPER ?? DEVELOPMENT_ACOUSTIC_PEPPER,
+  BEACON_HMAC_SECRET: parsed.data.BEACON_HMAC_SECRET ?? DEVELOPMENT_BEACON_HMAC_SECRET,
 };
 
 export const allowedOrigins = env.FRONTEND_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);

@@ -44,9 +44,18 @@ export function updateBatch(id: string, data: BatchInput) {
 }
 
 export type SubjectInput = { name: string; code: string };
-export type RoomInput = { name: string; latitude: number; longitude: number; geofenceRadiusM: number; wifiBssidWhitelist: string[] };
+export type RoomInput = { name: string; latitude: number; longitude: number; geofenceRadiusM: number; wifiBssidWhitelist: string[]; polygon?: any };
 
 export function createSubject(data: SubjectInput) { return prisma.subject.create({ data }); }
 export function updateSubject(id: string, data: SubjectInput) { return prisma.subject.update({ where: { id }, data }); }
 export function createRoom(data: RoomInput) { return prisma.room.create({ data }); }
 export function updateRoom(id: string, data: RoomInput) { return prisma.room.update({ where: { id }, data }); }
+
+export type BeaconInput = { beaconId: number; name: string; roomId: string; enabled: boolean };
+export function listBeacons() {
+  return prisma.classroomBeacon.findMany({ include: { room: true }, orderBy: { beaconId: 'asc' } });
+}
+export function createBeacon(data: BeaconInput) { return prisma.classroomBeacon.create({ data }); }
+export function updateBeacon(id: string, data: BeaconInput) {
+  return prisma.classroomBeacon.update({ where: { id }, data });
+}

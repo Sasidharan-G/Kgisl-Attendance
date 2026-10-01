@@ -31,7 +31,8 @@ export function createApp() {
         directives: {
           defaultSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https://*.googleusercontent.com'], // QR codes are served as base64 data: URLs
-          connectSrc: ["'self'", ...allowedOrigins, 'https://accounts.google.com'],
+          // 127.0.0.1:43821 is the faculty's local smart-board helper that relays BLE packets to the ESP32.
+          connectSrc: ["'self'", ...allowedOrigins, 'https://accounts.google.com', 'http://127.0.0.1:43821', 'http://localhost:43821'],
           scriptSrc: ["'self'", 'https://accounts.google.com'],
           frameSrc: ["'self'", 'https://accounts.google.com'],
           objectSrc: ["'none'"],

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { listSubjects, listRooms, listBatches, createBatch, updateBatch, createSubject, updateSubject, createRoom, updateRoom } from '../services/catalog.service';
+import { listSubjects, listRooms, listBatches, createBatch, updateBatch, createSubject, updateSubject, createRoom, updateRoom, listBeacons, createBeacon, updateBeacon } from '../services/catalog.service';
 import { prisma } from '../config/prisma';
 import { requestContext, writeAuditLog } from '../services/audit.service';
 
@@ -17,7 +17,14 @@ const subjectSchema = z.object({ name: z.string().trim().min(2).max(120), code: 
 const roomSchema = z.object({
   name: z.string().trim().min(2).max(100), latitude: z.coerce.number().min(-90).max(90), longitude: z.coerce.number().min(-180).max(180),
   geofenceRadiusM: z.coerce.number().int().min(10).max(2000).default(120), wifiBssidWhitelist: z.array(z.string().trim().min(1).max(64)).max(20).default([]),
+  polygon: z.array(z.object({ lat: z.coerce.number(), lng: z.coerce.number() })).min(3).max(10).nullable().optional(),
 });
+const beaconSchema = z.object({
+  beaconId: z.coerce.number().int().min(1).max(65535),
+  name: z.string().trim().min(2).max(100),
+  roomId: z.string().uuid(),
+  enabled: z.boolean().default(true),
+}).strict();
 
 export async function listSubjectsHandler(_req: Request, res: Response, next: NextFunction) {
   try {
@@ -96,3 +103,6 @@ export async function createSubjectHandler(req: Request, res: Response, next: Ne
 export async function updateSubjectHandler(req: Request, res: Response, next: NextFunction) { try { res.json({ success: true, data: await updateSubject(req.params.id, subjectSchema.parse(req.body)) }); } catch (err) { next(err); } }
 export async function createRoomHandler(req: Request, res: Response, next: NextFunction) { try { res.status(201).json({ success: true, data: await createRoom(roomSchema.parse(req.body)) }); } catch (err) { next(err); } }
 export async function updateRoomHandler(req: Request, res: Response, next: NextFunction) { try { res.json({ success: true, data: await updateRoom(req.params.id, roomSchema.parse(req.body)) }); } catch (err) { next(err); } }
+export async function listBeaconsHandler(_req: Request, res: Response, next: NextFunction) { try { res.json({ success: true, data: await listBeacons() }); } catch (err) { next(err); } }
+export async function createBeaconHandler(req: Request, res: Response, next: NextFunction) { try { res.status(201).json({ success: true, data: await createBeacon(beaconSchema.parse(req.body)) }); } catch (err) { next(err); } }
+export async function updateBeaconHandler(req: Request, res: Response, next: NextFunction) { try { res.json({ success: true, data: await updateBeacon(req.params.id, beaconSchema.parse(req.body)) }); } catch (err) { next(err); } }

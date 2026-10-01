@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { validateAndRecordAcousticScan, validateAndRecordScan } from '../services/validation.service';
+import { validateAndRecordAcousticScan, validateAndRecordBeaconScan, validateAndRecordScan } from '../services/validation.service';
 import { writeAuditLog, requestContext } from '../services/audit.service';
 import { AppError } from '../utils/AppError';
 
@@ -34,6 +34,48 @@ const acousticScanSchema = z.object({
   deviceId: z.string().trim().min(1).max(256),
   gps: gpsSchema,
 }).strict();
+
+const beaconScanSchema = z.object({
+  packet: z.string().regex(/^[A-Za-z0-9_-]{28}$/),
+  rssi: z.number().int().min(-127).max(20),
+  deviceId: z.string().trim().min(1).max(256),
+  gps: gpsSchema,
+}).strict();
+
+export async function beaconScanHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const ctx = requestContext(req);
+  const studentId = req.auth?.sub;
+  try {
+    const body = beaconScanSchema.parse(req.body);
+    const result = await validateAndRecordBeaconScan({ studentId: studentId!, ...body });
+    await writeAuditLog({
+      actorId: studentId,
+      actorType: 'STUDENT',
+      action: 'BLE_BEACON_SCAN_ACCEPTED',
+      sessionId: result.sessionId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { method: 'BEACON', rssi: body.rssi, gps: body.gps, distanceMeters: result.distanceMeters },
+    });
+    sendSuccess(res, result, body.gps.accuracy);
+  } catch (err) {
+    await writeAuditLog({
+      actorId: studentId,
+      actorType: 'STUDENT',
+      action: 'BLE_BEACON_SCAN_REJECTED',
+      success: false,
+      reasonCode: err instanceof AppError ? err.code : 'UNKNOWN_ERROR',
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { method: 'BEACON' },
+    });
+    next(err);
+  }
+}
 
 export async function scanHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   const ctx = requestContext(req);

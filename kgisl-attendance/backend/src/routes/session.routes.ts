@@ -15,6 +15,7 @@ import {
 import {
   issueAcousticTokenHandler,
   revokeAcousticTokenHandler,
+  issueBeaconPacketHandler,
 } from '../controllers/acoustic.controller';
 
 const router = Router();
@@ -26,6 +27,7 @@ router.post('/:sessionId/end', requireAuth('FACULTY'), endSessionHandler);
 router.post('/:sessionId/pause', requireAuth('FACULTY'), pauseSessionHandler);
 router.post('/:sessionId/resume', requireAuth('FACULTY'), resumeSessionHandler);
 router.post('/:sessionId/acoustic-token', requireAuth('FACULTY'), issueAcousticTokenHandler);
+router.post('/:sessionId/beacon-packet', requireAuth('FACULTY'), issueBeaconPacketHandler);
 router.delete('/:sessionId/acoustic-token', requireAuth('FACULTY'), revokeAcousticTokenHandler);
 router.post('/:sessionId/manual-attendance', requireAuth('FACULTY'), manualAttendanceHandler);
 router.patch('/:sessionId/attendance', requireAuth('FACULTY'), correctAttendanceHandler);

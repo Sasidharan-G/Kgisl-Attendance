@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma';
 import { qrRedisKey, redis, scanLockKey } from '../config/redis';
 import { env } from '../config/env';
 import { verifyQrSignature, sha256Hex, QrSignableFields } from '../utils/crypto';
-import { distanceMeters } from '../utils/geo';
+import { distanceMeters, isPointInPolygon, minDistanceToPolygonMeters } from '../utils/geo';
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import { broadcastAttendanceMarked, broadcastGeofenceViolation } from '../websocket/socket';
@@ -11,6 +11,7 @@ import {
   resolveAcousticToken,
   ResolvedAcousticToken,
 } from './acoustic.service';
+import { resolveBeaconPacket } from './beacon.service';
 
 interface StudentScanBase {
   studentId: string;
@@ -33,6 +34,11 @@ export interface ScanRequest extends StudentScanBase {
 
 export interface AcousticScanRequest extends StudentScanBase {
   token: string;
+}
+
+export interface BeaconScanRequest extends StudentScanBase {
+  packet: string;
+  rssi: number;
 }
 
 export interface ScanResult {
@@ -105,6 +111,7 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
   }
   if (student.batchId !== session.batchId) throw Errors.BATCH_MISMATCH();
 
+
   const { gps } = input;
   if (!Number.isFinite(gps.lat) || !Number.isFinite(gps.lng)) throw Errors.GPS_REQUIRED();
   if (!Number.isFinite(gps.accuracy) || gps.accuracy > env.MAX_GPS_ACCURACY_METERS) {
@@ -113,11 +120,25 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
 
   const dist = distanceMeters(gps.lat, gps.lng, session.room.latitude, session.room.longitude);
   const allowedRadius = session.room.geofenceRadiusM ?? env.DEFAULT_GEOFENCE_RADIUS_M;
+
+  let isAccurate = false;
+  let isWithinBuffer = false;
+  if (session.room.polygon && Array.isArray(session.room.polygon) && session.room.polygon.length >= 3) {
+    const polyCoords = session.room.polygon as any as { lat: number; lng: number }[];
+    isAccurate = isPointInPolygon(gps.lat, gps.lng, polyCoords);
+    if (!isAccurate) {
+      const distanceToPolygon = minDistanceToPolygonMeters(gps.lat, gps.lng, polyCoords);
+      if (distanceToPolygon <= 5) {
+        isWithinBuffer = true;
+      }
+    }
+  }
+
   // Conservative boundary: the complete GPS uncertainty circle must fit inside
   // the geofence. A 190 m reading with ±20 m accuracy is therefore rejected
   // instead of potentially accepting a student who is actually 210 m away.
   const boundaryDistance = dist + gps.accuracy;
-  if (boundaryDistance > allowedRadius) {
+  if (!isAccurate && !isWithinBuffer && boundaryDistance > allowedRadius) {
     broadcastGeofenceViolation(session.sessionId, {
       studentId: student.id,
       studentName: student.name,
@@ -127,6 +148,12 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
     });
     throw Errors.OUTSIDE_GEOFENCE();
   }
+
+  const verificationStatus = isAccurate 
+    ? 'ACCURATE' 
+    : isWithinBuffer
+      ? 'ACCURATE (Within 5m Buffer)'
+      : `APPROXIMATE (${Math.round(dist)}m)`;
 
   if (student.deviceId === null) {
     // Conditional update closes the first-scan race between two devices.
@@ -150,13 +177,13 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
   });
   if (existing) throw Errors.DUPLICATE_ATTENDANCE();
 
-  return { student, session, distanceMeters: dist };
+  return { student, session, distanceMeters: dist, locationVerificationStatus: verificationStatus };
 }
 
 async function persistAttendance(
   context: ValidatedContext,
   input: StudentScanBase,
-  method: 'QR' | 'ACOUSTIC'
+  method: 'QR' | 'ACOUSTIC' | 'BEACON'
 ): Promise<ScanResult> {
   try {
     const record = await prisma.attendanceRecord.create({
@@ -168,7 +195,7 @@ async function persistAttendance(
         gpsAccuracy: input.gps.accuracy,
         distanceFromCampus: context.distanceMeters,
         locationVerified: true,
-        locationVerificationStatus: 'GPS_VERIFIED',
+        locationVerificationStatus: context.locationVerificationStatus,
         locationVerifiedAt: new Date(),
         deviceId: input.deviceId,
         status: 'PRESENT',
@@ -277,4 +304,19 @@ export async function validateAndRecordAcousticScan(
   const claimed = await claimAcousticToken(resolved, req.studentId);
   if (!claimed) throw Errors.ACOUSTIC_TOKEN_INVALID();
   return persistAttendance(context, req, 'ACOUSTIC');
+}
+
+export async function validateAndRecordBeaconScan(req: BeaconScanRequest): Promise<ScanResult> {
+  if (req.rssi < env.BEACON_MIN_RSSI_DBM) throw Errors.BEACON_SIGNAL_TOO_WEAK();
+  const { token } = await resolveBeaconPacket(req.packet);
+  const context = await validateStudentSessionContext({
+    studentId: req.studentId,
+    deviceId: req.deviceId,
+    gps: req.gps,
+    sessionId: token.sessionId,
+  });
+
+  const claimed = await claimAcousticToken(token, req.studentId);
+  if (!claimed) throw Errors.BEACON_PACKET_INVALID();
+  return persistAttendance(context, req, 'BEACON');
 }

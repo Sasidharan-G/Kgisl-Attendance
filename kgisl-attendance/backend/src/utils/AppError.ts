@@ -37,6 +37,14 @@ export const Errors = {
     new AppError('ACOUSTIC_TOKEN_INVALID_OR_EXPIRED', 'The acoustic token is invalid or has expired.', 410),
   ACOUSTIC_TOKEN_ISSUE_FAILED: () =>
     new AppError('ACOUSTIC_TOKEN_ISSUE_FAILED', 'Could not issue an acoustic token. Try again.', 503),
+  BEACON_NOT_FOUND: () =>
+    new AppError('BEACON_NOT_FOUND', 'The classroom beacon is not registered or is disabled.', 404),
+  BEACON_ROOM_MISMATCH: () =>
+    new AppError('BEACON_ROOM_MISMATCH', 'The beacon is not assigned to this session room.', 403),
+  BEACON_PACKET_INVALID: () =>
+    new AppError('BEACON_PACKET_INVALID_OR_EXPIRED', 'The BLE beacon packet is invalid or expired.', 410),
+  BEACON_SIGNAL_TOO_WEAK: () =>
+    new AppError('BEACON_SIGNAL_TOO_WEAK', 'The classroom beacon signal is too weak. Move inside the classroom and retry.', 403),
   SESSION_ACCESS_DENIED: () =>
     new AppError('SESSION_ACCESS_DENIED', 'You are not allowed to manage this attendance session.', 403),
 

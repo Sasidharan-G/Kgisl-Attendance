@@ -9,10 +9,9 @@ services:
     region: singapore
     healthCheckPath: /health/ready
     envVars:
+      # Neon PostgreSQL (Singapore). Paste the direct (non-pooled) URL in the Render dashboard.
       - key: DATABASE_URL
-        fromDatabase:
-          name: kgisl-attendance-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         fromService:
           type: redis
@@ -26,6 +25,8 @@ services:
         sync: false
       - key: ACOUSTIC_TOKEN_PEPPER
         generateValue: true
+      - key: BEACON_HMAC_SECRET
+        sync: false
       - key: ACOUSTIC_TOKEN_TTL_SECONDS
         value: "30"
       - key: FRONTEND_ORIGINS
@@ -62,10 +63,3 @@ services:
     plan: free
     region: singapore
     ipAllowList: []
-
-databases:
-  - name: kgisl-attendance-db
-    databaseName: kgisl_attendance
-    user: kgisl
-    plan: free
-    region: singapore
