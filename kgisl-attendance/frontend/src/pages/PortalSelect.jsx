@@ -145,11 +145,8 @@ export default function PortalSelect() {
               : <AdminLogin key={portal} portal={portal} active />}
           </div>
 
-          <div className="mt-4 text-center text-xs text-slate-400">
-            Don't have an account? <span className="text-blue-400 font-semibold cursor-pointer hover:underline">Sign Up</span>
-          </div>
         </div>
-        <p className="calm-help mt-4 text-center text-xs text-slate-400">Need help signing in? Contact your department administrator.</p>
+        <p className="calm-help mt-4 text-center text-xs text-slate-400">Accounts are created by your department administrator. Need help signing in? Contact them.</p>
       </section>
     </main>
 
