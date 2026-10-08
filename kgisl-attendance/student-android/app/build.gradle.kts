@@ -1,6 +1,14 @@
+import java.util.Properties
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
+}
+
+// Release signing: keystore.properties (git-ignored) next to settings.gradle.kts, see README.
+val signingProps = Properties().apply {
+  val file = rootProject.file("keystore.properties")
+  if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -11,8 +19,8 @@ android {
     applicationId = "in.ac.kgisl.attendance"
     minSdk = 26
     targetSdk = 35
-    versionCode = 2
-    versionName = "1.0.0"
+    versionCode = 3
+    versionName = "1.1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // Prototype manufacturer ID shared with the ESP32 firmware. Replace with a
     // lawfully assigned identifier before commercial distribution.
@@ -20,6 +28,26 @@ android {
     // Production API origin; override with -PapiBaseUrl=https://... when building.
     val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?) ?: "https://kgisl-attendance.onrender.com"
     buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+  }
+
+  signingConfigs {
+    if (signingProps.getProperty("storeFile") != null) {
+      create("release") {
+        storeFile = rootProject.file(signingProps.getProperty("storeFile"))
+        storePassword = signingProps.getProperty("storePassword")
+        keyAlias = signingProps.getProperty("keyAlias")
+        keyPassword = signingProps.getProperty("keyPassword")
+      }
+    }
+  }
+
+  buildTypes {
+    release {
+      // No R8: EncryptedSharedPreferences (Tink) and OkHttp rely on reflection, and a college app
+      // gains little from obfuscation versus the risk of a release-only crash.
+      isMinifyEnabled = false
+      signingConfig = signingConfigs.findByName("release")
+    }
   }
 
   buildFeatures { buildConfig = true; viewBinding = true }

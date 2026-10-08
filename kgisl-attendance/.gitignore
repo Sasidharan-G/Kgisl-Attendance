@@ -47,3 +47,11 @@ student-android/app/build/
 student-android/local.properties
 smartboard-helper/node_modules/
 smartboard-helper/.env
+
+# Android release signing (never commit)
+student-android/keystore/
+student-android/keystore.properties
+*.jks
+*.keystore
+*.apk
+*.aab

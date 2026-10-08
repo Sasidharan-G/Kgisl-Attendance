@@ -28,6 +28,23 @@ The API origin defaults to the production Render URL; override with
 login screen and a mock-beacon-packet field, so integration can be tested without
 the ESP32. Release builds hide both.
 
+## Release build (signed APK / Play AAB)
+
+```powershell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+./gradlew testDebugUnitTest assembleRelease bundleRelease
+# app/build/outputs/apk/release/app-release.apk   -> share with students
+# app/build/outputs/bundle/release/app-release.aab -> upload to Play Console
+```
+
+Signing uses `keystore.properties` + `keystore/kgisl-release.jks` (both git-ignored). **Back them up
+somewhere safe: every future update must be signed with the same key.** Without them the build
+produces an unsigned release APK. Students download the latest APK from the GitHub release
+`android-v*`; upload a new APK as `KGiSL-Attendance.apk` on a new release to update the web link.
+
+Account note: web accounts protected with Face ID / Touch ID (passkey) cannot mark from this app;
+ask faculty to reset the device if a student switches from web to the app.
+
 ## BLE identifier
 
 The prototype scans manufacturer ID `0xFFFF`. This is suitable only for local

@@ -79,6 +79,7 @@ const BLE_TRANSIENT_CODES = new Set([
   'GPS_ACCURACY_TOO_LOW',
 ]);
 const BLE_SCAN_TIMEOUT_MS = 60_000;
+const ANDROID_APK_URL = 'https://github.com/Sasidharan-G/Kgisl-Attendance/releases/latest/download/KGiSL-Attendance.apk';
 
 // Scan status states
 // idle | scanning | locating | submitting | success | error
@@ -559,6 +560,10 @@ export default function StudentScanPage() {
                       </button>
                     </div>
                   )}
+                  <a href={ANDROID_APK_URL} download className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-sky-400/40 bg-sky-400/10 py-2.5 text-xs font-semibold transition hover:bg-sky-400/20">
+                    <Smartphone size={14} />Get the Android app (recommended for Bluetooth)
+                  </a>
+                  <p className="mt-2 text-center text-[10px] opacity-60">After downloading, allow "Install unknown apps" once, then sign in with this same account.</p>
                 </>
               )}
             </>
