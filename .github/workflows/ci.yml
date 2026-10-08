@@ -32,8 +32,9 @@ jobs:
       JWT_ACCESS_SECRET: ci-only-access-secret-at-least-32-characters
       JWT_REFRESH_SECRET: ci-only-refresh-secret-at-least-32-characters
       QR_HMAC_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-      ACOUSTIC_TOKEN_PEPPER: ci-only-acoustic-token-pepper-at-least-32-characters
-      ACOUSTIC_TOKEN_TTL_SECONDS: '30'
+      BEACON_TOKEN_PEPPER: ci-only-beacon-token-pepper-at-least-32-characters
+      BEACON_HMAC_SECRET: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+      BEACON_TOKEN_TTL_SECONDS: '30'
     defaults:
       run:
         working-directory: kgisl-attendance/backend
@@ -126,8 +127,9 @@ jobs:
           --env JWT_ACCESS_SECRET=ci-only-access-secret-at-least-32-characters
           --env JWT_REFRESH_SECRET=ci-only-refresh-secret-at-least-32-characters
           --env QR_HMAC_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          --env ACOUSTIC_TOKEN_PEPPER=ci-only-acoustic-token-pepper-at-least-32-characters
-          --env ACOUSTIC_TOKEN_TTL_SECONDS=30
+          --env BEACON_TOKEN_PEPPER=ci-only-beacon-token-pepper-at-least-32-characters
+          --env BEACON_HMAC_SECRET=fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+          --env BEACON_TOKEN_TTL_SECONDS=30
           --env FRONTEND_ORIGINS=http://localhost:5173
           --env BREVO_API_KEY=ci-only-not-used
           --env EMAIL_FROM=ci@example.invalid
