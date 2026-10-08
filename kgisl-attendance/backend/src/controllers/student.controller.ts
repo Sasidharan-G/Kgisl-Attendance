@@ -50,6 +50,7 @@ export async function createStudentHandler(req: Request, res: Response, next: Ne
         regNo: input.regNo,
         email: input.email,
         passwordHash: await bcrypt.hash(input.password, 10),
+        mustChangePassword: true,
         batchId: input.batchId,
       },
       include: { batch: true },
@@ -97,7 +98,7 @@ export async function bulkCreateStudentsHandler(req: Request, res: Response, nex
     const existing = await prisma.student.findFirst({ where: { OR: [{ rollNo: { in: identityValues } }, { regNo: { in: identityValues } }, { email: { in: identityValues.map((v) => v.toLowerCase()) } }] }, select: { rollNo: true } });
     if (existing) { res.status(409).json({ success: false, message: `Import stopped: ${existing.rollNo} or another identity already exists` }); return; }
     const passwordHashes = await Promise.all(input.students.map((student) => bcrypt.hash(student.password, 10)));
-    await prisma.student.createMany({ data: input.students.map((student, index) => ({ ...student, email: student.email.toLowerCase(), batchId: batch.id, passwordHash: passwordHashes[index] })) });
+    await prisma.student.createMany({ data: input.students.map((student, index) => ({ ...student, email: student.email.toLowerCase(), batchId: batch.id, passwordHash: passwordHashes[index], mustChangePassword: true })) });
     res.status(201).json({ success: true, data: { created: input.students.length, batchName: batch.name } });
   } catch (err) { next(err); }
 }

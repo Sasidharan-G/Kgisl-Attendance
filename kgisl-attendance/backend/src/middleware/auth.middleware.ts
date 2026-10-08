@@ -7,6 +7,8 @@ export interface AuthPayload {
   sub: string; // user id
   role: 'ADMIN' | 'FACULTY' | 'STUDENT';
   deviceId?: string;
+  /** Set while the account still uses an initial password: only change-password is allowed. */
+  mcp?: boolean;
 }
 
 declare global {
@@ -18,7 +20,7 @@ declare global {
   }
 }
 
-export function requireAuth(...allowedRoles: Array<'ADMIN' | 'FACULTY' | 'STUDENT'>) {
+function buildAuth(allowPasswordChange: boolean, allowedRoles: Array<'ADMIN' | 'FACULTY' | 'STUDENT'>) {
   return (req: Request, _res: Response, next: NextFunction) => {
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) return next(Errors.INVALID_JWT());
@@ -29,12 +31,22 @@ export function requireAuth(...allowedRoles: Array<'ADMIN' | 'FACULTY' | 'STUDEN
       if (allowedRoles.length && !allowedRoles.includes(decoded.role)) {
         return next(Errors.INVALID_JWT());
       }
+      if (decoded.mcp && !allowPasswordChange) return next(Errors.PASSWORD_CHANGE_REQUIRED());
       req.auth = decoded;
       next();
     } catch {
       next(Errors.INVALID_JWT());
     }
   };
+}
+
+export function requireAuth(...allowedRoles: Array<'ADMIN' | 'FACULTY' | 'STUDENT'>) {
+  return buildAuth(false, allowedRoles);
+}
+
+/** Same as requireAuth but also accepts sessions that must still change their initial password. */
+export function requireAuthAllowPasswordChange(...allowedRoles: Array<'ADMIN' | 'FACULTY' | 'STUDENT'>) {
+  return buildAuth(true, allowedRoles);
 }
 
 export function signAccessToken(payload: AuthPayload): string {

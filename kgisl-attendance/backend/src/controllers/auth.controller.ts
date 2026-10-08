@@ -4,8 +4,8 @@ import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verify
 import { OAuth2Client } from 'google-auth-library';
 import { AppError } from '../utils/AppError';
 import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
-import { revokeAllUserSessions } from '../services/refreshToken.service';
-import { requestContext } from '../services/audit.service';
+import { issueTokenPair, revokeAllUserSessions } from '../services/refreshToken.service';
+import { requestContext, writeAuditLog } from '../services/audit.service';
 import { Errors } from '../utils/AppError';
 
 const loginSchema = z.object({
@@ -26,7 +26,7 @@ const refreshSchema = z.object({
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(8).regex(/[A-Z]/, 'New password needs an uppercase letter').regex(/[a-z]/, 'New password needs a lowercase letter').regex(/[0-9]/, 'New password needs a number'),
+  newPassword: z.string().min(10, 'New password must be at least 10 characters').max(128).regex(/[A-Z]/, 'New password needs an uppercase letter').regex(/[a-z]/, 'New password needs a lowercase letter').regex(/[0-9]/, 'New password needs a number'),
 });
 
 const googleLoginSchema = z.object({
@@ -69,7 +69,7 @@ export async function registerFacultyHandler(req: Request, res: Response, next: 
 
     const passwordHash = await bcrypt.hash(password, 10);
     await prisma.faculty.create({
-      data: { name, email, passwordHash },
+      data: { name, email, passwordHash, mustChangePassword: true },
     });
 
     const result = await loginFaculty(email, password, requestContext(req));
@@ -151,18 +151,38 @@ export async function changePasswordHandler(req: Request, res: Response, next: N
     if (!account || !(await bcrypt.compare(currentPassword, account.passwordHash))) {
       throw Errors.INVALID_CREDENTIALS();
     }
+    if (currentPassword === newPassword) {
+      res.status(400).json({ success: false, code: 'PASSWORD_UNCHANGED', message: 'Choose a password different from the current one.' });
+      return;
+    }
+    const emailName = account.email.split('@')[0].toLowerCase();
+    if (emailName.length >= 4 && newPassword.toLowerCase().includes(emailName)) {
+      res.status(400).json({ success: false, code: 'PASSWORD_TOO_GUESSABLE', message: 'Do not use your email name inside the password.' });
+      return;
+    }
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    if (role === 'ADMIN') await prisma.admin.update({ where: { id }, data: { passwordHash } });
-    else if (role === 'FACULTY') await prisma.faculty.update({ where: { id }, data: { passwordHash } });
-    else await prisma.student.update({ where: { id }, data: { passwordHash } });
-    res.json({ success: true, message: 'Password updated successfully.' });
+    const data = { passwordHash, mustChangePassword: false };
+    if (role === 'ADMIN') await prisma.admin.update({ where: { id }, data });
+    else if (role === 'FACULTY') await prisma.faculty.update({ where: { id }, data });
+    else await prisma.student.update({ where: { id }, data });
+
+    // Every old session (including a stolen one) is signed out; this device gets a fresh, ungated pair.
+    await revokeAllUserSessions(id, role);
+    const { accessToken, refreshToken, expiresIn } = await issueTokenPair(id, role);
+    const ctx = requestContext(req);
+    await writeAuditLog({ actorId: id, actorType: role, action: 'PASSWORD_CHANGED', ip: ctx.ip, userAgent: ctx.userAgent });
+    res.json({
+      success: true,
+      message: 'Password updated successfully.',
+      data: { token: accessToken, refreshToken, expiresIn },
+    });
   } catch (err) { next(err); }
 }
 
 const resetAccountSchema = z.object({ email: z.string().email().transform((value) => value.toLowerCase()), role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']) });
 const confirmResetSchema = resetAccountSchema.extend({
   code: z.string().regex(/^\d{6}$/),
-  newPassword: z.string().min(8).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
+  newPassword: z.string().min(10).max(128).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
 });
 
 const resetKey = (role: string, email: string) => `attendance:password-reset:${role}:${email}`;
@@ -210,10 +230,10 @@ export async function confirmPasswordResetHandler(req: Request, res: Response, n
     }
     const passwordHash = await bcrypt.hash(input.newPassword, 12);
     const account = input.role === 'ADMIN'
-      ? await prisma.admin.update({ where: { email: input.email }, data: { passwordHash } })
+      ? await prisma.admin.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } })
       : input.role === 'FACULTY'
-        ? await prisma.faculty.update({ where: { email: input.email }, data: { passwordHash } })
-        : await prisma.student.update({ where: { email: input.email }, data: { passwordHash } });
+        ? await prisma.faculty.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } })
+        : await prisma.student.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } });
     await redis.del(key);
     await revokeAllUserSessions(account.id, input.role);
     res.json({ success: true, message: 'Password reset successfully. The code can no longer be used.' });

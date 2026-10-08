@@ -6,7 +6,7 @@ import { Settings, Shield, KeyRound, Wifi, MapPin } from 'lucide-react';
 import { changePassword } from '../services/api.js';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, replaceTokens } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,13 +19,15 @@ export default function SettingsPage() {
       setError('New passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
-      setError('New password must contain at least 8 characters');
+    if (newPassword.length < 10) {
+      setError('New password must contain at least 10 characters');
       return;
     }
     setError(''); setSuccess('');
     try {
-      await changePassword(currentPassword, newPassword);
+      const result = await changePassword(currentPassword, newPassword);
+      // The server signs every old session out and hands this device a fresh pair.
+      if (result?.data?.token) replaceTokens(result.data.token, result.data.refreshToken);
       setSuccess('Password updated successfully!');
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
     } catch (err) {
@@ -58,7 +60,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Email Address</p>
-                  <p className="text-sm font-mono text-slate-300 mt-0.5">{user?.email || 'name@kgisl-iim.ac.in'}</p>
+                  <p className="text-sm font-mono text-slate-300 mt-0.5">{user?.email || '—'}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Designation Role</p>

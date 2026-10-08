@@ -4,12 +4,33 @@ import process from 'process';
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+function randomPassword(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  return Array.from(crypto.randomBytes(16), (byte) => alphabet[byte % alphabet.length]).join('') + '#7a';
+}
+
+async function finishSeed() {
+  await prisma.admin.updateMany({ data: { mustChangePassword: true } });
+  await prisma.faculty.updateMany({ data: { mustChangePassword: true } });
+  await prisma.student.updateMany({ data: { mustChangePassword: true } });
+}
+
 async function main() {
-  const passwordHash = await bcrypt.hash('password123', 10);
-  const adminPasswordHash = await bcrypt.hash('Admin@123', 10);
+  // Seeding creates sample accounts and must never run against production by accident.
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+    throw new Error('Refusing to seed in production. Set ALLOW_PRODUCTION_SEED=true only for a deliberate first-time bootstrap.');
+  }
+  // Sample accounts get random passwords (printed once) and must change them at first login.
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || randomPassword();
+  const facultyPassword = randomPassword();
+  const passwordHash = await bcrypt.hash(facultyPassword, 10);
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
+  console.log(`Seed admin: admin@kgisl.edu / ${adminPassword}`);
+  console.log(`Seed faculty password: ${facultyPassword}`);
 
   await prisma.admin.upsert({
     where: { email: 'admin@kgisl.edu' }, update: {},
@@ -55,8 +76,11 @@ async function main() {
 
   console.log('Seeding students...');
 
-  const rosterPath = path.join(__dirname, 'students.tsv');
-  const rows = fs.readFileSync(rosterPath, 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1);
+  // The roster contains personal data and initial passwords, so it is not stored in the repository.
+  const rosterPath = process.env.SEED_STUDENTS_FILE || path.join(__dirname, 'students.tsv');
+  const hasRoster = fs.existsSync(rosterPath);
+  if (!hasRoster) console.log(`No student roster at ${rosterPath}; skipping student seeding (set SEED_STUDENTS_FILE).`);
+  const rows = hasRoster ? fs.readFileSync(rosterPath, 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1) : [];
   const studentsData = rows.map((row, index) => {
     const columns = row.split('\t');
     if (columns.length < 7) throw new Error(`Invalid student row ${index + 2}`);
@@ -185,6 +209,7 @@ async function main() {
     create: { beaconId: 1, name: 'MCA Lab ESP32', roomId: mcaLab.id, enabled: true },
   });
 
+  await finishSeed();
   console.log('Created sample Faculty, Subject, Room, Beacon for testing.');
 }
 

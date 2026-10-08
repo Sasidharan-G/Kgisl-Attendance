@@ -23,6 +23,7 @@ object ErrorMessages {
     "BEACON_NOT_FOUND" to "This classroom beacon is not registered. Inform your faculty.",
     "BEACON_ROOM_MISMATCH" to "This beacon does not belong to the session's classroom.",
     "BEACON_SIGNAL_TOO_WEAK" to "Beacon signal is too weak. Move closer to the classroom board.",
+    "PASSWORD_CHANGE_REQUIRED" to "Set a new password first: sign in on the KGiSL website once, choose a new password, then sign in here again.",
     "RATE_LIMITED" to "Too many attempts. Wait a moment and try again.",
     "INVALID_CREDENTIALS" to "Incorrect email or password.",
     "ACCOUNT_INACTIVE" to "Your account is inactive. Contact your administrator.",
@@ -31,7 +32,7 @@ object ErrorMessages {
 
   /** Codes where retrying can never succeed, so the UI should stop rather than keep scanning. */
   private val permanent = setOf(
-    "ATTENDANCE_ALREADY_MARKED", "DEVICE_NOT_AUTHORIZED", "BATCH_MISMATCH",
+    "ATTENDANCE_ALREADY_MARKED", "DEVICE_NOT_AUTHORIZED", "PASSWORD_CHANGE_REQUIRED", "BATCH_MISMATCH",
     "SESSION_NOT_ACTIVE", "OUTSIDE_TIME_WINDOW", "SESSION_EXPIRED",
   )
 

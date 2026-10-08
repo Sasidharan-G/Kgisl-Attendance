@@ -54,7 +54,7 @@ services:
       - key: SMTP_SECURE
         value: "true"
       - key: SMTP_USER
-        value: "25mca95@kgisliim.ac.in"
+        sync: false
       - key: SMTP_PASS
         sync: false
       - key: GOOGLE_CLIENT_ID

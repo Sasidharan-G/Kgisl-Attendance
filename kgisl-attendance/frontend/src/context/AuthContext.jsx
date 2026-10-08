@@ -3,17 +3,39 @@ import { logoutRequest } from '../services/api';
 
 const AuthContext = createContext(null);
 
+/** True while the server still requires this account to replace its initial password (claim `mcp`). */
+function tokenRequiresPasswordChange(token) {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return Boolean(JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, '='))).mcp);
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const raw = localStorage.getItem('kgisl_user');
     return raw ? JSON.parse(raw) : null;
+  });
+  const [mustChangePassword, setMustChangePassword] = useState(() => {
+    const token = localStorage.getItem('kgisl_token');
+    return token ? tokenRequiresPasswordChange(token) : false;
   });
 
   const login = useCallback((token, refreshToken, userData) => {
     localStorage.setItem('kgisl_token', token);
     localStorage.setItem('kgisl_refresh_token', refreshToken);
     localStorage.setItem('kgisl_user', JSON.stringify(userData));
+    setMustChangePassword(tokenRequiresPasswordChange(token));
     setUser(userData);
+  }, []);
+
+  /** After a password change the server signs every old session out and returns a fresh pair. */
+  const replaceTokens = useCallback((token, refreshToken) => {
+    localStorage.setItem('kgisl_token', token);
+    localStorage.setItem('kgisl_refresh_token', refreshToken);
+    setMustChangePassword(tokenRequiresPasswordChange(token));
   }, []);
 
   const logout = useCallback(() => {
@@ -25,10 +47,11 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('kgisl_token');
     localStorage.removeItem('kgisl_refresh_token');
     localStorage.removeItem('kgisl_user');
+    setMustChangePassword(false);
     setUser(null);
   }, []);
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, login, logout, mustChangePassword, replaceTokens }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

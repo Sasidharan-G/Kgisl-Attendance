@@ -1,224 +1,200 @@
-import { useState } from 'react';
-import { FileSpreadsheet, Printer, X, ShieldAlert, FileText, Building } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { FileSpreadsheet, Printer, X, ShieldAlert, FileText, Loader2 } from 'lucide-react';
+import { getAttendanceReport, listBatches, listSubjects } from '../services/api.js';
 
-const MOCK_REPORT_STUDENTS = [
-  { rollNo: '25MCA95', regNo: '711725MCA095', name: 'SASIDHARAN G R', total: 40, attended: 19, percentage: 48, shortage: true },
-  { rollNo: '25MCA01', regNo: '711725MCA001', name: 'Aadhiran M', total: 40, attended: 36, percentage: 90, shortage: false },
-  { rollNo: '25MCA12', regNo: '711725MCA012', name: 'Bhavani K', total: 40, attended: 34, percentage: 85, shortage: false },
-  { rollNo: '25MCA20', regNo: '711725MCA020', name: 'Dinesh Kumar P', total: 40, attended: 26, percentage: 65, shortage: true },
-  { rollNo: '25MCA31', regNo: '711725MCA031', name: 'Gokulakrishnan V', total: 40, attended: 38, percentage: 95, shortage: false },
-  { rollNo: '25MCA44', regNo: '711725MCA044', name: 'Karthik S', total: 40, attended: 22, percentage: 55, shortage: true },
-  { rollNo: '25MCA52', regNo: '711725MCA052', name: 'Madhavan R', total: 40, attended: 33, percentage: 82.5, shortage: false },
-  { rollNo: '25MCA68', regNo: '711725MCA068', name: 'Naveen Kumar T', total: 40, attended: 37, percentage: 92.5, shortage: false },
-  { rollNo: '25MCA75', regNo: '711725MCA075', name: 'Pooja S', total: 40, attended: 28, percentage: 70, shortage: true },
-  { rollNo: '25MCA89', regNo: '711725MCA089', name: 'Rahul V', total: 40, attended: 35, percentage: 87.5, shortage: false },
-];
-
-export default function OfficialReportModal({ onClose, batchName = 'MCA-C', subjectCode = 'AIML' }) {
+/**
+ * Official cumulative attendance report built from live session data:
+ * attended = PRESENT / LATE / ON_DUTY sessions of ended sessions, shortage below 75 %.
+ */
+export default function OfficialReportModal({ onClose }) {
+  const [batches, setBatches] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [batchId, setBatchId] = useState('');
+  const [subjectId, setSubjectId] = useState('');
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' or 'DEFAULTERS'
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const todayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const displayedStudents = MOCK_REPORT_STUDENTS.filter((s) => filterMode === 'ALL' || s.shortage);
-  const defaulterCount = MOCK_REPORT_STUDENTS.filter((s) => s.shortage).length;
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([listBatches(), listSubjects()])
+      .then(([batchRows, subjectRows]) => {
+        if (cancelled) return;
+        setBatches(batchRows);
+        setSubjects(subjectRows);
+        if (batchRows.length > 0) setBatchId(batchRows[0].id);
+      })
+      .catch((err) => { if (!cancelled) setError(err.message || 'Could not load sections.'); });
+    return () => { cancelled = true; };
+  }, []);
 
-  const handlePrintPdf = () => {
-    window.print();
-  };
+  useEffect(() => {
+    if (!batchId) return undefined;
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    getAttendanceReport({ batchId, ...(subjectId ? { subjectId } : {}) })
+      .then((data) => { if (!cancelled) setReport(data); })
+      .catch((err) => { if (!cancelled) { setReport(null); setError(err.message || 'Could not load the attendance report.'); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [batchId, subjectId]);
+
+  const students = report?.students ?? [];
+  const defaulterCount = useMemo(() => students.filter((s) => s.shortage).length, [students]);
+  const displayedStudents = useMemo(() => students.filter((s) => filterMode === 'ALL' || s.shortage), [students, filterMode]);
+  const subjectLabel = report?.subjectCode ? `${report.subjectCode} - ${report.subjectName}` : 'All subjects';
 
   const handleDownloadCsv = () => {
+    if (!report) return;
     const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
     const rows = [
       ['S.No', 'Roll No', 'Register No', 'Student Name', 'Total Sessions', 'Attended Sessions', 'Attendance %', 'Status'],
-      ...displayedStudents.map((s, idx) => [
-        idx + 1,
-        s.rollNo,
-        s.regNo,
-        s.name,
-        s.total,
-        s.attended,
-        `${s.percentage}%`,
-        s.shortage ? 'SHORTAGE (< 75%)' : 'SAFE (>= 75%)',
-      ]),
+      ...displayedStudents.map((s, idx) => [idx + 1, s.rollNo, s.regNo, s.name, s.total, s.attended, `${s.percentage}%`, s.shortage ? 'SHORTAGE (< 75%)' : 'SAFE (>= 75%)']),
     ];
-
     const metadata = [
-      `KGiSL INSTITUTE OF INFORMATION MANAGEMENT`,
-      `OFFICIAL ATTENDANCE REPORT - ${todayDate}`,
-      `Batch: ${batchName} | Subject: ${subjectCode}`,
+      'KGiSL-IIM OFFICIAL ATTENDANCE REPORT',
+      `Generated: ${todayDate}`,
+      `Section: ${report.batchName} | Subject: ${subjectLabel} | Sessions held: ${report.totalSessions}`,
       `Filter: ${filterMode === 'DEFAULTERS' ? 'Shortage Defaulters List (< 75%)' : 'Full Attendance Sheet'}`,
-      ``,
+      '',
     ];
-
-    const csvContent = `\uFEFF${metadata.join('\n')}\n${rows.map((row) => row.map(escape).join(',')).join('\n')}`;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const csvContent = `﻿${metadata.join('\n')}\n${rows.map((row) => row.map(escape).join(',')).join('\n')}`;
+    const url = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Official_Attendance_${batchName}_${filterMode}_${todayDate.replace(/\s+/g, '_')}.csv`;
+    a.download = `Attendance_${report.batchName}_${report.subjectCode ?? 'ALL'}_${filterMode}_${todayDate.replace(/\s+/g, '_')}.csv`.replace(/\s+/g, '-');
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  const selectClass = 'rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100';
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="w-full max-w-4xl rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl text-slate-100 overflow-hidden my-6">
-        
-        {/* Top Controls Bar (Hidden during Print) */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950 px-6 py-4 print:hidden">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
-              <FileText size={20} />
-            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400"><FileText size={20} /></div>
             <div>
-              <h2 className="text-base font-bold text-white">Official Attendance PDF / Excel Exporter</h2>
-              <p className="text-xs text-slate-400">Formatted for A4 PDF export, HOD submission & Notice Board lists</p>
+              <h2 className="text-base font-bold text-white">Official Attendance Report</h2>
+              <p className="text-xs text-slate-400">Live data · A4 PDF, Excel and defaulters list</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownloadCsv}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/60 px-3.5 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-900/80 transition"
-            >
+            <button onClick={handleDownloadCsv} disabled={!report || students.length === 0} className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/60 px-3.5 py-2 text-xs font-bold text-emerald-300 transition hover:bg-emerald-900/80 disabled:opacity-40">
               <FileSpreadsheet size={15} /> Export Excel (.csv)
             </button>
-            <button
-              onClick={handlePrintPdf}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500 transition shadow-lg shadow-blue-950"
-            >
+            <button onClick={() => window.print()} disabled={!report || students.length === 0} className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-950 transition hover:bg-blue-500 disabled:opacity-40">
               <Printer size={15} /> Print / Save as PDF
             </button>
-            <button onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
-              <X size={18} />
+            <button onClick={onClose} aria-label="Close report" className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><X size={18} /></button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/80 px-6 py-3 print:hidden">
+          <label className="flex items-center gap-2 text-xs text-slate-400">Section
+            <select value={batchId} onChange={(e) => setBatchId(e.target.value)} className={selectClass}>
+              {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.name}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-slate-400">Subject
+            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={selectClass}>
+              <option value="">All subjects</option>
+              {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.code} - {subject.name}</option>)}
+            </select>
+          </label>
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={() => setFilterMode('ALL')} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${filterMode === 'ALL' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+              Full sheet ({students.length})
+            </button>
+            <button onClick={() => setFilterMode('DEFAULTERS')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${filterMode === 'DEFAULTERS' ? 'bg-rose-600 text-white' : 'bg-rose-950/50 text-rose-300 hover:bg-rose-900/60'}`}>
+              <ShieldAlert size={14} /> Shortage &lt; 75% ({defaulterCount})
             </button>
           </div>
         </div>
 
-        {/* Filter Switcher (Hidden during Print) */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-6 py-3 print:hidden">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">Select Report Type:</span>
-            <button
-              onClick={() => setFilterMode('ALL')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${filterMode === 'ALL' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-            >
-              Full Class Attendance Sheet ({MOCK_REPORT_STUDENTS.length})
-            </button>
-            <button
-              onClick={() => setFilterMode('DEFAULTERS')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${filterMode === 'DEFAULTERS' ? 'bg-rose-600 text-white' : 'bg-rose-950/50 text-rose-300 border border-rose-500/30 hover:bg-rose-900'}`}
-            >
-              <ShieldAlert size={14} /> Shortage Defaulters List (&lt; 75%) ({defaulterCount})
-            </button>
-          </div>
-          <span className="text-xs font-mono text-slate-400">Date: {todayDate}</span>
-        </div>
+        {error && <p className="m-6 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-300 print:hidden">{error}</p>}
+        {loading && <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-400 print:hidden"><Loader2 size={16} className="animate-spin" />Loading live attendance…</div>}
 
-        {/* PRINTABLE DOCUMENT CONTAINER */}
-        <div className="p-8 bg-white text-slate-900 font-sans print:p-0 print:bg-white" id="printable-attendance-doc">
-          
-          {/* Official College Header */}
-          <div className="border-b-2 border-slate-900 pb-4 text-center">
-            <h1 className="text-xl font-black uppercase tracking-wider text-slate-950">KGiSL Institute of Information Management</h1>
-            <p className="text-xs font-semibold text-slate-700">KG-Campus, Saravanampatti, Coimbatore - 641035 | Approved by AICTE, Affiliated to Bharathiar University</p>
-            <p className="text-xs font-bold text-blue-900 mt-1">DEPARTMENT OF COMPUTER APPLICATIONS (MCA)</p>
-          </div>
-
-          {/* Document Title Banner */}
-          <div className="my-4 flex items-center justify-between bg-slate-100 p-3 rounded-lg border border-slate-300">
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
-                {filterMode === 'DEFAULTERS' ? '⚠️ OFFICIAL ATTENDANCE DEFAULTERS LIST (< 75%)' : '📋 OFFICIAL CLASS ACADEMIC ATTENDANCE REPORT'}
-              </h2>
-              <p className="text-xs text-slate-600">Batch: <span className="font-bold text-slate-900">{batchName}</span> | Subject Code: <span className="font-bold text-slate-900">{subjectCode}</span></p>
-            </div>
-            <div className="text-right text-xs">
-              <p className="font-semibold text-slate-700">Date of Report: <span className="font-bold text-slate-900">{todayDate}</span></p>
-              <p className="font-semibold text-slate-700">Total Enrolled: <span className="font-bold text-slate-900">{MOCK_REPORT_STUDENTS.length} Students</span></p>
-            </div>
-          </div>
-
-          {/* Official Attendance Table */}
-          <table className="w-full text-left text-xs border-collapse border border-slate-400">
-            <thead>
-              <tr className="bg-slate-200 text-slate-950 font-bold border-b border-slate-400">
-                <th className="p-2 border border-slate-400 text-center w-10">S.No</th>
-                <th className="p-2 border border-slate-400">Roll No</th>
-                <th className="p-2 border border-slate-400">Register No</th>
-                <th className="p-2 border border-slate-400">Student Name</th>
-                <th className="p-2 border border-slate-400 text-center">Total Sessions</th>
-                <th className="p-2 border border-slate-400 text-center">Attended</th>
-                <th className="p-2 border border-slate-400 text-center">Attendance %</th>
-                <th className="p-2 border border-slate-400 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedStudents.map((st, idx) => (
-                <tr key={st.rollNo} className={`border-b border-slate-300 ${st.shortage ? 'bg-red-50 text-red-900' : idx % 2 === 0 ? 'bg-white text-slate-900' : 'bg-slate-50 text-slate-900'}`}>
-                  <td className="p-2 border border-slate-300 text-center font-mono">{idx + 1}</td>
-                  <td className="p-2 border border-slate-300 font-mono font-bold">{st.rollNo}</td>
-                  <td className="p-2 border border-slate-300 font-mono">{st.regNo}</td>
-                  <td className="p-2 border border-slate-300 font-bold">{st.name}</td>
-                  <td className="p-2 border border-slate-300 text-center font-mono">{st.total}</td>
-                  <td className="p-2 border border-slate-300 text-center font-mono font-bold">{st.attended}</td>
-                  <td className="p-2 border border-slate-300 text-center font-mono font-bold">{st.percentage}%</td>
-                  <td className="p-2 border border-slate-300 text-center font-bold">
-                    {st.shortage ? (
-                      <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-extrabold border border-red-400">
-                        SHORTAGE (&lt; 75%)
-                      </span>
-                    ) : (
-                      <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-800 font-bold border border-emerald-300">
-                        SAFE (75%+)
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Official Summary & Signatures */}
-          <div className="mt-8 grid grid-cols-2 gap-8 text-xs pt-4 border-t border-slate-300">
-            <div>
-              <p className="font-bold text-slate-900">Summary Statistics:</p>
-              <ul className="mt-1 space-y-1 text-slate-700">
-                <li>• Total Class Strength: <strong>{MOCK_REPORT_STUDENTS.length}</strong></li>
-                <li>• Students Above 75% Criteria: <strong className="text-emerald-800">{MOCK_REPORT_STUDENTS.length - defaulterCount}</strong></li>
-                <li>• Shortage Defaulters (&lt; 75%): <strong className="text-rose-800">{defaulterCount}</strong></li>
-              </ul>
+        {!loading && report && (
+          <div className="bg-white p-8 font-sans text-slate-900 print:p-0" id="printable-attendance-doc">
+            <div className="border-b-2 border-slate-900 pb-4 text-center">
+              <h1 className="text-xl font-black uppercase tracking-wider text-slate-950">KGiSL Institute of Information Management</h1>
+              <p className="mt-1 text-xs font-bold text-blue-900">DEPARTMENT OF COMPUTER APPLICATIONS (MCA)</p>
             </div>
 
-            <div className="flex justify-between items-end pt-12 text-center text-slate-800 font-bold">
+            <div className="my-4 flex items-center justify-between rounded-lg border border-slate-300 bg-slate-100 p-3">
               <div>
-                <p className="border-t border-slate-900 pt-1 px-4">Faculty In-Charge Signature</p>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
+                  {filterMode === 'DEFAULTERS' ? 'Official attendance defaulters list (< 75%)' : 'Official class attendance report'}
+                </h2>
+                <p className="text-xs text-slate-600">Section: <b className="text-slate-900">{report.batchName}</b> | Subject: <b className="text-slate-900">{subjectLabel}</b> | Sessions held: <b className="text-slate-900">{report.totalSessions}</b></p>
               </div>
+              <div className="text-right text-xs">
+                <p className="font-semibold text-slate-700">Date of report: <b className="text-slate-900">{todayDate}</b></p>
+                <p className="font-semibold text-slate-700">Total enrolled: <b className="text-slate-900">{students.length} students</b></p>
+              </div>
+            </div>
+
+            {displayedStudents.length === 0 ? (
+              <p className="border border-slate-300 p-6 text-center text-sm text-slate-600">
+                {students.length === 0 ? 'No active students are enrolled in this section.' : 'No students are below the 75% criteria.'}
+              </p>
+            ) : (
+              <table className="w-full border-collapse border border-slate-400 text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-400 bg-slate-200 font-bold text-slate-950">
+                    <th className="w-10 border border-slate-400 p-2 text-center">S.No</th>
+                    <th className="border border-slate-400 p-2">Roll No</th>
+                    <th className="border border-slate-400 p-2">Register No</th>
+                    <th className="border border-slate-400 p-2">Student Name</th>
+                    <th className="border border-slate-400 p-2 text-center">Sessions</th>
+                    <th className="border border-slate-400 p-2 text-center">Attended</th>
+                    <th className="border border-slate-400 p-2 text-center">Attendance %</th>
+                    <th className="border border-slate-400 p-2 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedStudents.map((st, idx) => (
+                    <tr key={st.rollNo} className={`border-b border-slate-300 ${st.shortage ? 'bg-red-50 text-red-900' : idx % 2 === 0 ? 'bg-white text-slate-900' : 'bg-slate-50 text-slate-900'}`}>
+                      <td className="border border-slate-300 p-2 text-center font-mono">{idx + 1}</td>
+                      <td className="border border-slate-300 p-2 font-mono font-bold">{st.rollNo}</td>
+                      <td className="border border-slate-300 p-2 font-mono">{st.regNo}</td>
+                      <td className="border border-slate-300 p-2 font-bold">{st.name}</td>
+                      <td className="border border-slate-300 p-2 text-center font-mono">{st.total}</td>
+                      <td className="border border-slate-300 p-2 text-center font-mono font-bold">{st.attended}</td>
+                      <td className="border border-slate-300 p-2 text-center font-mono font-bold">{st.percentage}%</td>
+                      <td className="border border-slate-300 p-2 text-center font-bold">
+                        {st.shortage
+                          ? <span className="inline-block rounded border border-red-400 bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">SHORTAGE (&lt; 75%)</span>
+                          : <span className="inline-block rounded border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">SAFE (75%+)</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <div className="mt-8 grid grid-cols-2 gap-8 border-t border-slate-300 pt-4 text-xs">
               <div>
-                <p className="border-t border-slate-900 pt-1 px-4">Head of Department (HOD)</p>
+                <p className="font-bold text-slate-900">Summary</p>
+                <ul className="mt-1 space-y-1 text-slate-700">
+                  <li>• Class strength: <strong>{students.length}</strong></li>
+                  <li>• At or above 75%: <strong className="text-emerald-800">{students.length - defaulterCount}</strong></li>
+                  <li>• Shortage (&lt; 75%): <strong className="text-rose-800">{defaulterCount}</strong></li>
+                </ul>
+                <p className="mt-2 text-[10px] text-slate-500">Attended = Present, Late or On-Duty in ended sessions.</p>
+              </div>
+              <div className="flex items-end justify-between pt-12 text-center font-bold text-slate-800">
+                <p className="border-t border-slate-900 px-4 pt-1">Faculty In-Charge Signature</p>
+                <p className="border-t border-slate-900 px-4 pt-1">Head of Department (HOD)</p>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Bottom Controls Bar matching Top Controls Bar (Hidden during Print) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-950 px-6 py-4 print:hidden">
-          <p className="text-xs text-slate-400">Scroll-down submission controls</p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownloadCsv}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/60 px-3.5 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-900/80 transition"
-            >
-              <FileSpreadsheet size={15} /> Export Excel (.csv)
-            </button>
-            <button
-              onClick={handlePrintPdf}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500 transition shadow-lg shadow-blue-950"
-            >
-              <Printer size={15} /> Print / Save as PDF
-            </button>
-          </div>
-        </div>
-
+        )}
       </div>
     </div>
   );

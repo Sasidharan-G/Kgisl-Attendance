@@ -5,30 +5,47 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken, RefreshPayload }
 import { writeAuditLog } from './audit.service';
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
+import { prisma } from '../config/prisma';
 
 interface RedisRtRecord {
   sub: string;
   role: 'ADMIN' | 'FACULTY' | 'STUDENT';
   familyId: string;
+  /** Account must change its initial password; carried across refreshes. */
+  mcp?: boolean;
 }
 
 const TTL_SECONDS = env.JWT_REFRESH_TTL_SECONDS;
 
-/** Issues a brand-new access + refresh token pair for a fresh login (new family). */
-export async function issueTokenPair(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT') {
-  const familyId = crypto.randomUUID();
-  return mintPair(sub, role, familyId);
+async function mustChangePassword(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT'): Promise<boolean> {
+  const select = { mustChangePassword: true } as const;
+  const account = role === 'ADMIN'
+    ? await prisma.admin.findUnique({ where: { id: sub }, select })
+    : role === 'FACULTY'
+      ? await prisma.faculty.findUnique({ where: { id: sub }, select })
+      : await prisma.student.findUnique({ where: { id: sub }, select });
+  return Boolean(account?.mustChangePassword);
 }
 
-async function mintPair(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT', familyId: string) {
+/**
+ * Issues a brand-new access + refresh token pair for a fresh login (new family). Password logins are
+ * gated while the account still uses an initial password; Google sign-in has no password to change.
+ */
+export async function issueTokenPair(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT', options: { passwordGate?: boolean } = {}) {
+  const familyId = crypto.randomUUID();
+  const mcp = options.passwordGate === false ? false : await mustChangePassword(sub, role);
+  return mintPair(sub, role, familyId, mcp);
+}
+
+async function mintPair(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT', familyId: string, mcp = false) {
   const jti = crypto.randomUUID();
 
-  const record: RedisRtRecord = { sub, role, familyId };
+  const record: RedisRtRecord = { sub, role, familyId, ...(mcp ? { mcp: true } : {}) };
   await redis.set(refreshTokenKey(jti), JSON.stringify(record), 'EX', TTL_SECONDS);
   await redis.sadd(refreshFamilyKey(familyId), jti);
   await redis.expire(refreshFamilyKey(familyId), TTL_SECONDS);
 
-  const accessToken = signAccessToken({ sub, role });
+  const accessToken = signAccessToken({ sub, role, ...(mcp ? { mcp: true } : {}) });
   const refreshToken = signRefreshToken({ sub, role, jti, familyId });
 
   return { accessToken, refreshToken, expiresIn: TTL_SECONDS };
@@ -77,7 +94,9 @@ export async function rotateRefreshToken(token: string, ctx: { ip: string | null
   await redis.del(refreshTokenKey(jti));
   await redis.srem(refreshFamilyKey(familyId), jti);
 
-  const pair = await mintPair(sub, role, familyId);
+  let carriedGate = false;
+  try { carriedGate = Boolean((JSON.parse(raw) as RedisRtRecord).mcp); } catch { /* malformed record: treat as ungated */ }
+  const pair = await mintPair(sub, role, familyId, carriedGate);
 
   await writeAuditLog({
     actorId: sub,

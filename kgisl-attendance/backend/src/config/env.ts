@@ -80,9 +80,6 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().default(''),
 
   // Online AI assistant. Keep disabled until an API key is configured.
-  OPENAI_API_KEY: z.string().default(''),
-  OPENAI_MODEL: z.string().min(1).default('gpt-5.6-luna'),
-  AI_AGENT_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
 
 }).superRefine((value, ctx) => {
   // Email delivery is optional at startup. The attendance portal remains

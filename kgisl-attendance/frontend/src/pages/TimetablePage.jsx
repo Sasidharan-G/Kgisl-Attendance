@@ -6,17 +6,10 @@ import TopBar from '../components/TopBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { createAllocation, deleteAllocation, listAllocations, listBatches, listFaculty, listRooms, listSubjects } from '../services/api.js';
 import { format12Hour, format12HourRange } from '../utils/timeFormat.js';
+import { TIMETABLE_CSV_TEMPLATE, parseTimetableCsv } from '../utils/timetableCsv.js';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const initial = { facultyId: '', subjectId: '', batchId: '', roomId: '', dayOfWeek: 1, startTime: '09:10', endTime: '10:00' };
-const MCA_C_TEMPLATE = [
-  [1,'09:10','10:50','AIML','DS'],[1,'11:10','12:50','PHP','RG'],[1,'13:40','14:30','PLAC',''],[1,'14:30','15:20','TECH',''],[1,'15:30','16:20','TECH',''],
-  [2,'09:10','10:50','OSC','RG'],[2,'11:10','12:50','NSC','SS'],[2,'13:40','14:30','PLAC',''],[2,'14:30','15:20','TECH',''],[2,'15:30','16:20','TECH',''],
-  [3,'09:10','10:50','AIML-LAB','DS'],[3,'11:10','12:00','AIML-LAB','DS'],[3,'12:00','12:50','OSC','RG'],[3,'13:40','14:30','PLAC',''],[3,'14:30','15:20','TECH',''],[3,'15:30','16:20','TECH',''],
-  [4,'09:10','10:50','CC','KY'],[4,'11:10','12:00','AIML','DS'],[4,'12:00','12:50','CC','KY'],[4,'13:40','14:30','PLAC',''],[4,'14:30','15:20','TECH',''],[4,'15:30','16:20','TECH',''],
-  [5,'09:10','10:50','OSC-LAB','MC'],[5,'11:10','12:00','OSC-LAB','MC'],[5,'12:00','12:50','NSC','SS'],[5,'13:40','14:30','PLAC',''],[5,'14:30','15:20','PLAC',''],[5,'15:30','16:20','TECH',''],
-].map(([dayOfWeek,startTime,endTime,subjectCode,facultyCode]) => ({ dayOfWeek,startTime,endTime,subjectCode,facultyCode }));
-const FACULTY_NAMES = { DS: 'Surendhran D', RG: 'Gomathi R', SS: 'Saranya S', KY: 'Yamunarani K', MC: 'Chithra M', RR: 'Rajesh R' };
 const WEEK_SLOTS = [
   { label: '1', start: '09:10', end: '10:00' },
   { label: '2', start: '10:00', end: '10:50' },
@@ -42,7 +35,8 @@ export default function TimetablePage() {
   const [preview, setPreview] = useState([]);
   const [importBatchId, setImportBatchId] = useState('');
   const [importRoomId, setImportRoomId] = useState('');
-  const [facultyMap, setFacultyMap] = useState({});
+  const [importErrors, setImportErrors] = useState([]);
+  const [importNotice, setImportNotice] = useState('');
   const [importing, setImporting] = useState(false);
   const query = (searchParams.get('search') || '').trim().toLowerCase();
 
@@ -54,11 +48,6 @@ export default function TimetablePage() {
       setCatalog({ faculty, subjects, batches, rooms });
       setForm((f) => ({ ...f, facultyId: f.facultyId || faculty[0]?.id || '', subjectId: f.subjectId || subjects[0]?.id || '', batchId: f.batchId || batches[0]?.id || '', roomId: f.roomId || rooms[0]?.id || '' }));
       setImportRoomId((value) => value || rooms[0]?.id || '');
-      setFacultyMap((current) => {
-        const mapped = { ...current };
-        Object.entries(FACULTY_NAMES).forEach(([code, name]) => { mapped[code] ||= faculty.find((f) => f.name === name)?.id || ''; });
-        return mapped;
-      });
     }
   }
   useEffect(() => { load().catch((e) => setError(e.message)); }, []);
@@ -70,25 +59,44 @@ export default function TimetablePage() {
   }
 
   async function remove(id) { await deleteAllocation(id); await load(); }
-  function analyzeFile() {
-    if (!importFile) { setError('Choose the timetable image or document first'); return; }
+  async function analyzeFile() {
+    setImportNotice('');
+    if (!importFile) { setError('Choose the timetable CSV file first'); return; }
     if (!importBatchId) { setError('Select the class / section before analyzing the timetable'); return; }
     setError('');
-    setPreview(MCA_C_TEMPLATE);
+    try {
+      const text = await importFile.text();
+      const { rows: parsed, errors } = parseTimetableCsv(text, { subjects: catalog.subjects, faculty: catalog.faculty });
+      setPreview(parsed);
+      setImportErrors(errors);
+      if (parsed.length === 0 && errors.length === 0) setError('No classes were found in the file.');
+    } catch {
+      setError('Could not read that file. Upload a .csv file.');
+    }
+  }
+  function downloadTemplate() {
+    const url = URL.createObjectURL(new Blob([TIMETABLE_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = 'timetable-template.csv'; link.click();
+    URL.revokeObjectURL(url);
   }
   async function importSchedule() {
-    const requiredCodes = [...new Set(preview.map((row) => row.facultyCode || row.subjectCode))];
-    if (!importBatchId || !importRoomId || requiredCodes.some((code) => !facultyMap[code])) { setError('Select a faculty for every timetable code, including PLAC and TECH'); return; }
-    setImporting(true); setError('');
-    try {
-      for (const row of preview) {
-        const subject = catalog.subjects.find((item) => item.code === row.subjectCode);
-        if (!subject) throw new Error(`Subject ${row.subjectCode} is missing. Redeploy latest seed first.`);
-        await createAllocation({ facultyId: facultyMap[row.facultyCode || row.subjectCode], subjectId: subject.id, batchId: importBatchId, roomId: importRoomId, dayOfWeek: row.dayOfWeek, startTime: row.startTime, endTime: row.endTime });
+    if (!importBatchId || !importRoomId || preview.length === 0) { setError('Choose the section and room, then analyze a file first'); return; }
+    setImporting(true); setError(''); setImportNotice('');
+    const failed = [];
+    let created = 0;
+    for (const row of preview) {
+      try {
+        await createAllocation({ facultyId: row.facultyId, subjectId: row.subjectId, batchId: importBatchId, roomId: importRoomId, dayOfWeek: row.dayOfWeek, startTime: row.startTime, endTime: row.endTime });
+        created += 1;
+      } catch (e) {
+        failed.push(`Line ${row.line}: ${e.response?.data?.message || e.message || 'could not be created'}`);
       }
-      setPreview([]); setImportFile(null); await load();
-    } catch (e) { setError(e.response?.data?.message || e.message || 'Could not import timetable'); }
-    finally { setImporting(false); }
+    }
+    setImporting(false);
+    setPreview([]); setImportFile(null); setImportErrors(failed.map((message) => ({ line: '', message })));
+    setImportNotice(`${created} of ${created + failed.length} classes created.`);
+    await load();
   }
   const field = (key, options) => <select value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{options.map((x) => <option key={x.id} value={x.id}>{x.name || x.code}</option>)}</select>;
   const filteredRows = rows.filter((row) => !query || [DAYS[row.dayOfWeek - 1], row.startTime, row.endTime, row.faculty?.name, row.subject?.code, row.subject?.name, row.batch?.name, row.room?.name].filter(Boolean).join(' ').toLowerCase().includes(query));
@@ -105,17 +113,19 @@ export default function TimetablePage() {
         <button className="flex items-center justify-center gap-2 rounded-lg bg-signal-blue px-4 py-2 font-semibold text-white"><Plus size={16}/>Assign Class</button>
       </form>}
       {admin && <section id="timetable-import" className="mb-6 scroll-mt-4 rounded-2xl border border-signal-blue/30 bg-ink-850/60 p-5">
-        <div className="mb-4 flex items-center gap-3"><FileUp className="text-signal-blue"/><div><h3 className="font-bold text-white">Upload Timetable & Auto Assign</h3><p className="text-xs text-slate-400">Upload the II MCA-C timetable image/PDF/document, review faculty mappings, and automatically create all class assignments.</p></div></div>
+        <div className="mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><FileUp className="text-signal-blue"/><div><h3 className="font-bold text-white">Import Timetable (CSV)</h3><p className="text-xs text-slate-400">Columns: day, start, end, subjectCode, facultyEmail. Subjects and faculty must already exist.</p></div></div><button type="button" onClick={downloadTemplate} className="rounded-lg border border-ink-border px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-ink-900">Download template</button></div>
         <div className="grid gap-3 md:grid-cols-3">
-          <input type="file" accept="image/*,.pdf,.csv,.xlsx,.doc,.docx" onChange={(e) => { setImportFile(e.target.files?.[0] || null); setPreview([]); }} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-300" />
+          <input type="file" accept=".csv,text/csv" onChange={(e) => { setImportFile(e.target.files?.[0] || null); setPreview([]); setImportErrors([]); setImportNotice(''); }} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white" />
           <select required value={importBatchId} onChange={(e) => { setImportBatchId(e.target.value); setPreview([]); }} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select class / section</option>{catalog.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
-          <div className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-slate-400">Default room will be assigned automatically</div>
+          <select value={importRoomId} onChange={(e) => setImportRoomId(e.target.value)} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{catalog.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
         </div>
-        <button type="button" onClick={analyzeFile} className="mt-3 rounded-lg bg-signal-blue px-4 py-2 text-sm font-semibold text-white">Analyze Timetable</button>
+        <button type="button" onClick={() => void analyzeFile()} className="mt-3 rounded-lg bg-signal-blue px-4 py-2 text-sm font-semibold text-white">Analyze Timetable</button>
+        {importNotice && <p className="mt-3 text-sm font-semibold text-signal-green">{importNotice}</p>}
+        {importErrors.length > 0 && <ul className="mt-3 space-y-1 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{importErrors.map((item, index) => <li key={index}>{item.line ? `Line ${item.line}: ` : ''}{item.message}</li>)}</ul>}
         {!!preview.length && <div className="mt-5">
-          <p className="mb-3 text-sm font-bold text-white">Faculty mapping ({preview.length} classes detected)</p>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{[...new Set(preview.map((r) => r.facultyCode || r.subjectCode))].map((code) => FACULTY_NAMES[code] ? <div key={code} className="rounded-lg border border-signal-green/20 bg-signal-green/5 px-3 py-2"><p className="text-xs font-semibold text-slate-400">{code}</p><p className="mt-1 text-sm font-bold text-signal-green">{FACULTY_NAMES[code]}</p></div> : <label key={code} className="text-xs font-semibold text-slate-400">{code}<select value={facultyMap[code] || ''} onChange={(e) => setFacultyMap({ ...facultyMap, [code]: e.target.value })} className="mt-1 w-full rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white"><option value="">Select faculty</option>{catalog.faculty.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>)}</div>
-          <button type="button" disabled={importing} onClick={importSchedule} className="mt-4 rounded-lg bg-signal-green px-4 py-2 text-sm font-bold text-ink-950 disabled:opacity-50">{importing ? 'Creating schedule...' : 'Confirm & Create Schedule'}</button>
+          <p className="mb-3 text-sm font-bold text-white">{preview.length} classes ready to create{importErrors.length ? ` · ${importErrors.length} line(s) skipped` : ''}</p>
+          <div className="max-h-64 overflow-auto rounded-lg border border-ink-border"><table className="w-full text-left text-xs text-slate-300"><thead className="bg-ink-900 text-slate-400"><tr>{['Day','Time','Subject','Faculty'].map((x) => <th key={x} className="px-3 py-2">{x}</th>)}</tr></thead><tbody>{preview.map((row) => <tr key={row.line} className="border-t border-ink-border"><td className="px-3 py-2">{DAYS[row.dayOfWeek - 1]}</td><td className="px-3 py-2">{format12HourRange(row.startTime, row.endTime)}</td><td className="px-3 py-2">{row.subjectCode}</td><td className="px-3 py-2">{row.facultyName}</td></tr>)}</tbody></table></div>
+          <button type="button" disabled={importing} onClick={() => void importSchedule()} className="mt-4 rounded-lg bg-signal-green px-4 py-2 text-sm font-bold text-ink-950 disabled:opacity-50">{importing ? 'Creating schedule...' : 'Confirm & Create Schedule'}</button>
         </div>}
       </section>}
       {error && <p className="mb-4 text-sm text-red-300">{error}</p>}

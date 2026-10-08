@@ -117,6 +117,7 @@ export const getActiveSession = () => api.get('/sessions/active/mine').then((r) 
 export const endSession = (sessionId) => api.post(`/sessions/${sessionId}/end`).then((r) => r.data);
 export const pauseSession = (sessionId) => api.post(`/sessions/${sessionId}/pause`).then((r) => r.data);
 export const resumeSession = (sessionId) => api.post(`/sessions/${sessionId}/resume`).then((r) => r.data);
+export const getAttendanceReport = (params) => api.get('/history/report', { params }).then((r) => r.data.data);
 export const getSessionStats = (sessionId) => api.get(`/sessions/${sessionId}/stats`).then((r) => r.data);
 export const getSessionPublicInfo = (sessionId) => api.get(`/sessions/${sessionId}/public`).then((r) => r.data);
 export const markManualAttendance = (sessionId, rollNo) => api.post(`/sessions/${sessionId}/manual-attendance`, { rollNo }).then((r) => r.data);
@@ -153,4 +154,3 @@ export const createAllocation = (payload) => api.post('/timetable', payload).the
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);
 
 // ---- AI Agent ----
-export const sendAgentMessage = (message) => api.post('/agent/chat', { message }).then((r) => r.data);

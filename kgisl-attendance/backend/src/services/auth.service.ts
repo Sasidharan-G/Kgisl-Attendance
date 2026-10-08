@@ -29,7 +29,7 @@ export async function loginWithGoogle(email: string, role: LoginRole, ctx: Login
   }
   if (!account.isActive) throw Errors.ACCOUNT_INACTIVE();
 
-  const { accessToken, refreshToken, expiresIn } = await issueTokenPair(account.id, role);
+  const { accessToken, refreshToken, expiresIn } = await issueTokenPair(account.id, role, { passwordGate: false });
   await writeAuditLog({ actorId: account.id, actorType: role, action: 'GOOGLE_LOGIN_SUCCESS', ip: ctx.ip, userAgent: ctx.userAgent });
   return {
     token: accessToken,

@@ -23,6 +23,8 @@ model Faculty {
   passwordHash String
   createdAt    DateTime @default(now())
   isActive     Boolean  @default(true) @map("is_active")
+  // Admin-issued initial passwords must be replaced at first login.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
 
   sessions    AttendanceSession[]
   allocations TimetableAllocation[]
@@ -38,6 +40,7 @@ model Admin {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
   isActive     Boolean  @default(true) @map("is_active")
+  mustChangePassword Boolean @default(false) @map("must_change_password")
 
   @@map("admin")
 }
@@ -54,6 +57,7 @@ model Student {
   createdAt    DateTime @default(now())
   isActive     Boolean  @default(true) @map("is_active")
   archivedAt   DateTime? @map("archived_at")
+  mustChangePassword Boolean @default(false) @map("must_change_password")
 
   batch         Batch              @relation(fields: [batchId], references: [id])
   records       AttendanceRecord[]

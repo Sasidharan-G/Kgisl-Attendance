@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { prisma } from '../config/prisma';
 
 export async function listSessionHistoryHandler(req: Request, res: Response, next: NextFunction) {
@@ -174,5 +175,60 @@ export async function listAuditLogsHandler(req: Request, res: Response, next: Ne
     const where = req.auth!.role === 'ADMIN' ? {} : { OR: [{ actorId: req.auth!.sub }, { sessionId: { in: sessionIds } }] };
     const logs = await prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 });
     res.json({ success: true, data: logs });
+  } catch (err) { next(err); }
+}
+
+const reportQuerySchema = z.object({
+  batchId: z.string().uuid(),
+  subjectId: z.string().uuid().optional(),
+}).strict();
+
+/**
+ * Cumulative attendance per student for one section (optionally one subject). A session counts once
+ * it has started and is no longer running; PRESENT / LATE / ON_DUTY count as attended, matching the
+ * student dashboard. Faculty only see their own sessions; admins see all.
+ */
+export async function attendanceReportHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { batchId, subjectId } = reportQuerySchema.parse(req.query);
+    const sessionWhere = {
+      batchId,
+      ...(subjectId ? { subjectId } : {}),
+      status: { in: ['ENDED', 'EXPIRED'] as ('ENDED' | 'EXPIRED')[] },
+      ...(req.auth!.role === 'ADMIN' ? {} : { facultyId: req.auth!.sub }),
+    };
+    const [batch, subject, sessions, students] = await Promise.all([
+      prisma.batch.findUnique({ where: { id: batchId }, select: { name: true } }),
+      subjectId ? prisma.subject.findUnique({ where: { id: subjectId }, select: { name: true, code: true } }) : Promise.resolve(null),
+      prisma.attendanceSession.findMany({ where: sessionWhere, select: { sessionId: true } }),
+      prisma.student.findMany({ where: { batchId, isActive: true }, select: { id: true, name: true, rollNo: true, regNo: true }, orderBy: { rollNo: 'asc' } }),
+    ]);
+    if (!batch) { res.status(404).json({ success: false, message: 'Section not found' }); return; }
+
+    const sessionIds = sessions.map((item) => item.sessionId);
+    const attended = sessionIds.length === 0 ? [] : await prisma.attendanceRecord.groupBy({
+      by: ['studentId'],
+      where: { sessionId: { in: sessionIds }, status: { in: ['PRESENT', 'LATE', 'ON_DUTY'] } },
+      _count: { _all: true },
+    });
+    const attendedByStudent = new Map(attended.map((row) => [row.studentId, row._count._all]));
+    const total = sessionIds.length;
+    const rows = students.map((student) => {
+      const count = attendedByStudent.get(student.id) ?? 0;
+      const percentage = total > 0 ? Math.round((count / total) * 1000) / 10 : 100;
+      return { rollNo: student.rollNo, regNo: student.regNo, name: student.name, total, attended: count, percentage, shortage: total > 0 && count / total < 0.75 };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        batchName: batch.name,
+        subjectName: subject?.name ?? null,
+        subjectCode: subject?.code ?? null,
+        totalSessions: total,
+        students: rows,
+        generatedAt: new Date().toISOString(),
+      },
+    });
   } catch (err) { next(err); }
 }

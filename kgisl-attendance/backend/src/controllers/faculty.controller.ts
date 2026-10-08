@@ -46,6 +46,7 @@ export async function createFacultyHandler(req: Request, res: Response, next: Ne
         name,
         email,
         passwordHash,
+        mustChangePassword: true,
       },
       select: {
         id: true,

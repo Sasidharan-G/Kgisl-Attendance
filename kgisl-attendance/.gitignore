@@ -55,3 +55,7 @@ student-android/keystore.properties
 *.keystore
 *.apk
 *.aab
+backend/prisma/students.tsv
+
+# Locally generated initial credentials (personal data)
+backend/private/

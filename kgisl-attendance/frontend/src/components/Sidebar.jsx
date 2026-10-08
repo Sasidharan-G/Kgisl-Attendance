@@ -137,7 +137,7 @@ export default function Sidebar() {
                 {user?.name?.charAt(0) ?? 'F'}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-white">{user?.name ?? 'Chithra M'}</p>
+                <p className="truncate text-xs font-bold text-white">{user?.name ?? 'Signed in'}</p>
                 <p className="text-[10px] text-slate-400 font-semibold">{user?.role === 'ADMIN' ? 'Administrator' : 'Faculty'}</p>
               </div>
             </div>

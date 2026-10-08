@@ -10,7 +10,6 @@ import facultyRoutes from './routes/faculty.routes';
 import timetableRoutes from './routes/timetable.routes';
 import studentRoutes from './routes/student.routes';
 import historyRoutes from './routes/history.routes';
-import agentRoutes from './routes/agent.routes';
 import leaveRoutes from './routes/leave.routes';
 import correctionRoutes from './routes/correction.routes';
 import passkeyRoutes from './routes/passkey.routes';
@@ -77,7 +76,6 @@ export function createApp() {
   app.use('/api/v1/timetable', timetableRoutes);
   app.use('/api/v1/students', studentRoutes);
   app.use('/api/v1/history', historyRoutes);
-  app.use('/api/v1/agent', agentRoutes);
   app.use('/api/v1/leave-requests', leaveRoutes);
   app.use('/api/v1/attendance-corrections', correctionRoutes);
 

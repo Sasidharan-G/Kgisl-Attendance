@@ -1,8 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
-import AgentChat from './components/AgentChat.jsx';
 import StatePanel from './components/StatePanel.jsx';
 import StudentTheme from './components/StudentTheme.jsx';
 
@@ -40,21 +39,15 @@ const StudentDashboardPage = safeLazy(() => import('./pages/StudentDashboardPage
 const CorrectionRequestsPage = safeLazy(() => import('./pages/CorrectionRequestsPage.jsx'));
 const PrivacyPolicyPage = safeLazy(() => import('./pages/PrivacyPolicyPage.jsx'));
 const AcademicCalendarPage = safeLazy(() => import('./pages/AcademicCalendarPage.jsx'));
-const NotFoundPage = safeLazy(() => import('./pages/NotFoundPage.jsx'));
+const ForcePasswordChangePage = safeLazy(() => import('./pages/ForcePasswordChangePage.jsx'));
+const NotFoundPage =safeLazy(() => import('./pages/NotFoundPage.jsx'));
 
 function ProtectedRoute({ role, children }) {
-  const { user } = useAuth();
+  const { user, mustChangePassword } = useAuth();
   if (!user) return <Navigate to="/" replace />;
+  if (mustChangePassword) return <Suspense fallback={null}><ForcePasswordChangePage /></Suspense>;
   if (role && user.role !== role) return <div className="flex min-h-screen items-center justify-center bg-ink-950 px-5"><div className="w-full max-w-md"><StatePanel type="permission" title="Permission denied" description={`This page is available only to ${role.toLowerCase()} accounts. You are signed in as ${user.role.toLowerCase()}.`} actionLabel="Return to my portal" onAction={() => window.location.assign(user.role === 'STUDENT' ? '/student/dashboard' : user.role === 'FACULTY' ? '/faculty/dashboard' : '/admin/timetable')} /></div></div>;
   return role === 'STUDENT' ? <><StudentTheme />{children}</> : children;
-}
-
-function GlobalAgent() {
-  const { user } = useAuth();
-  const location = useLocation();
-  const isPublicPage = location.pathname === '/' || location.pathname === '/privacy';
-  if (!user || isPublicPage) return null;
-  return <AgentChat />;
 }
 
 export default function App() {
@@ -64,7 +57,6 @@ export default function App() {
         <div id="main-content" tabIndex="-1">
         <OfflineBanner />
         <BrowserRouter>
-          <GlobalAgent />
           <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-ink-950 px-5"><div className="w-full max-w-md"><StatePanel type="loading" title="Opening your workspace" description="Loading your attendance tools and latest records." /></div></div>}>
           <Routes>
             <Route path="/" element={<PortalSelect />} />
