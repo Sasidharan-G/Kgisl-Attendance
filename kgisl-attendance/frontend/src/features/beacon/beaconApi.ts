@@ -3,7 +3,8 @@ import { api } from '../../services/api.js';
 
 type ApiEnvelope<T> = { success: boolean; code?: string; data: T; message?: string };
 
-export type ClassroomBeacon = { id: string; beaconId: number; name: string; roomId: string; enabled: boolean };
+export type ClassroomBeacon = { id: string; beaconId: number; name: string; roomId: string; enabled: boolean; room?: { id: string; name: string } };
+export type BeaconInput = { beaconId: number; name: string; roomId: string; enabled: boolean };
 
 export type BeaconPacketIssue = {
   packet: string;
@@ -26,6 +27,16 @@ function toEpochMs(value: string | number): number {
 
 export async function listBeacons(): Promise<ClassroomBeacon[]> {
   const response = (await api.get('/catalog/beacons')) as AxiosResponse<ApiEnvelope<ClassroomBeacon[]>>;
+  return response.data.data;
+}
+
+export async function createBeacon(input: BeaconInput): Promise<ClassroomBeacon> {
+  const response = (await api.post('/catalog/beacons', input)) as AxiosResponse<ApiEnvelope<ClassroomBeacon>>;
+  return response.data.data;
+}
+
+export async function updateBeacon(id: string, input: BeaconInput): Promise<ClassroomBeacon> {
+  const response = (await api.patch(`/catalog/beacons/${id}`, input)) as AxiosResponse<ApiEnvelope<ClassroomBeacon>>;
   return response.data.data;
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Pencil, Plus, Save, X } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
+import BeaconAdminSection from '../components/BeaconAdminSection';
 import TopBar from '../components/TopBar.jsx';
 import { createBatch, createRoom, createSubject, listBatches, listFaculty, listRooms, listSubjects, updateBatch } from '../services/api.js';
 
@@ -92,5 +93,6 @@ export default function AcademicSetupPage() {
   }
   return <div key={item.id} className="rounded-lg bg-ink-900 px-3 py-2 text-xs text-slate-400"><div className="flex justify-between items-center"><b className="text-white text-sm">{item.name}</b><span className="font-semibold text-slate-500">{item.geofenceRadiusM}m radius {item.polygon ? '· Accurate Polygon Set' : '· Approx Center Only'}</span></div><div className="mt-1">Center: [{Number(item.latitude).toFixed(6)}, {Number(item.longitude).toFixed(6)}]</div>{cornersStr && <div className="mt-1 font-mono text-[10px] text-emerald-400 overflow-x-auto whitespace-nowrap">Polygon: {cornersStr}</div>}</div>;
 })}</div></section></div>
+    <BeaconAdminSection rooms={rooms} />
   </div></main></div>;
 }

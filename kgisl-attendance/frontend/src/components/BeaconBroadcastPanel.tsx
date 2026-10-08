@@ -229,7 +229,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
           </select>
         </label>
       )}
-      {roomBeacons.length === 0 && <p className="mb-4 text-center text-[11px] text-amber-300">No beacon is registered for this room. Ask the admin to add one.</p>}
+      {roomBeacons.length === 0 && <p className="mb-4 text-center text-[11px] text-amber-300">No beacon is registered for this room. Admin: Academic Setup → Classroom BLE Beacons.</p>}
 
       {needsKey && !broadcasting && (
         <label className="mb-4 grid gap-1 text-[10px] uppercase tracking-wide text-slate-500">
