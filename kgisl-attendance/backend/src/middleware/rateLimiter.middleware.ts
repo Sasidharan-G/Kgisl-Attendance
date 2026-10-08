@@ -32,33 +32,39 @@ export const authRateLimiter = rateLimit({
 export const agentRateLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false, message: { code: 'RATE_LIMITED', message: 'Too many assistant messages. Please wait a minute.' } });
 
 /**
- * Fine-grained per-student rate limit using Redis, independent of IP —
+ * Fine-grained per-student rate limit using Redis, independent of IP -
  * prevents a single compromised account from hammering the validation
  * pipeline regardless of source IP/NAT.
  */
-export async function scanStudentRateLimiter(req: Request, _res: Response, next: NextFunction) {
-  const studentId = req.auth?.sub;
-  if (!studentId) return next(Errors.INVALID_JWT());
+function studentRateLimiter(scope: string, max: number, windowMs: number) {
+  return async function limiter(req: Request, _res: Response, next: NextFunction) {
+    const studentId = req.auth?.sub;
+    if (!studentId) return next(Errors.INVALID_JWT());
 
-  try {
-    const key = `attendance:ratelimit:student:${studentId}`;
-    const count = await redis.eval(
-      `
+    try {
+      const key = `attendance:ratelimit:${scope}:${studentId}`;
+      const count = await redis.eval(
+        `
       local current = redis.call('INCR', KEYS[1])
       if current == 1 then
         redis.call('PEXPIRE', KEYS[1], ARGV[1])
       end
       return current
       `,
-      1,
-      key,
-      env.SCAN_RATE_LIMIT_WINDOW_MS.toString()
-    );
-    if (typeof count === 'number' && count > env.SCAN_RATE_LIMIT_MAX) {
-      return next(Errors.RATE_LIMITED());
+        1,
+        key,
+        windowMs.toString()
+      );
+      if (typeof count === 'number' && count > max) {
+        return next(Errors.RATE_LIMITED());
+      }
+      return next();
+    } catch (err) {
+      return next(err);
     }
-    return next();
-  } catch (err) {
-    return next(err);
-  }
+  };
 }
+
+export const scanStudentRateLimiter = studentRateLimiter('student', env.SCAN_RATE_LIMIT_MAX, env.SCAN_RATE_LIMIT_WINDOW_MS);
+/** Passkey ceremonies are cheap but still verified server-side; 20/min per student is ample. */
+export const passkeyStudentRateLimiter = studentRateLimiter('passkey', 20, 60_000);

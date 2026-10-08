@@ -21,13 +21,17 @@ export const qrRedisKey = (sessionId: string) => `attendance:session:${sessionId
 export const scanLockKey = (sessionId: string, studentId: string) =>
   `attendance:lock:${sessionId}:${studentId}`;
 
-/** Independent, ephemeral keys for the acoustic channel. Values never contain the raw token. */
-export const acousticSessionKey = (sessionId: string) =>
-  `attendance:acoustic:session:${sessionId}`;
-export const acousticTokenKey = (tokenDigest: string) =>
-  `attendance:acoustic:token:${tokenDigest}`;
-export const acousticClaimKey = (sessionId: string, studentId: string) =>
-  `attendance:acoustic:claim:${sessionId}:${studentId}`;
+/** Independent, ephemeral keys for the BLE beacon channel. Values never contain the raw token. */
+export const beaconSessionKey = (sessionId: string) =>
+  `attendance:beacon:session:${sessionId}`;
+export const beaconTokenKey = (tokenDigest: string) =>
+  `attendance:beacon:token:${tokenDigest}`;
+export const beaconClaimKey = (sessionId: string, studentId: string) =>
+  `attendance:beacon:claim:${sessionId}:${studentId}`;
+
+/** Single-use WebAuthn challenges, one per student per ceremony. */
+export const passkeyRegisterChallengeKey = (studentId: string) => `attendance:passkey:reg:${studentId}`;
+export const passkeyAuthChallengeKey = (studentId: string) => `attendance:passkey:auth:${studentId}`;
 
 /**
  * Refresh-token session storage (as required: Redis-backed sessions, not a DB table

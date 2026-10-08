@@ -1,20 +1,20 @@
 import { prisma } from '../config/prisma';
 import {
-  acousticClaimKey,
-  acousticSessionKey,
-  acousticTokenKey,
+  beaconClaimKey,
+  beaconSessionKey,
+  beaconTokenKey,
   redis,
 } from '../config/redis';
 import { env } from '../config/env';
 import {
-  acousticTokenDigest,
-  generateAcousticToken,
+  beaconTokenDigest,
+  generateBeaconToken,
   generateUuidV4,
-  normalizeAcousticToken,
+  normalizeBeaconToken,
 } from '../utils/crypto';
 import { Errors } from '../utils/AppError';
 
-interface AcousticSessionState {
+interface BeaconSessionState {
   sessionId: string;
   tokenDigest: string;
   generationId: string;
@@ -22,14 +22,14 @@ interface AcousticSessionState {
   expiresAt: number;
 }
 
-interface AcousticReverseState {
+interface BeaconReverseState {
   sessionId: string;
   generationId: string;
   issuedAt: number;
   expiresAt: number;
 }
 
-export interface AcousticTokenIssue {
+export interface BeaconTokenIssue {
   token: string;
   generationId: string;
   issuedAt: number;
@@ -37,11 +37,11 @@ export interface AcousticTokenIssue {
   refreshAfterMs: number;
 }
 
-export interface ResolvedAcousticToken extends AcousticReverseState {
+export interface ResolvedBeaconToken extends BeaconReverseState {
   tokenDigest: string;
 }
 
-const TOKEN_KEY_PREFIX = 'attendance:acoustic:token:';
+const TOKEN_KEY_PREFIX = 'attendance:beacon:token:';
 const MAX_COLLISION_RETRIES = 5;
 
 // Reserving the reverse lookup and swapping the session pointer in one Lua
@@ -95,36 +95,36 @@ end
 return 0
 `;
 
-export async function issueAcousticToken(
+export async function issueBeaconToken(
   sessionId: string,
   facultyId: string
-): Promise<AcousticTokenIssue> {
+): Promise<BeaconTokenIssue> {
   const session = await prisma.attendanceSession.findUnique({ where: { sessionId } });
   if (!session) throw Errors.SESSION_NOT_FOUND();
   if (session.facultyId !== facultyId) throw Errors.SESSION_ACCESS_DENIED();
   if (session.status !== 'ACTIVE') throw Errors.SESSION_NOT_ACTIVE();
 
-  const ttlMs = env.ACOUSTIC_TOKEN_TTL_SECONDS * 1000;
+  const ttlMs = env.BEACON_TOKEN_TTL_SECONDS * 1000;
   for (let attempt = 0; attempt < MAX_COLLISION_RETRIES; attempt += 1) {
-    const token = generateAcousticToken();
-    const tokenDigest = acousticTokenDigest(token);
+    const token = generateBeaconToken();
+    const tokenDigest = beaconTokenDigest(token);
     const issuedAt = Date.now();
     const expiresAt = issuedAt + ttlMs;
     const generationId = generateUuidV4();
-    const sessionState: AcousticSessionState = {
+    const sessionState: BeaconSessionState = {
       sessionId,
       tokenDigest,
       generationId,
       issuedAt,
       expiresAt,
     };
-    const reverseState: AcousticReverseState = { sessionId, generationId, issuedAt, expiresAt };
+    const reverseState: BeaconReverseState = { sessionId, generationId, issuedAt, expiresAt };
 
     const rotated = await redis.eval(
       ROTATE_TOKEN_SCRIPT,
       2,
-      acousticSessionKey(sessionId),
-      acousticTokenKey(tokenDigest),
+      beaconSessionKey(sessionId),
+      beaconTokenKey(tokenDigest),
       JSON.stringify(sessionState),
       JSON.stringify(reverseState),
       ttlMs.toString(),
@@ -142,34 +142,34 @@ export async function issueAcousticToken(
     }
   }
 
-  throw Errors.ACOUSTIC_TOKEN_ISSUE_FAILED();
+  throw Errors.BEACON_TOKEN_ISSUE_FAILED();
 }
 
-export async function revokeAcousticToken(sessionId: string): Promise<boolean> {
+export async function revokeBeaconToken(sessionId: string): Promise<boolean> {
   const revoked = await redis.eval(
     REVOKE_TOKEN_SCRIPT,
     1,
-    acousticSessionKey(sessionId),
+    beaconSessionKey(sessionId),
     TOKEN_KEY_PREFIX
   );
   return revoked === 1;
 }
 
-export async function stopAcousticToken(sessionId: string, facultyId: string): Promise<boolean> {
+export async function stopBeaconToken(sessionId: string, facultyId: string): Promise<boolean> {
   const session = await prisma.attendanceSession.findUnique({ where: { sessionId } });
   if (!session) throw Errors.SESSION_NOT_FOUND();
   if (session.facultyId !== facultyId) throw Errors.SESSION_ACCESS_DENIED();
-  return revokeAcousticToken(sessionId);
+  return revokeBeaconToken(sessionId);
 }
 
-export async function resolveAcousticToken(token: string): Promise<ResolvedAcousticToken> {
-  const normalized = normalizeAcousticToken(token);
-  const tokenDigest = acousticTokenDigest(normalized);
-  const raw = await redis.get(acousticTokenKey(tokenDigest));
-  if (!raw) throw Errors.ACOUSTIC_TOKEN_INVALID();
+export async function resolveBeaconToken(token: string): Promise<ResolvedBeaconToken> {
+  const normalized = normalizeBeaconToken(token);
+  const tokenDigest = beaconTokenDigest(normalized);
+  const raw = await redis.get(beaconTokenKey(tokenDigest));
+  if (!raw) throw Errors.BEACON_TOKEN_INVALID();
 
   try {
-    const state = JSON.parse(raw) as AcousticReverseState;
+    const state = JSON.parse(raw) as BeaconReverseState;
     if (
       typeof state.sessionId !== 'string' ||
       typeof state.generationId !== 'string' ||
@@ -177,16 +177,16 @@ export async function resolveAcousticToken(token: string): Promise<ResolvedAcous
       !Number.isFinite(state.expiresAt) ||
       Date.now() > state.expiresAt
     ) {
-      throw Errors.ACOUSTIC_TOKEN_INVALID();
+      throw Errors.BEACON_TOKEN_INVALID();
     }
     return { ...state, tokenDigest };
   } catch {
-    throw Errors.ACOUSTIC_TOKEN_INVALID();
+    throw Errors.BEACON_TOKEN_INVALID();
   }
 }
 
-export async function claimAcousticToken(
-  token: ResolvedAcousticToken,
+export async function claimBeaconToken(
+  token: ResolvedBeaconToken,
   studentId: string
 ): Promise<boolean> {
   const now = Date.now();
@@ -194,9 +194,9 @@ export async function claimAcousticToken(
   const claimed = await redis.eval(
     CLAIM_TOKEN_SCRIPT,
     3,
-    acousticTokenKey(token.tokenDigest),
-    acousticSessionKey(token.sessionId),
-    acousticClaimKey(token.sessionId, studentId),
+    beaconTokenKey(token.tokenDigest),
+    beaconSessionKey(token.sessionId),
+    beaconClaimKey(token.sessionId, studentId),
     token.tokenDigest,
     token.sessionId,
     now.toString(),

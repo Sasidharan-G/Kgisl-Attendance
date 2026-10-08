@@ -8,6 +8,13 @@ function integer(value, fallback, minimum, maximum) {
   return parsed;
 }
 
+export function parseOrigins(value) {
+  return String(value ?? '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+}
+
 export function loadConfig(env = process.env, args = process.argv.slice(2)) {
   const virtualFlag = args.includes('--virtual');
   const apiKey = env.HELPER_API_KEY ?? (virtualFlag || env.NODE_ENV === 'test'
@@ -22,9 +29,11 @@ export function loadConfig(env = process.env, args = process.argv.slice(2)) {
     host: '127.0.0.1',
     port: integer(env.HELPER_PORT, 43821, 0, 65535),
     apiKey,
-    allowedOrigin: env.HELPER_ALLOWED_ORIGIN ?? 'http://localhost:5173',
+    // Comma-separated list, e.g. "https://app.example.com,http://localhost:5173".
+    allowedOrigins: parseOrigins(env.HELPER_ALLOWED_ORIGIN ?? 'http://localhost:5173'),
     transport,
-    serialPort: env.ESP32_SERIAL_PORT ?? '',
+    // "auto" (or empty) detects the ESP32 USB-serial adapter by itself.
+    serialPort: (env.ESP32_SERIAL_PORT ?? '').trim() || 'auto',
     baudRate: integer(env.ESP32_BAUD_RATE, 115200, 1200, 2_000_000),
   };
 }

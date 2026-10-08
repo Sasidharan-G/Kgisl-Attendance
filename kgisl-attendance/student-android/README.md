@@ -1,18 +1,32 @@
-# KGiSL Student Android BLE App
+# KGiSL Attendance — Student Android App
 
-Native Android client for classroom beacon attendance. It logs students in,
-scans ESP32 manufacturer data, converts the 21-byte payload to the backend's
-28-character base64url packet, gets a precise GPS reading, and submits it to
-`POST /api/v1/scan/beacon` with device binding.
+The student client for KGiSL attendance. Students sign in with their college
+account and can:
 
-## Development status
+- **Alpha · Bluetooth** (primary): scan the classroom ESP32 beacon. The app reads the
+  manufacturer data, converts the 21-byte payload to the backend's 28-character
+  base64url packet, waits for three stable observations, gets a precise GPS fix and
+  submits to `POST /api/v1/scan/beacon`.
+- **Beta · QR** (fallback): scan the faculty's rotating signed QR and submit to
+  `POST /api/v1/scan`.
+- **History**: per-subject attendance percentage and session-by-session record.
+- **Leave**: submit leave / on-duty requests and track their status.
 
-Source targets Android 8+ (API 26) and Android 15 (API 35). This workstation
-currently has no Android SDK/ADB/Gradle installation, so APK compilation and
-device execution must be performed after Android Studio installs SDK 35.
+Both methods use the same one-device-per-student binding (Android ID).
 
-Debug builds expose a mock packet field so backend integration can be tested
-before ESP32 firmware is available. Release builds hide this control.
+## Build
+
+Source targets Android 8+ (API 26) and Android 15 (API 35); requires Android SDK 36.
+
+```powershell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+./gradlew testDebugUnitTest assembleDebug
+```
+
+The API origin defaults to the production Render URL; override with
+`-PapiBaseUrl=https://your-host`. Debug builds also show an editable backend URL on the
+login screen and a mock-beacon-packet field, so integration can be tested without
+the ESP32. Release builds hide both.
 
 ## BLE identifier
 

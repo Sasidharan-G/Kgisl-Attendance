@@ -13,6 +13,7 @@ import historyRoutes from './routes/history.routes';
 import agentRoutes from './routes/agent.routes';
 import leaveRoutes from './routes/leave.routes';
 import correctionRoutes from './routes/correction.routes';
+import passkeyRoutes from './routes/passkey.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
 import { prisma } from './config/prisma';
@@ -71,6 +72,7 @@ export function createApp() {
   app.use('/api/v1/catalog', catalogRoutes);
   app.use('/api/v1/sessions', sessionRoutes);
   app.use('/api/v1/scan', scanRoutes);
+  app.use('/api/v1/passkey', passkeyRoutes);
   app.use('/api/v1/faculty', facultyRoutes);
   app.use('/api/v1/timetable', timetableRoutes);
   app.use('/api/v1/students', studentRoutes);

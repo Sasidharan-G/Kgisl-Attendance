@@ -23,11 +23,13 @@ services:
         generateValue: true
       - key: QR_HMAC_SECRET
         sync: false
-      - key: ACOUSTIC_TOKEN_PEPPER
+      - key: BEACON_TOKEN_PEPPER
         generateValue: true
       - key: BEACON_HMAC_SECRET
         sync: false
-      - key: ACOUSTIC_TOKEN_TTL_SECONDS
+      - key: WEBAUTHN_RP_ID
+        value: kgisl-attendance-1.onrender.com
+      - key: BEACON_TOKEN_TTL_SECONDS
         value: "30"
       - key: FRONTEND_ORIGINS
         value: "https://kgisl-attendance-1.onrender.com"

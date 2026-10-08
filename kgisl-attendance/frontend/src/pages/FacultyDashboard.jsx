@@ -9,7 +9,6 @@ import RecentScans from '../components/RecentScans.jsx';
 import ValidationStrip from '../components/ValidationStrip.jsx';
 import StatTile from '../components/StatTile.jsx';
 import ManualAttendance from '../components/ManualAttendance';
-import AcousticBroadcastPanel from '../components/AcousticBroadcastPanel';
 import BeaconBroadcastPanel from '../components/BeaconBroadcastPanel';
 import SeatingGridHeatmap from '../components/SeatingGridHeatmap.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -419,11 +418,6 @@ export default function FacultyDashboard() {
           </div>
 
           <div className="flex flex-col h-full gap-6">
-            <AcousticBroadcastPanel
-              sessionId={sessionMeta?.sessionId}
-              sessionActive={sessionActive}
-              sessionPaused={sessionPaused}
-            />
             <BeaconBroadcastPanel
               sessionId={sessionMeta?.sessionId}
               roomId={roomId}

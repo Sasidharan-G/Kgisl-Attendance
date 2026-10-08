@@ -142,7 +142,11 @@ export async function resetStudentDeviceHandler(req: Request, res: Response, nex
     const existing = await prisma.student.findUnique({ where: { id: req.params.id }, select: { batchId: true } });
     if (!existing) { res.status(404).json({ success: false, message: 'Student does not exist' }); return; }
     const access = await requireMentorBatch(req, existing.batchId); if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
-    const student = await prisma.student.update({ where: { id: req.params.id }, data: { deviceId: null }, select: { id: true, name: true, rollNo: true } });
+    // Clearing the binding also revokes any Face ID / Touch ID passkey so the student can re-enrol on a new device.
+    const [, student] = await prisma.$transaction([
+      prisma.studentPasskey.deleteMany({ where: { studentId: req.params.id } }),
+      prisma.student.update({ where: { id: req.params.id }, data: { deviceId: null }, select: { id: true, name: true, rollNo: true } }),
+    ]);
     const ctx = requestContext(req);
     await writeAuditLog({ actorId: req.auth!.sub, actorType: req.auth!.role as 'ADMIN' | 'FACULTY', action: 'STUDENT_DEVICE_RESET', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { studentId: student.id, rollNo: student.rollNo } });
     res.json({ success: true, data: student, message: `Device reset for ${student.name}. The next verified scan will bind the new phone.` });

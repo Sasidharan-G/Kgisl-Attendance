@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { scanIpRateLimiter, scanStudentRateLimiter } from '../middleware/rateLimiter.middleware';
-import { acousticScanHandler, beaconScanHandler, scanHandler } from '../controllers/scan.controller';
+import { beaconScanHandler, scanHandler } from '../controllers/scan.controller';
 
 const router = Router();
 
@@ -11,14 +11,6 @@ router.post(
   requireAuth('STUDENT'),
   scanStudentRateLimiter,
   beaconScanHandler
-);
-
-router.post(
-  '/acoustic',
-  scanIpRateLimiter,
-  requireAuth('STUDENT'),
-  scanStudentRateLimiter,
-  acousticScanHandler
 );
 
 router.post(

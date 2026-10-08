@@ -13,7 +13,7 @@ export interface FacultyAttendanceOverrideInput {
 
 /**
  * Authenticated faculty correction. Existing capture evidence is retained:
- * method/GPS/device continue to describe the original QR/acoustic mark, while
+ * method/GPS/device continue to describe the original QR/BLE mark, while
  * the faculty actor and mandatory reason explain the override.
  */
 export async function overrideAttendance(input: FacultyAttendanceOverrideInput) {

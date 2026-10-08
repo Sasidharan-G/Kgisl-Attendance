@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-  android:layout_width="match_parent" android:layout_height="match_parent" android:padding="24dp">
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KGiSL Beacon Attendance" android:textSize="24sp" android:textStyle="bold" />
-    <EditText android:id="@+id/backendUrl" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Backend URL (https://...)" android:inputType="textUri" />
-    <EditText android:id="@+id/email" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Student email" android:inputType="textEmailAddress" />
-    <EditText android:id="@+id/password" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Password" android:inputType="textPassword" />
-    <Button android:id="@+id/login" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Student login" />
-    <Button android:id="@+id/scan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Start classroom scan" android:enabled="false" />
-    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="18dp" android:text="Login to continue" android:textSize="16sp" />
-    <EditText android:id="@+id/mockPacket" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Debug mock packet (28 chars)" android:visibility="gone" />
-    <Button android:id="@+id/submitMock" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Submit mock packet" android:visibility="gone" />
-  </LinearLayout>
-</ScrollView>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
+    android:background="?attr/colorPrimary"
+    app:title="KGiSL Attendance" app:titleTextColor="@android:color/white" />
+
+  <FrameLayout android:id="@+id/container" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+  <com.google.android.material.bottomnavigation.BottomNavigationView
+    android:id="@+id/bottomNav"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    app:menu="@menu/nav_menu" />
+</LinearLayout>

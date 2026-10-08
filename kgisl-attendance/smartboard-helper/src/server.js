@@ -14,8 +14,6 @@ function json(response, status, body, origin) {
       'access-control-allow-methods': 'GET,POST,OPTIONS',
       // Chrome Private Network Access: a public HTTPS page may call loopback only if the preflight opts in.
       'access-control-allow-private-network': 'true',
-      // Chrome Private Network Access: a public HTTPS page may call loopback only if the preflight opts in.
-      'access-control-allow-private-network': 'true',
       vary: 'Origin',
     } : {}),
   });
@@ -35,9 +33,10 @@ async function readJson(request) {
 
 export function createHelperServer(config, transport) {
   let latest = null;
+  const allowedOrigins = config.allowedOrigins ?? (config.allowedOrigin ? [config.allowedOrigin] : []);
   return http.createServer(async (request, response) => {
     const origin = request.headers.origin;
-    const corsOrigin = origin === config.allowedOrigin ? origin : undefined;
+    const corsOrigin = origin && allowedOrigins.includes(origin) ? origin : undefined;
     if (origin && !corsOrigin) return json(response, 403, { success: false, code: 'ORIGIN_DENIED' });
     if (request.method === 'OPTIONS') return json(response, 204, {}, corsOrigin);
     if (!helperKeyMatches(config.apiKey, request.headers['x-helper-key'])) {
@@ -50,23 +49,37 @@ export function createHelperServer(config, transport) {
     if (request.method === 'GET' && request.url === '/api/v1/status') {
       return json(response, 200, { success: true, data: { transport: transport.status(), latest } }, corsOrigin);
     }
-    if (request.method === 'POST' && request.url === '/api/v1/packet') {
+    if (request.method === 'POST' && request.url === '/api/v1/connect') {
       try {
-        const body = await readJson(request);
-        const packet = validateBeaconPacketShape(body.packet);
-        const packetDeadline = packetIssuedAt(packet) + 30_000;
-        if (packetDeadline <= Date.now()) {
-          return json(response, 410, { success: false, code: 'PACKET_EXPIRED' }, corsOrigin);
-        }
-        if (body.expiresAt !== undefined && (!Number.isFinite(body.expiresAt) || body.expiresAt <= Date.now())) {
-          return json(response, 410, { success: false, code: 'PACKET_EXPIRED' }, corsOrigin);
-        }
-        await transport.writePacket(packet);
-        latest = { packet, generationId: body.generationId ?? null, expiresAt: Math.min(body.expiresAt ?? packetDeadline, packetDeadline), writtenAt: Date.now() };
-        return json(response, 202, { success: true, data: latest }, corsOrigin);
+        await transport.ensureOpen?.();
+      } catch (error) {
+        return json(response, 503, { success: false, code: 'ESP32_UNAVAILABLE', message: error.message }, corsOrigin);
+      }
+      return json(response, 200, { success: true, data: { transport: transport.status() } }, corsOrigin);
+    }
+    if (request.method === 'POST' && request.url === '/api/v1/packet') {
+      let packet;
+      let body;
+      try {
+        body = await readJson(request);
+        packet = validateBeaconPacketShape(body.packet);
       } catch (error) {
         return json(response, 400, { success: false, code: 'INVALID_PACKET', message: error.message }, corsOrigin);
       }
+      const packetDeadline = packetIssuedAt(packet) + 30_000;
+      if (packetDeadline <= Date.now()) {
+        return json(response, 410, { success: false, code: 'PACKET_EXPIRED' }, corsOrigin);
+      }
+      if (body.expiresAt !== undefined && (!Number.isFinite(body.expiresAt) || body.expiresAt <= Date.now())) {
+        return json(response, 410, { success: false, code: 'PACKET_EXPIRED' }, corsOrigin);
+      }
+      try {
+        await transport.writePacket(packet);
+      } catch (error) {
+        return json(response, 503, { success: false, code: 'ESP32_UNAVAILABLE', message: error.message }, corsOrigin);
+      }
+      latest = { packet, generationId: body.generationId ?? null, expiresAt: Math.min(body.expiresAt ?? packetDeadline, packetDeadline), writtenAt: Date.now() };
+      return json(response, 202, { success: true, data: latest }, corsOrigin);
     }
     return json(response, 404, { success: false, code: 'NOT_FOUND' }, corsOrigin);
   });

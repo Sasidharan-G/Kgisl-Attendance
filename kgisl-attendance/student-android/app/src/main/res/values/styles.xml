@@ -1,6 +1,9 @@
 <resources>
   <style name="Theme.KgislAttendance" parent="Theme.MaterialComponents.DayNight.NoActionBar">
     <item name="colorPrimary">#0F766E</item>
+    <item name="colorPrimaryVariant">#0B5D57</item>
+    <item name="colorOnPrimary">#FFFFFF</item>
     <item name="colorSecondary">#14B8A6</item>
+    <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
   </style>
 </resources>

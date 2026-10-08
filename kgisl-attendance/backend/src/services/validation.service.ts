@@ -6,11 +6,7 @@ import { distanceMeters, isPointInPolygon, minDistanceToPolygonMeters } from '..
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import { broadcastAttendanceMarked, broadcastGeofenceViolation } from '../websocket/socket';
-import {
-  claimAcousticToken,
-  resolveAcousticToken,
-  ResolvedAcousticToken,
-} from './acoustic.service';
+import { claimBeaconToken } from './beaconToken.service';
 import { resolveBeaconPacket } from './beacon.service';
 
 interface StudentScanBase {
@@ -30,10 +26,6 @@ export interface ScanRequest extends StudentScanBase {
     nonce: string;
     signature: string;
   };
-}
-
-export interface AcousticScanRequest extends StudentScanBase {
-  token: string;
 }
 
 export interface BeaconScanRequest extends StudentScanBase {
@@ -183,7 +175,7 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
 async function persistAttendance(
   context: ValidatedContext,
   input: StudentScanBase,
-  method: 'QR' | 'ACOUSTIC' | 'BEACON'
+  method: 'QR' | 'BEACON'
 ): Promise<ScanResult> {
   try {
     const record = await prisma.attendanceRecord.create({
@@ -290,22 +282,6 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
   return persistAttendance(context, req, 'QR');
 }
 
-export async function validateAndRecordAcousticScan(
-  req: AcousticScanRequest
-): Promise<ScanResult> {
-  const resolved: ResolvedAcousticToken = await resolveAcousticToken(req.token);
-  const context = await validateStudentSessionContext({
-    studentId: req.studentId,
-    deviceId: req.deviceId,
-    gps: req.gps,
-    sessionId: resolved.sessionId,
-  });
-
-  const claimed = await claimAcousticToken(resolved, req.studentId);
-  if (!claimed) throw Errors.ACOUSTIC_TOKEN_INVALID();
-  return persistAttendance(context, req, 'ACOUSTIC');
-}
-
 export async function validateAndRecordBeaconScan(req: BeaconScanRequest): Promise<ScanResult> {
   if (req.rssi < env.BEACON_MIN_RSSI_DBM) throw Errors.BEACON_SIGNAL_TOO_WEAK();
   const { token } = await resolveBeaconPacket(req.packet);
@@ -316,7 +292,7 @@ export async function validateAndRecordBeaconScan(req: BeaconScanRequest): Promi
     sessionId: token.sessionId,
   });
 
-  const claimed = await claimAcousticToken(token, req.studentId);
+  const claimed = await claimBeaconToken(token, req.studentId);
   if (!claimed) throw Errors.BEACON_PACKET_INVALID();
   return persistAttendance(context, req, 'BEACON');
 }

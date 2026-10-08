@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { issueAcousticToken, stopAcousticToken } from '../services/acoustic.service';
+import { stopBeaconToken } from '../services/beaconToken.service';
 import { requestContext, writeAuditLog } from '../services/audit.service';
 import { issueBeaconPacket } from '../services/beacon.service';
 
@@ -33,7 +33,7 @@ export async function issueBeaconPacketHandler(
   }
 }
 
-export async function issueAcousticTokenHandler(
+export async function revokeBeaconPacketHandler(
   req: Request,
   res: Response,
   next: NextFunction
@@ -41,42 +41,12 @@ export async function issueAcousticTokenHandler(
   try {
     const { sessionId } = sessionParamsSchema.parse(req.params);
     emptyBodySchema.parse(req.body ?? {});
-    const issue = await issueAcousticToken(sessionId, req.auth!.sub);
+    const revoked = await stopBeaconToken(sessionId, req.auth!.sub);
     const ctx = requestContext(req);
     await writeAuditLog({
       actorId: req.auth!.sub,
       actorType: 'FACULTY',
-      action: 'ACOUSTIC_TOKEN_ISSUED',
-      sessionId,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      // generationId/timestamps are safe metadata; the bearer token and digest are omitted.
-      metadata: {
-        generationId: issue.generationId,
-        issuedAt: issue.issuedAt,
-        expiresAt: issue.expiresAt,
-      },
-    });
-    res.status(201).json({ success: true, data: issue });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function revokeAcousticTokenHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const { sessionId } = sessionParamsSchema.parse(req.params);
-    emptyBodySchema.parse(req.body ?? {});
-    const revoked = await stopAcousticToken(sessionId, req.auth!.sub);
-    const ctx = requestContext(req);
-    await writeAuditLog({
-      actorId: req.auth!.sub,
-      actorType: 'FACULTY',
-      action: 'ACOUSTIC_TOKEN_REVOKED',
+      action: 'BLE_BEACON_PACKET_REVOKED',
       sessionId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,

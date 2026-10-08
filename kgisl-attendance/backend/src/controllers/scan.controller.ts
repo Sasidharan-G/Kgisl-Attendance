@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { validateAndRecordAcousticScan, validateAndRecordBeaconScan, validateAndRecordScan } from '../services/validation.service';
+import { validateAndRecordBeaconScan, validateAndRecordScan } from '../services/validation.service';
 import { writeAuditLog, requestContext } from '../services/audit.service';
 import { AppError } from '../utils/AppError';
+import { assertPasskeyNotRequired, verifyPasskeyAssertion } from '../services/passkey.service';
+import { authenticationResponseSchema } from '../utils/passkeySchemas';
+import { isPasskeyDeviceId } from '../utils/passkey';
 
 const gpsSchema = z.object({
   lat: z.number().finite().min(-90).max(90),
@@ -13,8 +16,11 @@ const gpsSchema = z.object({
 const scanSchema = z.object({
   batchId: z.string().uuid('batchId must be a valid UUID'),
   subjectId: z.string().uuid('subjectId must be a valid UUID'),
-  deviceId: z.string().trim().min(1, 'deviceId is required').max(256),
+  // "pk:" ids are derived server-side from a verified passkey and can never be client-supplied.
+  deviceId: z.string().trim().min(1, 'deviceId is required').max(256).refine((v) => !isPasskeyDeviceId(v), 'Invalid deviceId'),
   gps: gpsSchema,
+  // Face ID / Touch ID assertion; present for passkey-bound web students.
+  passkey: authenticationResponseSchema.optional(),
   wifi: z.object({
     ssid: z.string().max(128).optional(),
     referenceKey: z.string().max(256).optional(),
@@ -29,17 +35,13 @@ const scanSchema = z.object({
   }).strict(),
 }).strict();
 
-const acousticScanSchema = z.object({
-  token: z.string().trim().toUpperCase().regex(/^[0-9A-HJKMNP-TV-Z]{8}$/),
-  deviceId: z.string().trim().min(1).max(256),
-  gps: gpsSchema,
-}).strict();
-
 const beaconScanSchema = z.object({
   packet: z.string().regex(/^[A-Za-z0-9_-]{28}$/),
   rssi: z.number().int().min(-127).max(20),
-  deviceId: z.string().trim().min(1).max(256),
+  deviceId: z.string().trim().min(1).max(256).refine((v) => !isPasskeyDeviceId(v), 'Invalid deviceId'),
   gps: gpsSchema,
+  // Face ID / Touch ID assertion; present for passkey-bound web students.
+  passkey: authenticationResponseSchema.optional(),
 }).strict();
 
 export async function beaconScanHandler(
@@ -50,8 +52,13 @@ export async function beaconScanHandler(
   const ctx = requestContext(req);
   const studentId = req.auth?.sub;
   try {
-    const body = beaconScanSchema.parse(req.body);
-    const result = await validateAndRecordBeaconScan({ studentId: studentId!, ...body });
+    const { passkey, ...body } = beaconScanSchema.parse(req.body);
+    // Same device-binding rules as the QR path: a passkey-bound account must prove the enrolled
+    // device with Face ID / Touch ID, and the effective deviceId is derived server-side.
+    let deviceId = body.deviceId;
+    if (passkey) deviceId = await verifyPasskeyAssertion(studentId!, passkey as never);
+    else await assertPasskeyNotRequired(studentId!);
+    const result = await validateAndRecordBeaconScan({ studentId: studentId!, ...body, deviceId });
     await writeAuditLog({
       actorId: studentId,
       actorType: 'STUDENT',
@@ -84,9 +91,14 @@ export async function scanHandler(req: Request, res: Response, next: NextFunctio
 
   try {
     const body = scanSchema.parse(req.body);
+    // Passkey-bound accounts prove the enrolled device with Face ID / Touch ID; the effective
+    // deviceId is derived from the verified credential, never trusted from the client.
+    let deviceId = body.deviceId;
+    if (body.passkey) deviceId = await verifyPasskeyAssertion(studentId!, body.passkey as never);
+    else await assertPasskeyNotRequired(studentId!);
     const result = await validateAndRecordScan({
       studentId: studentId!,
-      deviceId: body.deviceId,
+      deviceId,
       batchIdClaimed: body.batchId,
       subjectIdClaimed: body.subjectId,
       gps: body.gps,
@@ -119,53 +131,6 @@ export async function scanHandler(req: Request, res: Response, next: NextFunctio
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: { method: 'QR' },
-    });
-    next(err);
-  }
-}
-
-export async function acousticScanHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  const ctx = requestContext(req);
-  const studentId = req.auth?.sub;
-
-  try {
-    const body = acousticScanSchema.parse(req.body);
-    const result = await validateAndRecordAcousticScan({
-      studentId: studentId!,
-      token: body.token,
-      deviceId: body.deviceId,
-      gps: body.gps,
-    });
-
-    await writeAuditLog({
-      actorId: studentId,
-      actorType: 'STUDENT',
-      action: 'ACOUSTIC_SCAN_ACCEPTED',
-      sessionId: result.sessionId,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      metadata: {
-        method: 'ACOUSTIC',
-        gps: { lat: body.gps.lat, lng: body.gps.lng, accuracy: body.gps.accuracy },
-        distanceMeters: result.distanceMeters,
-      },
-    });
-
-    sendSuccess(res, result, body.gps.accuracy);
-  } catch (err) {
-    await writeAuditLog({
-      actorId: studentId,
-      actorType: 'STUDENT',
-      action: 'ACOUSTIC_SCAN_REJECTED',
-      success: false,
-      reasonCode: err instanceof AppError ? err.code : 'UNKNOWN_ERROR',
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      metadata: { method: 'ACOUSTIC' },
     });
     next(err);
   }

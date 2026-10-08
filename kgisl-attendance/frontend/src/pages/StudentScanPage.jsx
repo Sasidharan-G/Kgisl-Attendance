@@ -11,13 +11,19 @@ import {
   ShieldAlert,
   History,
   CalendarCheck,
-  Waves,
+  Bluetooth,
   QrCode,
+  Smartphone,
+  Fingerprint,
+  Radar,
+  Square,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { submitScan, getSessionPublicInfo } from '../services/api.js';
-import StudentAcousticPanel from '../components/StudentAcousticPanel';
+import { submitScan, submitBeaconScan, getSessionPublicInfo } from '../services/api.js';
+import { isPacketFresh, selectBeaconDevice, watchBeacon, webBluetoothSupported } from '../features/beacon/webBle.js';
+import { createLocationTracker } from '../utils/locationFix.js';
+import { enrollPasskey, getPasskeyAssertion, getPasskeyStatus, passkeySupported } from '../utils/passkey.js';
 
 /**
  * Stable per-browser device fingerprint (persisted in localStorage).
@@ -30,56 +36,6 @@ function getDeviceId() {
     localStorage.setItem('kgisl_device_id', id);
   }
   return id;
-}
-
-/**
- * Collect several fresh high-accuracy readings and use the best one instead of
- * trusting the first indoor GPS fix. Resolves early after two strong fixes, or
- * uses the best available reading when the sampling window ends.
- */
-function getAccurateLocation(onProgress) {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject({ code: 'GPS_REQUIRED', message: 'Geolocation is not supported by this browser.' });
-      return;
-    }
-
-    let best = null;
-    let samples = 0;
-    let settled = false;
-    let watchId;
-    const finish = (result, error) => {
-      if (settled) return;
-      settled = true;
-      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
-      clearTimeout(timeoutId);
-      if (error) reject(error); else resolve(result);
-    };
-    const timeoutId = setTimeout(() => {
-      if (best) finish(best);
-      else finish(null, { code: 'GPS_REQUIRED', message: 'Could not get your location. Turn on precise location and try again.' });
-    }, 5000);
-
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        samples += 1;
-        const reading = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        };
-        if (!best || reading.accuracy < best.accuracy) best = reading;
-        onProgress?.(best.accuracy, samples);
-        if (best.accuracy <= 40) finish(best);
-      },
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) {
-          finish(null, { code: 'GPS_REQUIRED', message: 'Precise location permission is required to mark attendance.' });
-        }
-      },
-      { enableHighAccuracy: true, timeout: 4500, maximumAge: 1500 }
-    );
-  });
 }
 
 /** Map backend error codes to clear, student-facing messages. */
@@ -99,10 +55,30 @@ function mapErrorCode(code, fallbackMessage) {
     SESSION_NOT_ACTIVE: 'This attendance session is no longer active.',
     OUTSIDE_TIME_WINDOW: 'Attendance window has closed for this session.',
     RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
+    PASSKEY_REQUIRED: 'Confirm with Face ID / Touch ID to mark attendance.',
+    PASSKEY_INVALID: 'Face ID / Touch ID verification failed. Make sure you are on the phone you set up, then try again.',
+    PASSKEY_CHALLENGE_EXPIRED: 'The Face ID check timed out. Tap Start Scanning and confirm again.',
+    PASSKEY_CANCELLED: 'Face ID / Touch ID was cancelled. Tap Start Scanning and confirm again.',
+    DEVICE_ALREADY_BOUND: 'This account is already linked to another device. Ask your faculty to reset it first.',
     VALIDATION_ERROR: 'Request could not be processed. Please try scanning again.',
+    BEACON_PACKET_INVALID_OR_EXPIRED: 'The classroom beacon signal expired. Stay in class; the next signal will be used.',
+    BEACON_TOKEN_INVALID_OR_EXPIRED: 'The classroom beacon signal expired. Stay in class; the next signal will be used.',
+    BEACON_NOT_FOUND: 'This classroom beacon is not registered. Inform your faculty.',
+    BEACON_ROOM_MISMATCH: "This beacon does not belong to this session's classroom.",
+    BEACON_SIGNAL_TOO_WEAK: 'Beacon signal is too weak. Move closer to the classroom board.',
+    BLE_TIMEOUT: 'Classroom beacon not detected. Make sure your faculty has started attendance, Bluetooth and Location are on, and you are inside the class.',
   };
   return messages[code] || fallbackMessage || 'Something went wrong. Try scanning again.';
 }
+
+// Failures that can clear up on the next beacon signal, so the scan keeps running.
+const BLE_TRANSIENT_CODES = new Set([
+  'BEACON_PACKET_INVALID_OR_EXPIRED',
+  'BEACON_TOKEN_INVALID_OR_EXPIRED',
+  'BEACON_SIGNAL_TOO_WEAK',
+  'GPS_ACCURACY_TOO_LOW',
+]);
+const BLE_SCAN_TIMEOUT_MS = 60_000;
 
 // Scan status states
 // idle | scanning | locating | submitting | success | error
@@ -112,6 +88,9 @@ export default function StudentScanPage() {
   const videoRef = useRef(null);
   const canvasRef = useRef(document.createElement('canvas'));
   const rafRef = useRef(null);
+  // Warm GPS tracker: started with the camera so a precise fix is ready when the QR is decoded.
+  const locationRef = useRef(null);
+  if (!locationRef.current) locationRef.current = createLocationTracker();
 
   // Duplicate-scan prevention: store the last submitted token & submission in-flight flag
   const lastScannedTokenRef = useRef(null);
@@ -122,11 +101,21 @@ export default function StudentScanPage() {
   const [message, setMessage] = useState('');
   const [successData, setSuccessData] = useState(null); // from backend response
   const [errorCode, setErrorCode] = useState('');
-  // QR is the privacy-safe default: neither camera nor microphone starts until
-  // the student explicitly taps the action and accepts the notice.
-  const [attendanceMode, setAttendanceMode] = useState('beta');
+  // Alpha (BLE) needs the Android app; the browser only supports Beta (QR). The
+  // camera does not start until the student taps the action and accepts the notice.
+  const [attendanceMode, setAttendanceMode] = useState('alpha');
   const [showConsent, setShowConsent] = useState(false);
   const [pendingMode, setPendingMode] = useState(null);
+  // Device binding: 'none' (can enrol a passkey), 'passkey' (Face ID per scan) or 'device' (bound to the mobile app).
+  const [passkeyStatus, setPasskeyStatus] = useState(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [passkeyError, setPasskeyError] = useState('');
+  const passkeyRef = useRef(null); // one-time Face ID assertion held between the tap and the QR decode
+  const bleWatchRef = useRef(null);
+  const bleTimeoutRef = useRef(null);
+  const bleSubmittedRef = useRef(new Set());
+  const bleSupported = webBluetoothSupported();
+  const supported = passkeySupported();
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) {
@@ -138,8 +127,24 @@ export default function StudentScanPage() {
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
+  const stopBle = useCallback(() => {
+    if (bleTimeoutRef.current) window.clearTimeout(bleTimeoutRef.current);
+    bleTimeoutRef.current = null;
+    bleWatchRef.current?.stop();
+    bleWatchRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPasskeyStatus()
+      .then((status) => { if (!cancelled) setPasskeyStatus(status); })
+      // If the status check fails, fall back to the legacy device id rather than locking students out.
+      .catch(() => { if (!cancelled) setPasskeyStatus({ enrolled: false, boundTo: 'unknown' }); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Stop camera on component unmount
-  useEffect(() => stopCamera, [stopCamera]);
+  useEffect(() => () => { stopCamera(); stopBle(); locationRef.current.stop(); }, [stopCamera, stopBle]);
 
   const handleDecoded = useCallback(
     async (rawValue) => {
@@ -184,8 +189,8 @@ export default function StudentScanPage() {
 
         // Step B: obtain GPS coordinates in parallel
         setMessage('Verifying your location…');
-        const locationPromise = getAccurateLocation((accuracy, samples) => {
-          setMessage(`Improving location accuracy… ${Math.round(accuracy)} m · sample ${samples}`);
+        const locationPromise = locationRef.current.getBest({
+          onProgress: (accuracy) => setMessage(`Improving location accuracy… ±${Math.round(accuracy)} m`),
         });
         const [{ data: sessionInfo }, gps] = await Promise.all([sessionInfoPromise, locationPromise]);
 
@@ -193,17 +198,22 @@ export default function StudentScanPage() {
         setStatus('submitting');
         setMessage('Marking attendance…');
 
+        // The assertion is single-use: consume it now so a retry always asks for Face ID again.
+        const passkey = passkeyRef.current;
+        passkeyRef.current = null;
         const response = await submitScan({
           batchId: sessionInfo.batchId,
           subjectId: sessionInfo.subjectId,
           deviceId: getDeviceId(),
           gps, // { lat, lng, accuracy }
           qr: qrPayload, // full signed QR object
+          ...(passkey ? { passkey } : {}),
         });
 
         // Success — show details from the backend response (never from QR)
         setSuccessData(response.data);
         setStatus('success');
+        locationRef.current.stop();
         setMessage('');
       } catch (err) {
         const code = err?.code || err?.response?.data?.code || '';
@@ -211,6 +221,7 @@ export default function StudentScanPage() {
         setErrorCode(code);
         setMessage(mapErrorCode(code, fallback));
         setStatus('error');
+        locationRef.current.stop();
         // Reset lock so the user can retry (but keep lastScannedToken to avoid immediate re-submit)
         isSubmittingRef.current = false;
       }
@@ -236,8 +247,129 @@ export default function StudentScanPage() {
     rafRef.current = requestAnimationFrame(tick);
   }, [handleDecoded]);
 
+  // ---- Alpha: classroom BLE beacon (Web Bluetooth) -------------------------------------------------
+  const failBle = useCallback((code, text) => {
+    stopBle();
+    locationRef.current.stop();
+    isSubmittingRef.current = false;
+    setErrorCode(code || 'BLE_ERROR');
+    setMessage(text);
+    setStatus('error');
+  }, [stopBle]);
+
+  const handleBeacon = useCallback(async ({ packet, rssi }) => {
+    if (isSubmittingRef.current || bleSubmittedRef.current.has(packet)) return;
+    if (!isPacketFresh(packet)) return; // stale advertisement still in the air
+    bleSubmittedRef.current.add(packet);
+    isSubmittingRef.current = true;
+    const usedPasskey = Boolean(passkeyRef.current);
+    try {
+      setStatus('locating');
+      setMessage(`Beacon detected (${rssi} dBm). Verifying your location…`);
+      const gps = await locationRef.current.getBest({
+        onProgress: (accuracy) => setMessage(`Improving location accuracy… ±${Math.round(accuracy)} m`),
+      });
+      setStatus('submitting');
+      setMessage('Marking attendance…');
+      const passkey = passkeyRef.current;
+      passkeyRef.current = null; // single use: a retry asks for Face ID again
+      const response = await submitBeaconScan({
+        packet,
+        rssi,
+        deviceId: getDeviceId(),
+        gps,
+        ...(passkey ? { passkey } : {}),
+      });
+      stopBle();
+      locationRef.current.stop();
+      isSubmittingRef.current = false;
+      setSuccessData(response.data);
+      setStatus('success');
+      setMessage('');
+    } catch (err) {
+      const code = err?.code || err?.response?.data?.code || '';
+      const text = mapErrorCode(code, err?.message || err?.response?.data?.message || '');
+      // Same rule as the Android app: weak/expired signals retry on the next beacon packet.
+      if (BLE_TRANSIENT_CODES.has(code) && !usedPasskey) {
+        bleSubmittedRef.current.delete(packet);
+        isSubmittingRef.current = false;
+        setStatus('scanning');
+        setMessage(`${text} Still scanning…`);
+        return;
+      }
+      failBle(code, text);
+    }
+  }, [failBle, stopBle]);
+
+  async function startBleScan() {
+    if (localStorage.getItem('kgisl_attendance_consent_v1') !== 'accepted') { setPendingMode('ble'); setShowConsent(true); return; }
+    stopBle();
+    stopCamera();
+    passkeyRef.current = null;
+    bleSubmittedRef.current = new Set();
+    isSubmittingRef.current = false;
+    setSuccessData(null);
+    setErrorCode('');
+    setCameraError('');
+    setStatus('scanning');
+    setMessage('Choose KGISL-BEACON in the Bluetooth list…');
+
+    let device;
+    try {
+      device = await selectBeaconDevice(); // runs straight from the tap, as browsers require
+    } catch (err) {
+      failBle(err.code, err.message);
+      return;
+    }
+    if (passkeyStatus?.boundTo === 'passkey') {
+      setMessage('Confirm with Face ID / Touch ID…');
+      try {
+        passkeyRef.current = await getPasskeyAssertion();
+      } catch (err) {
+        failBle(err.code || 'PASSKEY_ERROR', mapErrorCode(err.code, err.message));
+        return;
+      }
+    }
+    locationRef.current.start(); // warm GPS up so a precise fix is ready when the beacon is seen
+    setMessage('Looking for the classroom beacon… Stay inside the class.');
+    try {
+      bleWatchRef.current = await watchBeacon(device, { onStable: handleBeacon });
+    } catch (err) {
+      failBle(err.code, err.message);
+      return;
+    }
+    bleTimeoutRef.current = window.setTimeout(() => {
+      if (isSubmittingRef.current) return;
+      failBle('BLE_TIMEOUT', mapErrorCode('BLE_TIMEOUT'));
+    }, BLE_SCAN_TIMEOUT_MS);
+  }
+
+  function stopBleScan() {
+    stopBle();
+    locationRef.current.stop();
+    isSubmittingRef.current = false;
+    setStatus('idle');
+    setMessage('');
+  }
+
   async function startScanning() {
     if (localStorage.getItem('kgisl_attendance_consent_v1') !== 'accepted') { setShowConsent(true); return; }
+    passkeyRef.current = null;
+    if (passkeyStatus?.boundTo === 'passkey') {
+      // Must run straight from the tap: Safari only allows the Face ID prompt during a user gesture.
+      setStatus('locating');
+      setMessage('Confirm with Face ID / Touch ID…');
+      setSuccessData(null);
+      setErrorCode('');
+      try {
+        passkeyRef.current = await getPasskeyAssertion();
+      } catch (err) {
+        setErrorCode(err.code || 'PASSKEY_ERROR');
+        setMessage(mapErrorCode(err.code, err.message));
+        setStatus('error');
+        return;
+      }
+    }
     setStatus('scanning');
     setMessage('');
     setCameraError('');
@@ -245,6 +377,7 @@ export default function StudentScanPage() {
     setErrorCode('');
     isSubmittingRef.current = false;
     lastScannedTokenRef.current = null;
+    locationRef.current.start();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -261,6 +394,19 @@ export default function StudentScanPage() {
     }
   }
 
+  async function handleEnroll() {
+    setEnrolling(true);
+    setPasskeyError('');
+    try {
+      await enrollPasskey();
+      setPasskeyStatus(await getPasskeyStatus());
+    } catch (err) {
+      setPasskeyError(mapErrorCode(err.code, err.message));
+    } finally {
+      setEnrolling(false);
+    }
+  }
+
   function handleRetry() {
     // Reset token ref so the same QR can be tried if it was a transient error
     // (e.g. network error) — but not if the error is permanent (duplicate, device).
@@ -270,12 +416,14 @@ export default function StudentScanPage() {
     } else {
       lastScannedTokenRef.current = null;
     }
-    startScanning();
+    if (attendanceMode === 'alpha') startBleScan(); else startScanning();
   }
 
   function selectAttendanceMode(mode) {
     if (localStorage.getItem('kgisl_attendance_consent_v1') !== 'accepted') { setPendingMode(mode); setShowConsent(true); return; }
     stopCamera();
+    stopBle();
+    locationRef.current.stop();
     setAttendanceMode(mode);
     setStatus('idle');
     setCameraError('');
@@ -284,6 +432,55 @@ export default function StudentScanPage() {
     setSuccessData(null);
     isSubmittingRef.current = false;
   }
+
+  const renderIdleGate = (onStart, startLabel) => {
+            const bound = passkeyStatus?.boundTo;
+            const note = (tone, icon, title, body, action) => (
+              <div className={`mt-6 rounded-xl border p-4 ${tone}`}>
+                <div className="flex items-start gap-3">
+                  {icon}
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-slate-100">{title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">{body}</p>
+                    {passkeyError && <p className="mt-2 text-xs text-red-300">{passkeyError}</p>}
+                  </div>
+                </div>
+                {action}
+              </div>
+            );
+            if (!passkeyStatus) {
+              return <button disabled className="mt-6 w-full rounded-lg bg-signal-red py-2.5 text-sm font-medium text-white opacity-50">Checking device security…</button>;
+            }
+            if (bound === 'passkey' && !supported) {
+              return note('border-amber-500/30 bg-amber-500/10', <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-400" />,
+                'Open the secure site to continue', 'Your account is protected with Face ID / Touch ID, which needs the HTTPS site in a modern browser. Open the official attendance link and try again.');
+            }
+            if (bound === 'device') {
+              return note('border-sky-400/30 bg-sky-400/5', <Smartphone size={18} className="mt-0.5 shrink-0 text-sky-300" />,
+                'Your account is linked to another phone', 'Attendance for this account can only be marked from the phone it was first linked to. Ask your faculty to reset your device to use this one.');
+            }
+            if (bound === 'none' && supported) {
+              return note('border-signal-green/30 bg-signal-green/5', <Fingerprint size={18} className="mt-0.5 shrink-0 text-signal-green" />,
+                'Secure this phone with Face ID / Touch ID',
+                'One-time setup. It links your account to this device so nobody else can mark attendance as you, even with your password. Your face or fingerprint never leaves the phone.',
+                <button onClick={handleEnroll} disabled={enrolling} className="mt-4 w-full rounded-lg bg-signal-green py-2.5 text-sm font-bold text-ink-950 transition hover:brightness-110 disabled:opacity-60">
+                  {enrolling ? 'Waiting for Face ID…' : 'Set up now'}
+                </button>);
+            }
+            return (
+              <>
+                {bound === 'passkey' && (
+                  <p className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-signal-green"><Fingerprint size={13} />Face ID / Touch ID protected</p>
+                )}
+                <button
+                  onClick={onStart}
+                  className="mt-4 w-full rounded-lg bg-signal-red py-2.5 text-sm font-medium text-white transition hover:bg-red-600"
+                >
+                  {startLabel}
+                </button>
+              </>
+            );
+            };
 
   return (
     <div className="student-workspace min-h-screen flex flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
@@ -304,20 +501,60 @@ export default function StudentScanPage() {
 
         <div className="student-attendance-card mt-6 rounded-2xl p-5 shadow-card sm:p-7">
           <h1 className="font-display text-xl font-semibold text-white">Mark Attendance</h1>
-          <p className="mt-1 text-sm text-slate-400">Listen for the Alpha sound. If it is unavailable, use the Beta QR scanner.</p>
+          <p className="mt-1 text-sm text-slate-400">Alpha (Bluetooth) is the primary method: your phone detects the classroom beacon and marks attendance automatically. If Bluetooth is unavailable, use the Beta QR scanner.</p>
 
           <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-ink-border bg-ink-900 p-1">
-            <button type="button" onClick={() => selectAttendanceMode('alpha')} className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition ${attendanceMode === 'alpha' ? 'bg-cyan-500/20 text-cyan-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Waves size={14}/>Alpha · Sound</button>
+            <button type="button" onClick={() => selectAttendanceMode('alpha')} className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition ${attendanceMode === 'alpha' ? 'bg-cyan-500/20 text-cyan-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Bluetooth size={14}/>Alpha · BLE</button>
             <button type="button" onClick={() => selectAttendanceMode('beta')} className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition ${attendanceMode === 'beta' ? 'bg-red-500/20 text-red-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><QrCode size={14}/>Beta · QR</button>
           </div>
 
           {attendanceMode === 'alpha' ? (
-            <div className="mt-4">
-              <StudentAcousticPanel onUseQr={() => selectAttendanceMode('beta')} />
-            </div>
+            <>
+              <div className="mt-6 grid place-items-center">
+                <div className={`grid h-24 w-24 place-items-center rounded-full border transition ${status === 'scanning' ? 'border-sky-200/60 bg-sky-400/15 shadow-[0_0_45px_rgba(56,189,248,0.35)]' : 'border-sky-300/30 bg-sky-400/5'}`}>
+                  {(status === 'locating' || status === 'submitting')
+                    ? <Loader2 size={34} className="animate-spin text-sky-200" />
+                    : status === 'success'
+                      ? <CheckCircle2 size={36} className="text-signal-green" />
+                      : status === 'scanning'
+                        ? <Radar size={36} className="animate-pulse text-sky-200" />
+                        : <Bluetooth size={34} className="text-sky-300" />}
+                </div>
+              </div>
+
+              {status === 'scanning' && (
+                <div className="mt-5 text-center">
+                  <p className="text-sm text-sky-100 animate-pulse">{message}</p>
+                  <button type="button" onClick={stopBleScan} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-ink-border bg-ink-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-ink-850">
+                    <Square size={12} fill="currentColor" />Stop scanning
+                  </button>
+                </div>
+              )}
+
+              {status === 'idle' && (
+                <>
+                  <p className="mt-5 text-center text-xs leading-relaxed text-slate-400">
+                    Stay inside the classroom with Bluetooth and Location on. Tap once: your phone finds the classroom beacon and marks attendance automatically.
+                  </p>
+                  {bleSupported ? renderIdleGate(startBleScan, 'Start classroom scan') : (
+                    <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
+                      <div className="flex items-start gap-3">
+                        <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-100">Bluetooth scan is not available in this browser</p>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-400">Open this site in <span className="text-slate-200">Chrome on Android</span> (HTTPS) to use Alpha · BLE. On iPhone or other browsers, use Beta · QR.</p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => selectAttendanceMode('beta')} className="mt-4 w-full rounded-lg border border-ink-border bg-ink-900 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-ink-850">
+                        Use Beta · QR instead
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           ) : (
             <>
-
           {/* QR Viewfinder */}
           <div className="mt-6 scan-frame relative mx-auto w-full aspect-square max-w-[280px] overflow-hidden rounded-2xl bg-black">
             <span className="corner corner-tl" />
@@ -343,14 +580,8 @@ export default function StudentScanPage() {
             </div>
           )}
 
-          {/* IDLE state */}
-          {status === 'idle' && (
-            <button
-              onClick={startScanning}
-              className="mt-6 w-full rounded-lg bg-signal-red py-2.5 text-sm font-medium text-white transition hover:bg-red-600"
-            >
-              Start Scanning
-            </button>
+          {status === 'idle' && renderIdleGate(startScanning, 'Start Scanning')}
+            </>
           )}
 
           {/* LOCATING / SUBMITTING state */}
@@ -417,11 +648,9 @@ export default function StudentScanPage() {
               )}
             </div>
           )}
-            </>
-          )}
         </div>
       </div>
-      {showConsent && <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-4 sm:items-center sm:justify-center"><div role="dialog" aria-modal="true" aria-labelledby="privacy-title" className="w-full max-w-md rounded-2xl border border-ink-border bg-ink-850 p-6 shadow-2xl"><h2 id="privacy-title" className="text-lg font-bold text-white">Attendance permission notice</h2><p className="mt-3 text-sm leading-6 text-slate-300">Attendance mark pannumbodhu mattum camera (QR), microphone (Sound mode), precise location, and this browser device ID use pannuvom. Idhu class presence verify panna mattum; background location or recordings save panna maatom.</p><button onClick={() => navigate('/privacy')} className="mt-3 text-sm font-semibold text-signal-blue">Read Privacy Policy</button><div className="mt-5 flex gap-3"><button onClick={() => { setShowConsent(false); setPendingMode(null); }} className="flex-1 rounded-xl border border-ink-border px-4 py-2.5 text-sm text-slate-300">Cancel</button><button onClick={() => { localStorage.setItem('kgisl_attendance_consent_v1', 'accepted'); setShowConsent(false); if (pendingMode === 'alpha') setAttendanceMode('alpha'); else startScanning(); setPendingMode(null); }} className="flex-1 rounded-xl bg-signal-green px-4 py-2.5 text-sm font-bold text-ink-950">I understand</button></div></div></div>}
+      {showConsent && <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-4 sm:items-center sm:justify-center"><div role="dialog" aria-modal="true" aria-labelledby="privacy-title" className="w-full max-w-md rounded-2xl border border-ink-border bg-ink-850 p-6 shadow-2xl"><h2 id="privacy-title" className="text-lg font-bold text-white">Attendance permission notice</h2><p className="mt-3 text-sm leading-6 text-slate-300">Attendance mark pannumbodhu mattum Bluetooth (classroom beacon), camera (QR), precise location, and your device passkey (Face ID / Touch ID) or device ID use pannuvom. Idhu class presence verify panna mattum; background location or recordings save panna maatom.</p><button onClick={() => navigate('/privacy')} className="mt-3 text-sm font-semibold text-signal-blue">Read Privacy Policy</button><div className="mt-5 flex gap-3"><button onClick={() => { setShowConsent(false); setPendingMode(null); }} className="flex-1 rounded-xl border border-ink-border px-4 py-2.5 text-sm text-slate-300">Cancel</button><button onClick={() => { localStorage.setItem('kgisl_attendance_consent_v1', 'accepted'); setShowConsent(false); if (pendingMode === 'alpha') setAttendanceMode('alpha'); else if (pendingMode === 'beta') setAttendanceMode('beta'); else if (pendingMode === 'ble') startBleScan(); else startScanning(); setPendingMode(null); }} className="flex-1 rounded-xl bg-signal-green px-4 py-2.5 text-sm font-bold text-ink-950">I understand</button></div></div></div>}
     </div>
   );
 }

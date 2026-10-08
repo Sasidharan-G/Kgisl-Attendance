@@ -19,7 +19,8 @@ kgisl-attendance/
 ## ✨ Features & Capabilities
 
 ### 📱 1. Student Portal
-* **Live Dynamic QR Scanner**: Camera-based instant scanner with real-time GPS geolocation verification.
+* **Alpha · BLE beacon (web app, Chrome)**: The student web app detects the signed classroom ESP32 beacon with Web Bluetooth and marks attendance automatically, with GPS verification and device binding (Face ID / Touch ID passkey or one device per student). This is the primary method. Needs HTTPS, Bluetooth and Location on.
+* **Beta · QR scanner (web)**: Camera-based scanner for the rotating signed QR with real-time GPS verification. This is the fallback method.
 * **Today's Daily Schedule**: Real-time indicator for ongoing, upcoming, and completed classes based on live timetable.
 * **Smart Attendance & Safe Bunk Calculator**: Calculates current attendance percentage per subject and predicts safe allowable bunks to maintain target criteria.
 * **Attendance History**: Complete breakdown of present, absent, leave, and pending correction records.
@@ -27,6 +28,7 @@ kgisl-attendance/
 * **Leave Requests**: Submit digital leave applications with status tracking (Pending, Approved, Rejected).
 
 ### 👨‍🏫 2. Faculty Portal
+* **One-click BLE beacon**: Start a session and the beacon starts by itself (or press *Start BLE Beacon*). Run `start-classroom.bat` once on the classroom PC: it starts the local helper, auto-detects the ESP32 on USB and opens the site already paired.
 * **Live Session QR Generator**: Generates dynamic 10-second auto-rotating QR codes streamed live via Socket.IO.
 * **Real-time Attendance Stream**: Instant attendance count update as students scan in real-time.
 * **Student Location & Distance Radar**: Displays student distance relative to classroom geofence coordinates.

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent" android:layout_height="match_parent">
+
+  <LinearLayout
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="20dp">
+
+    <TextView android:id="@+id/greeting" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:textSize="20sp" android:textStyle="bold" />
+    <TextView android:id="@+id/rollNo" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginBottom="16dp" android:alpha="0.7" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+      android:id="@+id/modeGroup"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      app:singleSelection="true" app:selectionRequired="true"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/modeAlpha" style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+        android:text="Alpha · Bluetooth" />
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/modeBeta" style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+        android:text="Beta · QR" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <TextView android:id="@+id/modeHint" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginTop="14dp" android:alpha="0.75" />
+
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/action" android:layout_width="match_parent" android:layout_height="56dp"
+      android:layout_marginTop="20dp" />
+
+    <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyle"
+      android:layout_width="wrap_content" android:layout_height="wrap_content"
+      android:layout_gravity="center_horizontal" android:layout_marginTop="20dp" android:visibility="gone" />
+
+    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginTop="16dp" android:gravity="center" android:textSize="16sp" />
+
+    <TextView android:id="@+id/result" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginTop="16dp" android:padding="16dp" android:textSize="15sp"
+      android:background="#1A0F766E" android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/debugSubmit" style="?attr/materialButtonOutlinedStyle"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginTop="24dp" android:text="Debug: submit mock packet" android:visibility="gone" />
+    <EditText android:id="@+id/debugPacket" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:hint="Debug mock packet (28 chars)" android:inputType="text" android:visibility="gone" />
+  </LinearLayout>
+</ScrollView>

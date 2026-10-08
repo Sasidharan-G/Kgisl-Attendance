@@ -59,9 +59,28 @@ model Student {
   records       AttendanceRecord[]
   leaveRequests LeaveRequest[]
   correctionRequests AttendanceCorrectionRequest[]
+  passkeys      StudentPasskey[]
 
   @@index([archivedAt])
   @@map("student")
+}
+
+// Face ID / Touch ID / Windows Hello credential used as the student's web device binding.
+// Only the public key is stored; the private key never leaves the student's device.
+model StudentPasskey {
+  id           String    @id @default(uuid())
+  studentId    String    @map("student_id")
+  credentialId String    @unique @map("credential_id") // base64url
+  publicKey    Bytes     @map("public_key")
+  counter      Int       @default(0)
+  transports   String[]
+  createdAt    DateTime  @default(now()) @map("created_at")
+  lastUsedAt   DateTime? @map("last_used_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("student_passkey")
 }
 
 enum BatchLifecycle {
@@ -254,7 +273,6 @@ enum AttendanceStatus {
 
 enum AttendanceMethod {
   QR
-  ACOUSTIC
   BEACON
   FACULTY_MANUAL
 }

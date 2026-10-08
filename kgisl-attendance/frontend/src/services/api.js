@@ -130,6 +130,7 @@ export const correctAttendance = (sessionId, payload) => api.patch(`/sessions/${
 
 // ---- Scan ----
 export const submitScan = (payload) => api.post('/scan', payload).then((r) => r.data);
+export const submitBeaconScan = (payload) => api.post('/scan/beacon', payload).then((r) => r.data);
 
 // ---- Admin/Faculty Manage ----
 export const listFaculty = () => api.get('/faculty').then((r) => r.data.data);

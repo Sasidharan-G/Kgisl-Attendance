@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 import { env } from '../config/env';
 import {
-  ACOUSTIC_TOKEN_ALPHABET,
-  ACOUSTIC_TOKEN_LENGTH,
-  normalizeAcousticToken,
+  BEACON_TOKEN_ALPHABET,
+  BEACON_TOKEN_LENGTH,
+  normalizeBeaconToken,
 } from './crypto';
 
 // The payload is deliberately kept below the legacy BLE advertisement budget.
@@ -37,14 +37,14 @@ function assertBeaconId(beaconId: number): void {
 }
 
 function packToken(token: string): Buffer {
-  const normalized = normalizeAcousticToken(token);
-  if (normalized.length !== ACOUSTIC_TOKEN_LENGTH) {
-    throw new TypeError(`token must contain exactly ${ACOUSTIC_TOKEN_LENGTH} Crockford Base32 symbols`);
+  const normalized = normalizeBeaconToken(token);
+  if (normalized.length !== BEACON_TOKEN_LENGTH) {
+    throw new TypeError(`token must contain exactly ${BEACON_TOKEN_LENGTH} Crockford Base32 symbols`);
   }
 
   let bits = 0n;
   for (const symbol of normalized) {
-    const value = ACOUSTIC_TOKEN_ALPHABET.indexOf(symbol);
+    const value = BEACON_TOKEN_ALPHABET.indexOf(symbol);
     if (value < 0) throw new TypeError('token contains an invalid Crockford Base32 symbol');
     bits = (bits << 5n) | BigInt(value);
   }
@@ -61,9 +61,9 @@ function unpackToken(packed: Buffer): string {
   let bits = 0n;
   for (const byte of packed) bits = (bits << 8n) | BigInt(byte);
 
-  const symbols = Array<string>(ACOUSTIC_TOKEN_LENGTH);
-  for (let index = ACOUSTIC_TOKEN_LENGTH - 1; index >= 0; index -= 1) {
-    symbols[index] = ACOUSTIC_TOKEN_ALPHABET[Number(bits & 31n)];
+  const symbols = Array<string>(BEACON_TOKEN_LENGTH);
+  for (let index = BEACON_TOKEN_LENGTH - 1; index >= 0; index -= 1) {
+    symbols[index] = BEACON_TOKEN_ALPHABET[Number(bits & 31n)];
     bits >>= 5n;
   }
   return symbols.join('');

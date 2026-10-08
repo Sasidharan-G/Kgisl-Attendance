@@ -33,10 +33,10 @@ export const Errors = {
     new AppError('TOKEN_REVOKED', 'This QR token has been revoked.', 410),
   TOKEN_ALREADY_USED: () =>
     new AppError('TOKEN_ALREADY_USED', 'This QR code has already been used.', 409),
-  ACOUSTIC_TOKEN_INVALID: () =>
-    new AppError('ACOUSTIC_TOKEN_INVALID_OR_EXPIRED', 'The acoustic token is invalid or has expired.', 410),
-  ACOUSTIC_TOKEN_ISSUE_FAILED: () =>
-    new AppError('ACOUSTIC_TOKEN_ISSUE_FAILED', 'Could not issue an acoustic token. Try again.', 503),
+  BEACON_TOKEN_INVALID: () =>
+    new AppError('BEACON_TOKEN_INVALID_OR_EXPIRED', 'The beacon token is invalid or has expired.', 410),
+  BEACON_TOKEN_ISSUE_FAILED: () =>
+    new AppError('BEACON_TOKEN_ISSUE_FAILED', 'Could not issue a beacon token. Try again.', 503),
   BEACON_NOT_FOUND: () =>
     new AppError('BEACON_NOT_FOUND', 'The classroom beacon is not registered or is disabled.', 404),
   BEACON_ROOM_MISMATCH: () =>
@@ -59,6 +59,18 @@ export const Errors = {
   // Device binding
   DEVICE_NOT_AUTHORIZED: () =>
     new AppError('DEVICE_NOT_AUTHORIZED', 'Attendance cannot be marked from this device.', 403),
+
+  // Passkey (Face ID / Touch ID) device binding
+  PASSKEY_REQUIRED: () =>
+    new AppError('PASSKEY_REQUIRED', 'This account is secured with a passkey. Confirm with Face ID / Touch ID to mark attendance.', 403),
+  PASSKEY_NOT_ENROLLED: () =>
+    new AppError('PASSKEY_NOT_ENROLLED', 'No passkey is set up for this account.', 404),
+  PASSKEY_INVALID: () =>
+    new AppError('PASSKEY_INVALID', 'Passkey verification failed. Try again.', 403),
+  PASSKEY_CHALLENGE_EXPIRED: () =>
+    new AppError('PASSKEY_CHALLENGE_EXPIRED', 'The passkey request expired. Try again.', 410),
+  DEVICE_ALREADY_BOUND: () =>
+    new AppError('DEVICE_ALREADY_BOUND', 'This account is already bound to a device. Ask your faculty to reset it before setting up a passkey.', 409),
 
   // GPS / location
   GPS_REQUIRED: () =>

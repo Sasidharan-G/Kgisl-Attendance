@@ -40,3 +40,27 @@ test('helper rejects missing key, foreign origin, malformed packet, and stale pa
   assert.equal((await fetch(`${baseUrl}/api/v1/packet`, options({ packet: 'bad' }))).status, 400);
   assert.equal((await fetch(`${baseUrl}/api/v1/packet`, options({ packet, expiresAt: Date.now() - 1 }))).status, 410);
 });
+
+test('multiple origins are allowed and unknown origins are rejected', async (t) => {
+  const transport = new VirtualTransport();
+  const server = createHelperServer({ apiKey: key, allowedOrigins: ['https://app.example.com', 'http://localhost:5173'] }, transport);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const ask = (origin) => fetch(`${base}/health`, { headers: { 'x-helper-key': key, origin } });
+  assert.equal((await ask('https://app.example.com')).status, 200);
+  assert.equal((await ask('http://localhost:5173')).status, 200);
+  assert.equal((await ask('https://evil.example')).status, 403);
+});
+
+test('an unplugged ESP32 returns 503 instead of a packet error', async (t) => {
+  const transport = { writePacket: async () => { throw new Error('No USB serial device found.'); }, status: () => ({ connected: false }) };
+  const server = createHelperServer({ apiKey: key, allowedOrigins: [] }, transport);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/packet`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-helper-key': key }, body: JSON.stringify({ packet }),
+  });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, 'ESP32_UNAVAILABLE');
+});

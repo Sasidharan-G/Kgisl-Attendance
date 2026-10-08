@@ -5,7 +5,7 @@ import {
   encodeBeaconPacket,
   verifyBeaconPacket,
 } from '../utils/beaconProtocol';
-import { issueAcousticToken, resolveAcousticToken } from './acoustic.service';
+import { issueBeaconToken, resolveBeaconToken } from './beaconToken.service';
 
 export async function issueBeaconPacket(
   sessionId: string,
@@ -22,7 +22,7 @@ export async function issueBeaconPacket(
   if (!beacon?.enabled) throw Errors.BEACON_NOT_FOUND();
   if (beacon.roomId !== session.roomId) throw Errors.BEACON_ROOM_MISMATCH();
 
-  const issue = await issueAcousticToken(sessionId, facultyId);
+  const issue = await issueBeaconToken(sessionId, facultyId);
   return {
     packet: encodeBeaconPacket({ beaconId, issuedAt: issue.issuedAt, token: issue.token }),
     beaconId,
@@ -44,7 +44,7 @@ export async function resolveBeaconPacket(packet: string) {
 
   const [beacon, token] = await Promise.all([
     prisma.classroomBeacon.findUnique({ where: { beaconId: decoded.beaconId } }),
-    resolveAcousticToken(decoded.token),
+    resolveBeaconToken(decoded.token),
   ]);
   if (!beacon?.enabled) throw Errors.BEACON_NOT_FOUND();
 

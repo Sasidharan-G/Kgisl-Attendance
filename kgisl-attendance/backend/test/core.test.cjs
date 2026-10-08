@@ -8,9 +8,9 @@ const {
   sha256Hex,
   signQrPayload,
   verifyQrSignature,
-  acousticTokenDigest,
-  generateAcousticToken,
-  normalizeAcousticToken,
+  beaconTokenDigest,
+  generateBeaconToken,
+  normalizeBeaconToken,
 } = require('../dist/utils/crypto.js');
 const { signAccessToken } = require('../dist/middleware/auth.middleware.js');
 const jwt = require('jsonwebtoken');
@@ -75,24 +75,24 @@ test('access token preserves identity and role claims', () => {
   assert.ok(decoded.exp > decoded.iat);
 });
 
-test('acoustic tokens are 8-character Crockford Base32 with 40 bits of entropy', () => {
-  const tokens = new Set(Array.from({ length: 128 }, () => generateAcousticToken()));
+test('beacon tokens are 8-character Crockford Base32 with 40 bits of entropy', () => {
+  const tokens = new Set(Array.from({ length: 128 }, () => generateBeaconToken()));
   assert.equal(tokens.size, 128);
   for (const token of tokens) assert.match(token, /^[0-9A-HJKMNP-TV-Z]{8}$/);
 });
 
-test('acoustic token lookup uses a normalized keyed digest', () => {
-  const token = generateAcousticToken();
-  const digest = acousticTokenDigest(token);
+test('beacon token lookup uses a normalized keyed digest', () => {
+  const token = generateBeaconToken();
+  const digest = beaconTokenDigest(token);
   assert.match(digest, /^[0-9a-f]{64}$/);
-  assert.equal(acousticTokenDigest(`  ${token.toLowerCase()}  `), digest);
-  assert.equal(normalizeAcousticToken(` ${token.toLowerCase()} `), token);
+  assert.equal(beaconTokenDigest(`  ${token.toLowerCase()}  `), digest);
+  assert.equal(normalizeBeaconToken(` ${token.toLowerCase()} `), token);
   assert.notEqual(digest, sha256Hex(token));
 });
 
 test('BLE beacon packet round-trips in the legacy advertisement budget', () => {
   const now = Math.floor(Date.now() / 1000) * 1000;
-  const token = generateAcousticToken();
+  const token = generateBeaconToken();
   const encoded = encodeBeaconPacket({ beaconId: 42, issuedAt: now, token });
   assert.equal(Buffer.from(encoded, 'base64url').length, BEACON_PACKET_LENGTH);
   assert.equal(encoded.length, 28);
@@ -105,7 +105,7 @@ test('BLE beacon packet round-trips in the legacy advertisement budget', () => {
 
 test('BLE beacon packet rejects tampering and stale replay', () => {
   const now = Math.floor(Date.now() / 1000) * 1000;
-  const encoded = encodeBeaconPacket({ beaconId: 7, issuedAt: now, token: generateAcousticToken() });
+  const encoded = encodeBeaconPacket({ beaconId: 7, issuedAt: now, token: generateBeaconToken() });
   const packet = Buffer.from(encoded, 'base64url');
   packet[10] ^= 1;
   assert.throws(

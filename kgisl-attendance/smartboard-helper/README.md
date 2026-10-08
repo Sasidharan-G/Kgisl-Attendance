@@ -4,6 +4,15 @@ This localhost-only Windows helper relays a backend-issued BLE beacon packet
 from the faculty web app to the ESP32 over USB serial. It never receives the
 server HMAC key and cannot mint or modify valid attendance packets.
 
+## One-click start (recommended)
+
+Double-click `start-classroom.bat` in the project root. It creates `.env` (secret key, `ESP32_SERIAL_PORT=auto`),
+starts the helper, connects to the ESP32 and opens the site paired with the helper. The web app's
+**Start BLE Beacon** button (or auto-start when a session begins) does the rest.
+
+`ESP32_SERIAL_PORT=auto` finds the ESP32 USB adapter (CP210x / CH340 / FTDI) by itself; set `COM5` to force a port.
+`HELPER_ALLOWED_ORIGIN` accepts a comma-separated list of site origins.
+
 ## Board-independent simulation
 
 ```powershell

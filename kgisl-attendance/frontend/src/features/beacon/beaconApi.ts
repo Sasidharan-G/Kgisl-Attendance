@@ -45,10 +45,10 @@ async function helperRequest<T>(path: string, helperKey: string, init?: RequestI
       headers: { 'content-type': 'application/json', 'x-helper-key': helperKey },
     });
   } catch {
-    throw new Error('Smart-board helper is not reachable. Start it on this computer (npm start in smartboard-helper).');
+    throw new Error('Smart-board helper is not running on this computer. Double-click start-classroom.bat (or run npm start in smartboard-helper) and try again.');
   }
   const body = await response.json().catch(() => ({}));
-  if (response.status === 401) throw new Error('Helper key is incorrect.');
+  if (response.status === 401) throw new Error('Helper key is incorrect. Open the site with the classroom launcher, or enter the key shown in the helper window.');
   if (!response.ok) throw new Error(body?.message || body?.code || `Helper error ${response.status}`);
   return body as T;
 }
@@ -58,9 +58,19 @@ export async function getHelperStatus(helperKey: string): Promise<HelperStatus> 
   return { transport: body.transport };
 }
 
+/** Asks the helper to connect to the ESP32 now; rejects with a readable reason if it is unplugged. */
+export async function connectHelper(helperKey: string): Promise<HelperStatus> {
+  const body = await helperRequest<{ data: { transport: HelperStatus['transport'] } }>('/api/v1/connect', helperKey, { method: 'POST', body: '{}' });
+  return { transport: body.data.transport };
+}
+
 export async function sendPacketToHelper(helperKey: string, issue: BeaconPacketIssue): Promise<void> {
   await helperRequest('/api/v1/packet', helperKey, {
     method: 'POST',
     body: JSON.stringify({ packet: issue.packet, generationId: issue.generationId, expiresAt: issue.expiresAt }),
   });
+}
+
+export async function revokeBeaconPacket(sessionId: string): Promise<void> {
+  await api.delete(`/sessions/${sessionId}/beacon-packet`);
 }

@@ -31,20 +31,20 @@ export function sha256Hex(input: string): string {
 }
 
 // Crockford Base32 deliberately omits I, L, O and U, which reduces decoding
-// ambiguity when a noisy acoustic receiver reconstructs a short token.
-export const ACOUSTIC_TOKEN_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-export const ACOUSTIC_TOKEN_LENGTH = 8;
+// ambiguity when a short token is read or retyped by a person.
+export const BEACON_TOKEN_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+export const BEACON_TOKEN_LENGTH = 8;
 
-/** Generates an 8-character, 40-bit Crockford Base32 acoustic token. */
-export function generateAcousticToken(): string {
-  const bytes = crypto.randomBytes(ACOUSTIC_TOKEN_LENGTH);
+/** Generates an 8-character, 40-bit Crockford Base32 BLE beacon token. */
+export function generateBeaconToken(): string {
+  const bytes = crypto.randomBytes(BEACON_TOKEN_LENGTH);
   let token = '';
-  for (const byte of bytes) token += ACOUSTIC_TOKEN_ALPHABET[byte & 31];
+  for (const byte of bytes) token += BEACON_TOKEN_ALPHABET[byte & 31];
   return token;
 }
 
 /** Canonical form accepted from the decoder; malformed symbols are rejected by the route schema. */
-export function normalizeAcousticToken(token: string): string {
+export function normalizeBeaconToken(token: string): string {
   return token.trim().toUpperCase();
 }
 
@@ -52,10 +52,10 @@ export function normalizeAcousticToken(token: string): string {
  * Keyed digest used for Redis lookup. The raw short token is returned to the
  * faculty once, but is never durably persisted or written to logs.
  */
-export function acousticTokenDigest(token: string): string {
+export function beaconTokenDigest(token: string): string {
   return crypto
-    .createHmac('sha256', Buffer.from(env.ACOUSTIC_TOKEN_PEPPER, 'utf8'))
-    .update(`kgisl-acoustic-v1\0${normalizeAcousticToken(token)}`, 'utf8')
+    .createHmac('sha256', Buffer.from(env.BEACON_TOKEN_PEPPER, 'utf8'))
+    .update(`kgisl-beacon-token-v1\0${normalizeBeaconToken(token)}`, 'utf8')
     .digest('hex');
 }
 
