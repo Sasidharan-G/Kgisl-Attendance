@@ -9,14 +9,27 @@ export const PACKET_BYTES = 21;
 export const PACKET_TEXT_LENGTH = 28;
 const NAME_PREFIX = 'KGISL';
 
-export function webBluetoothSupported() {
-  return typeof window !== 'undefined'
-    && window.isSecureContext
-    && typeof navigator !== 'undefined'
-    && Boolean(navigator.bluetooth)
-    && typeof BluetoothDevice !== 'undefined'
-    && 'watchAdvertisements' in BluetoothDevice.prototype;
+/**
+ * Why Alpha BLE can or cannot run in this browser. `no-watch` means Chrome exposes Web Bluetooth but
+ * not advertisement watching (still behind a flag in some Chrome builds).
+ */
+export function bleSupport() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return { ok: false, reason: 'no-bluetooth' };
+  if (!window.isSecureContext) return { ok: false, reason: 'insecure' };
+  if (!navigator.bluetooth) return { ok: false, reason: 'no-bluetooth' };
+  if (typeof BluetoothDevice === 'undefined' || !('watchAdvertisements' in BluetoothDevice.prototype)) return { ok: false, reason: 'no-watch' };
+  return { ok: true, reason: 'ok' };
 }
+
+export function webBluetoothSupported() {
+  return bleSupport().ok;
+}
+
+export const BLE_UNSUPPORTED_MESSAGES = {
+  insecure: 'Bluetooth needs a secure (HTTPS) page. Open the official attendance link.',
+  'no-bluetooth': 'This browser has no Web Bluetooth. Use Chrome on Android, or Beta · QR.',
+  'no-watch': 'Your Chrome has Web Bluetooth but beacon scanning is switched off. Turn it on once (steps below), or use Beta · QR.',
+};
 
 function toBase64Url(bytes) {
   let binary = '';
@@ -95,9 +108,8 @@ export function explainBleError(error) {
  * remembers one, otherwise shows the browser's Bluetooth chooser filtered to KGISL beacons.
  */
 export async function selectBeaconDevice() {
-  if (!webBluetoothSupported()) {
-    throw { code: 'BLE_UNSUPPORTED', message: 'This browser cannot scan Bluetooth beacons. Use Chrome on Android, or Beta · QR.' };
-  }
+  const support = bleSupport();
+  if (!support.ok) throw { code: 'BLE_UNSUPPORTED', message: BLE_UNSUPPORTED_MESSAGES[support.reason] };
   try {
     if (typeof navigator.bluetooth.getDevices === 'function') {
       const known = await navigator.bluetooth.getDevices();

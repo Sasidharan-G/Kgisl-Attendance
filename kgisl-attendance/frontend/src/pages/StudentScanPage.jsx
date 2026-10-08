@@ -21,7 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { submitScan, submitBeaconScan, getSessionPublicInfo } from '../services/api.js';
-import { isPacketFresh, selectBeaconDevice, watchBeacon, webBluetoothSupported } from '../features/beacon/webBle.js';
+import { BLE_UNSUPPORTED_MESSAGES, bleSupport, isPacketFresh, selectBeaconDevice, watchBeacon } from '../features/beacon/webBle.js';
 import { createLocationTracker } from '../utils/locationFix.js';
 import { enrollPasskey, getPasskeyAssertion, getPasskeyStatus, passkeySupported } from '../utils/passkey.js';
 
@@ -114,7 +114,8 @@ export default function StudentScanPage() {
   const bleWatchRef = useRef(null);
   const bleTimeoutRef = useRef(null);
   const bleSubmittedRef = useRef(new Set());
-  const bleSupported = webBluetoothSupported();
+  const bleStatus = bleSupport();
+  const bleSupported = bleStatus.ok;
   const supported = passkeySupported();
 
   const stopCamera = useCallback(() => {
@@ -525,7 +526,7 @@ export default function StudentScanPage() {
               {status === 'scanning' && (
                 <div className="mt-5 text-center">
                   <p className="text-sm text-sky-100 animate-pulse">{message}</p>
-                  <button type="button" onClick={stopBleScan} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-ink-border bg-ink-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-ink-850">
+                  <button type="button" onClick={stopBleScan} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-sky-400/40 bg-sky-400/10 px-4 py-2 text-xs font-semibold transition hover:bg-sky-400/20">
                     <Square size={12} fill="currentColor" />Stop scanning
                   </button>
                 </div>
@@ -537,15 +538,23 @@ export default function StudentScanPage() {
                     Stay inside the classroom with Bluetooth and Location on. Tap once: your phone finds the classroom beacon and marks attendance automatically.
                   </p>
                   {bleSupported ? renderIdleGate(startBleScan, 'Start classroom scan') : (
-                    <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
+                    <div className="mt-5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-left">
                       <div className="flex items-start gap-3">
                         <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-400" />
                         <div>
-                          <p className="text-sm font-semibold text-slate-100">Bluetooth scan is not available in this browser</p>
-                          <p className="mt-1 text-xs leading-relaxed text-slate-400">Open this site in <span className="text-slate-200">Chrome on Android</span> (HTTPS) to use Alpha · BLE. On iPhone or other browsers, use Beta · QR.</p>
+                          <p className="text-sm font-semibold">Bluetooth scan is not available here</p>
+                          <p className="mt-1 text-xs leading-relaxed">{BLE_UNSUPPORTED_MESSAGES[bleStatus.reason]}</p>
+                          {bleStatus.reason === 'no-watch' && (
+                            <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs leading-relaxed">
+                              <li>In Chrome, open <b>chrome://flags</b></li>
+                              <li>Search <b>Experimental Web Platform features</b>, set it to <b>Enabled</b></li>
+                              <li>Tap <b>Relaunch</b>, then open this page again</li>
+                            </ol>
+                          )}
+                          <p className="mt-2 text-[10px] opacity-60">Check: {bleStatus.reason}</p>
                         </div>
                       </div>
-                      <button type="button" onClick={() => selectAttendanceMode('beta')} className="mt-4 w-full rounded-lg border border-ink-border bg-ink-900 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-ink-850">
+                      <button type="button" onClick={() => selectAttendanceMode('beta')} className="mt-4 w-full rounded-lg border border-sky-400/40 bg-sky-400/10 py-2.5 text-xs font-semibold transition hover:bg-sky-400/20">
                         Use Beta · QR instead
                       </button>
                     </div>
