@@ -18,7 +18,7 @@ android {
     // lawfully assigned identifier before commercial distribution.
     buildConfigField("int", "BEACON_MANUFACTURER_ID", "0xFFFF")
     // Production API origin; override with -PapiBaseUrl=https://... when building.
-    val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?) ?: "https://kgisl-attendance-1.onrender.com"
+    val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?) ?: "https://kgisl-attendance.onrender.com"
     buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
   }
 

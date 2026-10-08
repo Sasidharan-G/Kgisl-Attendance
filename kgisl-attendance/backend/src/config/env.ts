@@ -50,7 +50,7 @@ const envSchema = z.object({
   BEACON_MIN_RSSI_DBM: z.coerce.number().int().min(-127).max(-20).default(-95),
 
   // WebAuthn passkeys (Face ID / Touch ID). RP ID is the bare domain students open the site on
-  // (e.g. kgisl-attendance-1.onrender.com); passkeys only work on HTTPS or localhost.
+  // (e.g. kgisl-attendance.onrender.com); passkeys only work on HTTPS or localhost.
   WEBAUTHN_RP_ID: z.string().min(1).default('localhost'),
   WEBAUTHN_RP_NAME: z.string().min(1).default('KGiSL Attendance'),
 

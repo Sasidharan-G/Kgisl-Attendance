@@ -15,7 +15,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $helperDir = Join-Path $root 'smartboard-helper'
 $envFile = Join-Path $helperDir '.env'
 $helperPort = 43821
-$prodOrigin = 'https://kgisl-attendance-1.onrender.com'
+$prodOrigin = 'https://kgisl-attendance.onrender.com'
 $localOrigin = 'http://localhost:5173'
 
 function Write-Step($text) { Write-Host "  $text" -ForegroundColor Cyan }
