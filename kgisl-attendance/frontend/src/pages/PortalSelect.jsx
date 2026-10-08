@@ -3,7 +3,6 @@ import { Building2, GraduationCap, ShieldCheck, Sparkles, UserRoundCog } from 'l
 import AdminLogin from './AdminLogin.jsx';
 import StudentLogin from './StudentLogin.jsx';
 import StatePanel from '../components/StatePanel.jsx';
-import MasterGodModeModal from '../components/MasterGodModeModal.jsx';
 import { GradientBackground } from '../components/ui/sign-up.jsx';
 
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +32,6 @@ export default function PortalSelect() {
   const [portal, setPortal] = useState('STUDENT');
   const [showEntrance, setShowEntrance] = useState(true);
   const [sessionNotice, setSessionNotice] = useState(() => sessionStorage.getItem('kgisl_session_notice') || '');
-  const [showMasterGodMode, setShowMasterGodMode] = useState(false);
   const selectedPortal = portals.find((item) => item.id === portal);
 
   useEffect(() => {
@@ -48,18 +46,6 @@ export default function PortalSelect() {
     if (sessionNotice) { sessionStorage.removeItem('kgisl_session_notice'); setShowEntrance(false); }
     const timer = setTimeout(() => setShowEntrance(false), 3600);
     return () => clearTimeout(timer);
-  }, []);
-
-  // Secret Keyboard Listener (Ctrl + Shift + K)
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
-        e.preventDefault();
-        setShowMasterGodMode((prev) => !prev);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   return (
@@ -167,10 +153,6 @@ export default function PortalSelect() {
       </section>
     </main>
 
-    {/* Secret Master God-Mode Portal Modal */}
-    {showMasterGodMode && (
-      <MasterGodModeModal onClose={() => setShowMasterGodMode(false)} />
-    )}
     </>
   );
 }
