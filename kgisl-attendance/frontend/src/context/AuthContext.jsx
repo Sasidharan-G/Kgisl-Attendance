@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { logoutRequest } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -13,15 +13,44 @@ function tokenRequiresPasswordChange(token) {
   }
 }
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+function readStoredUser() {
+  try {
     const raw = localStorage.getItem('kgisl_user');
     return raw ? JSON.parse(raw) : null;
-  });
-  const [mustChangePassword, setMustChangePassword] = useState(() => {
+  } catch {
+    // A corrupted entry must not white-screen the app; treat it as signed out.
+    return null;
+  }
+}
+
+function readStoredGate() {
+  try {
     const token = localStorage.getItem('kgisl_token');
     return token ? tokenRequiresPasswordChange(token) : false;
-  });
+  } catch {
+    return false;
+  }
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(readStoredUser);
+  const [mustChangePassword, setMustChangePassword] = useState(readStoredGate);
+
+  /**
+   * One browser holds exactly one login (tokens live in localStorage, which every tab shares). When another tab
+   * signs in as someone else, signs out, or finishes the forced password change, this tab must follow immediately.
+   * Without this a tab kept showing "admin" while its requests silently went out with the faculty member's token,
+   * which the server answered with "Authentication token is invalid or expired".
+   */
+  useEffect(() => {
+    function onStorage(event) {
+      if (event.key !== null && !['kgisl_user', 'kgisl_token', 'kgisl_refresh_token'].includes(event.key)) return;
+      setUser(readStoredUser());
+      setMustChangePassword(readStoredGate());
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   const login = useCallback((token, refreshToken, userData) => {
     localStorage.setItem('kgisl_token', token);

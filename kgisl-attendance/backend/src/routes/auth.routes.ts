@@ -14,7 +14,7 @@ import {
   googleAuthConfigHandler,
   googleLoginHandler,
 } from '../controllers/auth.controller';
-import { authRateLimiter } from '../middleware/rateLimiter.middleware';
+import { authRateLimiter, passwordResetRequestLimiter, refreshRateLimiter } from '../middleware/rateLimiter.middleware';
 import { requireAuth, requireAuthAllowPasswordChange } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -26,11 +26,11 @@ router.post('/admin/verify-otp', authRateLimiter, verifyAdminMfaHandler);
 router.post('/student/login', authRateLimiter, studentLoginHandler);
 router.get('/google/config', googleAuthConfigHandler);
 router.post('/google', authRateLimiter, googleLoginHandler);
-router.post('/refresh', authRateLimiter, refreshHandler);
+router.post('/refresh', refreshRateLimiter, refreshHandler);
 router.post('/logout', logoutHandler);
 router.post('/change-password', requireAuthAllowPasswordChange('ADMIN', 'FACULTY', 'STUDENT'), authRateLimiter, changePasswordHandler);
 router.post('/password-reset/code', requireAuth('ADMIN'), authRateLimiter, createPasswordResetCodeHandler);
-router.post('/password-reset/request', authRateLimiter, requestPasswordResetHandler);
+router.post('/password-reset/request', passwordResetRequestLimiter, requestPasswordResetHandler);
 router.post('/password-reset/confirm', authRateLimiter, confirmPasswordResetHandler);
 
 export default router;

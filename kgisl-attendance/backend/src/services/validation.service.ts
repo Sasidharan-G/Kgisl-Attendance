@@ -8,6 +8,7 @@ import { logger } from '../utils/logger';
 import { broadcastAttendanceMarked, broadcastGeofenceViolation } from '../websocket/socket';
 import { claimBeaconToken } from './beaconToken.service';
 import { resolveBeaconPacket } from './beacon.service';
+import { isPresentStatus } from '../utils/attendanceStatus';
 
 interface StudentScanBase {
   studentId: string;
@@ -96,6 +97,8 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
   ]);
 
   if (!student) throw Errors.STUDENT_NOT_FOUND();
+  // A deactivated or passed-out student may still hold a valid access token for up to its lifetime.
+  if (!student.isActive || student.archivedAt !== null) throw Errors.ACCOUNT_INACTIVE();
   if (!session) throw Errors.SESSION_NOT_FOUND();
   if (session.status !== 'ACTIVE') throw Errors.SESSION_NOT_ACTIVE();
   if (session.scheduledEndAt && session.scheduledEndAt.getTime() < Date.now()) {
@@ -167,7 +170,10 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
   const existing = await prisma.attendanceRecord.findUnique({
     where: { uq_student_session: { studentId: student.id, sessionId: session.sessionId } },
   });
-  if (existing) throw Errors.DUPLICATE_ATTENDANCE();
+  // Only a record that already counts as attended is a duplicate. A student who has an approved LEAVE (added
+  // automatically when the class started) but actually turns up must still be able to mark themselves present,
+  // and a faculty "absent" override from earlier in the same class must not lock them out either.
+  if (existing && isPresentStatus(existing.status)) throw Errors.DUPLICATE_ATTENDANCE();
 
   return { student, session, distanceMeters: dist, locationVerificationStatus: verificationStatus };
 }
@@ -178,21 +184,26 @@ async function persistAttendance(
   method: 'QR' | 'BEACON'
 ): Promise<ScanResult> {
   try {
-    const record = await prisma.attendanceRecord.create({
-      data: {
-        studentId: context.student.id,
-        sessionId: context.session.sessionId,
-        gpsLat: input.gps.lat,
-        gpsLng: input.gps.lng,
-        gpsAccuracy: input.gps.accuracy,
-        distanceFromCampus: context.distanceMeters,
-        locationVerified: true,
-        locationVerificationStatus: context.locationVerificationStatus,
-        locationVerifiedAt: new Date(),
-        deviceId: input.deviceId,
-        status: 'PRESENT',
-        method,
-      },
+    const evidence = {
+      scanTime: new Date(),
+      gpsLat: input.gps.lat,
+      gpsLng: input.gps.lng,
+      gpsAccuracy: input.gps.accuracy,
+      distanceFromCampus: context.distanceMeters,
+      locationVerified: true,
+      locationVerificationStatus: context.locationVerificationStatus,
+      locationVerifiedAt: new Date(),
+      deviceId: input.deviceId,
+      status: 'PRESENT' as const,
+      method,
+      // A genuine scan replaces any earlier system/faculty placeholder (e.g. auto-applied leave).
+      markedByFacultyId: null,
+      overrideReason: null,
+    };
+    const record = await prisma.attendanceRecord.upsert({
+      where: { uq_student_session: { studentId: context.student.id, sessionId: context.session.sessionId } },
+      create: { studentId: context.student.id, sessionId: context.session.sessionId, ...evidence },
+      update: evidence,
     });
 
     logger.info('[scan] attendance recorded', {

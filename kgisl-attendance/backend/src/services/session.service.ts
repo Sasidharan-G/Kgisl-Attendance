@@ -6,12 +6,19 @@ import { broadcastQrUpdate, broadcastSessionEnded, broadcastSessionPaused } from
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import { revokeBeaconToken } from './beaconToken.service';
+import { applyApprovedLeavesToSession } from './leave.service';
+import { COMPLETED_SESSION_STATUSES, LIVE_SESSION_STATUSES, PRESENT_STATUSES, buildSessionStats } from '../utils/attendanceStatus';
+import { istCalendarDay, istDayWindow, istParts, istTimeOnDay, toMinutes } from '../utils/time';
+import { PERIOD_GRACE_MINUTES, PERIOD_GRACE_MS, isSessionPastNominalEnd } from '../utils/sessionWindow';
 
 // In-memory registry of active refresh timers, keyed by sessionId.
 // (For a multi-instance deployment, promote this to a Redis-backed leader-election
 //  or a dedicated worker process so only one instance owns the timer per session.)
 const activeTimers = new Map<string, NodeJS.Timeout>();
 const autoEndTimers = new Map<string, NodeJS.Timeout>();
+
+/** A mistakenly started session can be cancelled (and disappear from reports) only inside this window. */
+const CANCEL_WINDOW_MS = 15 * 60_000;
 
 export interface StartSessionInput {
   facultyId: string;
@@ -21,34 +28,80 @@ export interface StartSessionInput {
   batchId: string;
 }
 
+/**
+ * If the faculty member forgot to end the previous period, finish it automatically once its class time
+ * is over instead of blocking them from opening the next period with "end your current session".
+ */
+async function releaseStaleSession(facultyId: string): Promise<void> {
+  const open = await prisma.attendanceSession.findFirst({
+    where: { facultyId, status: { in: LIVE_SESSION_STATUSES } },
+  });
+  if (open && isSessionPastNominalEnd(open)) {
+    await endSession(open.sessionId, facultyId);
+  }
+}
+
 export async function startSession(input: StartSessionInput) {
   const allocation = await prisma.timetableAllocation.findFirst({
     where: { id: input.allocationId, facultyId: input.facultyId },
   });
   if (!allocation || allocation.subjectId !== input.subjectId || allocation.roomId !== input.roomId || allocation.batchId !== input.batchId) {
-    throw Errors.SESSION_NOT_ACTIVE();
+    throw Errors.ALLOCATION_NOT_FOUND();
   }
-  const active = await prisma.attendanceSession.findFirst({ where: { facultyId: input.facultyId, status: { in: ['ACTIVE', 'PAUSED'] } } });
-  if (active) throw Errors.SESSION_ALREADY_ACTIVE();
 
   const now = new Date();
-  const ist = new Date(now.getTime() + 330 * 60 * 1000);
-  const dayOfWeek = ist.getUTCDay() === 0 ? 7 : ist.getUTCDay();
-  if (allocation.dayOfWeek !== dayOfWeek) throw Errors.WRONG_TIMETABLE_DAY();
-  const minutes = ist.getUTCHours() * 60 + ist.getUTCMinutes();
-  const toMinutes = (value: string) => { const [hours, mins] = value.split(':').map(Number); return hours * 60 + mins; };
-  if (minutes < toMinutes(allocation.startTime) - 15 || minutes > toMinutes(allocation.endTime) + 15) throw Errors.OUTSIDE_PERIOD_TIME();
-  const session = await prisma.attendanceSession.create({
-    data: {
+  const ist = istParts(now);
+  if (allocation.dayOfWeek !== ist.dayOfWeek) throw Errors.WRONG_TIMETABLE_DAY();
+  if (
+    ist.minutes < toMinutes(allocation.startTime) - PERIOD_GRACE_MINUTES ||
+    ist.minutes > toMinutes(allocation.endTime) + PERIOD_GRACE_MINUTES
+  ) {
+    throw Errors.OUTSIDE_PERIOD_TIME();
+  }
+
+  await releaseStaleSession(input.facultyId);
+  const active = await prisma.attendanceSession.findFirst({ where: { facultyId: input.facultyId, status: { in: LIVE_SESSION_STATUSES } } });
+  if (active) throw Errors.SESSION_ALREADY_ACTIVE();
+
+  const scheduledEndAt = new Date(istTimeOnDay(allocation.endTime, now).getTime() + PERIOD_GRACE_MS);
+
+  // Ending and starting the same period again (accidental End, browser crash, ...) must continue the
+  // same class. Creating a second session would count one class twice and halve everyone's percentage.
+  const today = istDayWindow(istCalendarDay(now)).start;
+  const reopenable = await prisma.attendanceSession.findFirst({
+    where: {
       facultyId: input.facultyId,
-      subjectId: input.subjectId,
-      roomId: input.roomId,
-      batchId: input.batchId,
-      status: 'ACTIVE',
-      scheduledEndAt: new Date(istTimeToday(allocation.endTime).getTime() + 15 * 60_000),
+      allocationId: allocation.id,
       sessionType: 'SCHEDULED',
+      status: { in: COMPLETED_SESSION_STATUSES },
+      startedAt: { gte: today },
     },
+    orderBy: { startedAt: 'desc' },
   });
+
+  let session: Awaited<ReturnType<typeof prisma.attendanceSession.create>>;
+  if (reopenable) {
+    session = await prisma.attendanceSession.update({
+      where: { sessionId: reopenable.sessionId },
+      data: { status: 'ACTIVE', endedAt: null, scheduledEndAt, currentQrTokenHash: null, currentQrExpiry: null },
+    });
+  } else {
+    session = await prisma.attendanceSession.create({
+      data: {
+        facultyId: input.facultyId,
+        subjectId: input.subjectId,
+        roomId: input.roomId,
+        batchId: input.batchId,
+        allocationId: allocation.id,
+        status: 'ACTIVE',
+        scheduledEndAt,
+        sessionType: 'SCHEDULED',
+      },
+    });
+    await applyApprovedLeavesToSession(session).catch((err) =>
+      logger.error('[session] could not apply approved leave', { sessionId: session.sessionId, error: err.message })
+    );
+  }
 
   // Return the first QR with the HTTP response as well as broadcasting it. The
   // faculty client cannot join the Socket.IO room until it learns the new
@@ -61,16 +114,9 @@ export async function startSession(input: StartSessionInput) {
   return { ...session, initialQr };
 }
 
-function istTimeToday(value: string): Date {
-  const [hours, minutes] = value.split(':').map(Number);
-  const now = new Date();
-  const istNow = new Date(now.getTime() + 330 * 60 * 1000);
-  const utcMs = Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate(), hours, minutes) - 330 * 60 * 1000;
-  return new Date(utcMs);
-}
-
 export async function startExtraSession(input: Omit<StartSessionInput, 'allocationId'> & { durationMinutes: number; reason: string }) {
-  const active = await prisma.attendanceSession.findFirst({ where: { facultyId: input.facultyId, status: { in: ['ACTIVE', 'PAUSED'] } } });
+  await releaseStaleSession(input.facultyId);
+  const active = await prisma.attendanceSession.findFirst({ where: { facultyId: input.facultyId, status: { in: LIVE_SESSION_STATUSES } } });
   if (active) throw Errors.SESSION_ALREADY_ACTIVE();
   const [subject, room, batch] = await Promise.all([
     prisma.subject.findUnique({ where: { id: input.subjectId } }),
@@ -82,6 +128,9 @@ export async function startExtraSession(input: Omit<StartSessionInput, 'allocati
   const session = await prisma.attendanceSession.create({
     data: { facultyId: input.facultyId, subjectId: input.subjectId, roomId: input.roomId, batchId: input.batchId, status: 'ACTIVE', scheduledEndAt, sessionType: 'EXTRA', notes: input.reason },
   });
+  await applyApprovedLeavesToSession(session).catch((err) =>
+    logger.error('[session] could not apply approved leave', { sessionId: session.sessionId, error: err.message })
+  );
   const initialQr = await tickAndBroadcast(session.sessionId);
   scheduleRefresh(session.sessionId);
   scheduleAutoEnd(session.sessionId, scheduledEndAt);
@@ -90,7 +139,7 @@ export async function startExtraSession(input: Omit<StartSessionInput, 'allocati
 
 export async function getActiveSession(facultyId: string) {
   return prisma.attendanceSession.findFirst({
-    where: { facultyId, status: { in: ['ACTIVE', 'PAUSED'] } },
+    where: { facultyId, status: { in: LIVE_SESSION_STATUSES } },
     include: { subject: true, batch: true, room: true },
     orderBy: { startedAt: 'desc' },
   });
@@ -192,7 +241,13 @@ function scheduleAutoEnd(sessionId: string, endAt: Date | null) {
 
 async function autoEndSession(sessionId: string) {
   const session = await prisma.attendanceSession.findUnique({ where: { sessionId } });
-  if (!session || !['ACTIVE', 'PAUSED'].includes(session.status)) return;
+  if (!session || !LIVE_SESSION_STATUSES.includes(session.status)) return;
+  // setTimeout is capped (~24.8 days) and a session may have been re-opened with a later end:
+  // only expire it once its stored end has really passed.
+  if (session.scheduledEndAt && session.scheduledEndAt.getTime() > Date.now() + 1_000) {
+    scheduleAutoEnd(sessionId, session.scheduledEndAt);
+    return;
+  }
   clearRefresh(sessionId);
   clearAutoEnd(sessionId);
   await Promise.all([redis.del(qrRedisKey(sessionId)), revokeBeaconToken(sessionId)]);
@@ -206,7 +261,10 @@ async function autoEndSession(sessionId: string) {
 export async function endSession(sessionId: string, facultyId: string) {
   const session = await prisma.attendanceSession.findUnique({ where: { sessionId } });
   if (!session) throw Errors.SESSION_NOT_FOUND();
-  if (session.facultyId !== facultyId) throw Errors.SESSION_NOT_ACTIVE();
+  if (session.facultyId !== facultyId) throw Errors.SESSION_ACCESS_DENIED();
+  // Ending an already finished session is a no-op: it must not rewrite the end time or turn the
+  // auto-expired state of a past class into "ended" a second time.
+  if (!LIVE_SESSION_STATUSES.includes(session.status)) return session;
 
   clearRefresh(sessionId);
   clearAutoEnd(sessionId);
@@ -232,24 +290,63 @@ export async function endSession(sessionId: string, facultyId: string) {
   return updated;
 }
 
-export async function getSessionStats(sessionId: string) {
-  const session = await prisma.attendanceSession.findUnique({
-    where: { sessionId },
-    include: { batch: { include: { students: true } } },
+/**
+ * "Wrong class" undo. A session that nobody has marked yet is deleted outright, so an accidental
+ * start never appears in reports as a class that was held with 100% absentees.
+ */
+export async function cancelSession(sessionId: string, facultyId: string) {
+  const session = await prisma.attendanceSession.findUnique({ where: { sessionId } });
+  if (!session) throw Errors.SESSION_NOT_FOUND();
+  if (session.facultyId !== facultyId) throw Errors.SESSION_ACCESS_DENIED();
+  if (!LIVE_SESSION_STATUSES.includes(session.status)) throw Errors.SESSION_NOT_ACTIVE();
+  if (Date.now() - session.startedAt.getTime() > CANCEL_WINDOW_MS) throw Errors.SESSION_CANCEL_NOT_ALLOWED();
+
+  // Leave/OD records added automatically at start do not count as real attendance.
+  const realRecords = await prisma.attendanceRecord.count({
+    where: {
+      sessionId,
+      OR: [{ locationVerificationStatus: null }, { locationVerificationStatus: { not: 'APPROVED_REQUEST' } }],
+    },
   });
+  if (realRecords > 0) throw Errors.SESSION_CANCEL_NOT_ALLOWED();
+
+  clearRefresh(sessionId);
+  clearAutoEnd(sessionId);
+  await Promise.all([redis.del(qrRedisKey(sessionId)), revokeBeaconToken(sessionId)]);
+  await prisma.$transaction([
+    prisma.attendanceRecord.deleteMany({ where: { sessionId } }),
+    prisma.attendanceCorrectionRequest.deleteMany({ where: { sessionId } }),
+    prisma.attendanceQrHistory.deleteMany({ where: { sessionId } }),
+    prisma.attendanceSession.delete({ where: { sessionId } }),
+  ]);
+  broadcastSessionEnded(sessionId);
+}
+
+/** Used when an account is deactivated so its running class does not stay open on a dead login. */
+export async function endActiveSessionsForFaculty(facultyId: string): Promise<void> {
+  const open = await prisma.attendanceSession.findMany({
+    where: { facultyId, status: { in: LIVE_SESSION_STATUSES } },
+    select: { sessionId: true },
+  });
+  for (const { sessionId } of open) {
+    await endSession(sessionId, facultyId).catch((err) =>
+      logger.error('[session] could not end session of deactivated faculty', { sessionId, error: err.message })
+    );
+  }
+}
+
+export async function getSessionStats(sessionId: string) {
+  const session = await prisma.attendanceSession.findUnique({ where: { sessionId }, select: { batchId: true } });
   if (!session) throw Errors.SESSION_NOT_FOUND();
 
-  const totalStudents = session.batch.students.length;
-  const presentCount = await prisma.attendanceRecord.count({
-    where: { sessionId, status: { in: ['PRESENT', 'LATE', 'ON_DUTY'] } },
-  });
-
-  return {
-    totalStudents,
-    present: presentCount,
-    absent: totalStudents - presentCount,
-    progressPercent: totalStudents === 0 ? 0 : Math.round((presentCount / totalStudents) * 10000) / 100,
-  };
+  const [roster, records] = await Promise.all([
+    prisma.student.findMany({ where: { batchId: session.batchId, isActive: true, archivedAt: null }, select: { id: true } }),
+    prisma.attendanceRecord.findMany({
+      where: { sessionId, status: { in: [...PRESENT_STATUSES, 'LEAVE'] } },
+      select: { studentId: true, status: true },
+    }),
+  ]);
+  return buildSessionStats(roster.map((student) => student.id), records);
 }
 
 /**
@@ -277,7 +374,7 @@ export async function getSessionPublicInfo(sessionId: string) {
 
 /** Called once at process startup to resume timers for any sessions left ACTIVE (e.g. after a restart). */
 export async function resumeActiveSessions() {
-  const active = await prisma.attendanceSession.findMany({ where: { status: { in: ['ACTIVE', 'PAUSED'] } } });
+  const active = await prisma.attendanceSession.findMany({ where: { status: { in: LIVE_SESSION_STATUSES } } });
   for (const s of active) {
     if (s.status === 'ACTIVE') scheduleRefresh(s.sessionId);
     scheduleAutoEnd(s.sessionId, s.scheduledEndAt);

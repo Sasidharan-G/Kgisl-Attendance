@@ -6,7 +6,10 @@ export type FacultyAttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'ON_DUTY' 
 export interface FacultyAttendanceOverrideInput {
   sessionId: string;
   rollNo: string;
+  /** Id of whoever is making the change (a faculty member, or an administrator when `actorRole` is ADMIN). */
   facultyId: string;
+  /** Administrators may correct any session; faculty only their own. Defaults to FACULTY. */
+  actorRole?: 'FACULTY' | 'ADMIN';
   status: FacultyAttendanceStatus;
   reason: string;
 }
@@ -21,9 +24,10 @@ export async function overrideAttendance(input: FacultyAttendanceOverrideInput) 
     where: { sessionId: input.sessionId },
   });
   if (!session) throw Errors.SESSION_NOT_FOUND();
-  if (session.facultyId !== input.facultyId) throw Errors.SESSION_ACCESS_DENIED();
+  // Approving a correction request as an administrator used to fail here: the admin's id never equals the session's faculty id.
+  if (input.actorRole !== 'ADMIN' && session.facultyId !== input.facultyId) throw Errors.SESSION_ACCESS_DENIED();
 
-  const student = await prisma.student.findUnique({ where: { rollNo: input.rollNo } });
+  const student = await prisma.student.findFirst({ where: { rollNo: { equals: input.rollNo, mode: 'insensitive' } } });
   if (!student) throw Errors.STUDENT_NOT_FOUND();
   if (student.batchId !== session.batchId) throw Errors.BATCH_MISMATCH();
 

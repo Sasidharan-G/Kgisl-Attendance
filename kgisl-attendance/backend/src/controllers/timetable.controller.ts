@@ -2,9 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/prisma';
 
+// Real clock times only: "99:99" used to pass and would later break every start-session time check.
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a 24-hour time such as 09:10');
+
 const allocationSchema = z.object({
   facultyId: z.string().uuid(), subjectId: z.string().uuid(), batchId: z.string().uuid(), roomId: z.string().uuid(),
-  dayOfWeek: z.number().int().min(1).max(7), startTime: z.string().regex(/^\d{2}:\d{2}$/), endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  dayOfWeek: z.number().int().min(1).max(7), startTime: clockTime, endTime: clockTime,
 }).refine((v) => v.startTime < v.endTime, { message: 'End time must be after start time' });
 
 const include = { faculty: { select: { id: true, name: true } }, subject: true, batch: true, room: true } as const;
@@ -12,6 +15,11 @@ const include = { faculty: { select: { id: true, name: true } }, subject: true, 
 export async function listAllocationsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     let where = {};
+    if (req.auth!.role === 'STUDENT') {
+      // Students see their own section's timetable (this feeds "Today's class schedule" on their dashboard).
+      const student = await prisma.student.findUnique({ where: { id: req.auth!.sub }, select: { batchId: true } });
+      where = { batchId: student?.batchId ?? '' };
+    }
     if (req.auth!.role === 'FACULTY') {
       if (req.query.scope === 'section') {
         const ownAllocations = await prisma.timetableAllocation.findMany({
@@ -32,6 +40,18 @@ export async function listAllocationsHandler(req: Request, res: Response, next: 
 export async function createAllocationHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const body = allocationSchema.parse(req.body);
+    const [faculty, batch] = await Promise.all([
+      prisma.faculty.findUnique({ where: { id: body.facultyId }, select: { isActive: true } }),
+      prisma.batch.findUnique({ where: { id: body.batchId }, select: { lifecycle: true } }),
+    ]);
+    if (!faculty?.isActive) {
+      res.status(409).json({ success: false, code: 'FACULTY_UNAVAILABLE', message: 'The selected faculty account is inactive or does not exist.' });
+      return;
+    }
+    if (batch?.lifecycle !== 'ACTIVE') {
+      res.status(409).json({ success: false, code: 'BATCH_NOT_ACTIVE', message: 'Classes can only be assigned to an active section.' });
+      return;
+    }
     const conflict = await prisma.timetableAllocation.findFirst({
       where: {
         dayOfWeek: body.dayOfWeek,

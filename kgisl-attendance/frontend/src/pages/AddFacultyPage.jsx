@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
-import { listFaculty, createFaculty, deleteFaculty } from '../services/api.js';
+import { listFaculty, createFaculty, deleteFaculty, setFacultyActive } from '../services/api.js';
 import { UserPlus, ShieldAlert, CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function AddFacultyPage() {
@@ -16,7 +16,8 @@ export default function AddFacultyPage() {
 
   const loadFaculties = async () => {
     try {
-      const data = await listFaculty();
+      // Include deactivated staff: without them in the directory an account switched off by mistake could never be switched back on.
+      const data = await listFaculty(true);
       setFaculties(data);
     } catch (err) {
       setError(err.message || 'Failed to load faculty directory');
@@ -50,14 +51,25 @@ export default function AddFacultyPage() {
   };
 
   const handleRemove = async (faculty) => {
-    if (!window.confirm(`Delete ${faculty.name}? Their login will be disabled while attendance history remains safe.`)) return;
+    if (!window.confirm(`Deactivate ${faculty.name}? Their login is disabled and any class they are running is ended; attendance history stays safe and you can reactivate them later.`)) return;
     setError(''); setSuccess('');
     try {
       await deleteFaculty(faculty.id);
-      setSuccess(`${faculty.name} deleted successfully.`);
+      setSuccess(`${faculty.name} deactivated.`);
       await loadFaculties();
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to remove faculty');
+    }
+  };
+
+  const handleReactivate = async (faculty) => {
+    setError(''); setSuccess('');
+    try {
+      await setFacultyActive(faculty.id, true);
+      setSuccess(`${faculty.name} reactivated.`);
+      await loadFaculties();
+    } catch (err) {
+      setError(err.message || 'Failed to reactivate faculty');
     }
   };
 
@@ -179,8 +191,8 @@ export default function AddFacultyPage() {
                     </tr>
                   ) : (
                     faculties.map((fac) => (
-                      <tr key={fac.id} className="hover:bg-ink-800/20 transition-colors">
-                        <td className="px-6 py-4 text-white font-medium">{fac.name}</td>
+                      <tr key={fac.id} className={`hover:bg-ink-800/20 transition-colors ${fac.isActive ? '' : 'opacity-60'}`}>
+                        <td className="px-6 py-4 text-white font-medium">{fac.name}{!fac.isActive && <span className="ml-2 rounded-full border border-slate-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-400">Inactive</span>}</td>
                         <td className="px-6 py-4 text-slate-300 font-mono text-xs">{fac.email}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-signal-blue/10 text-signal-blue border border-signal-blue/20">
@@ -191,7 +203,11 @@ export default function AddFacultyPage() {
                         <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                           {new Date(fac.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4"><button onClick={() => handleRemove(fac)} title="Delete faculty" className="rounded-lg p-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"><Trash2 size={17}/></button></td>
+                        <td className="px-6 py-4">
+                          {fac.isActive
+                            ? <button onClick={() => handleRemove(fac)} title="Deactivate faculty" className="rounded-lg p-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"><Trash2 size={17}/></button>
+                            : <button onClick={() => handleReactivate(fac)} className="rounded-lg border border-signal-green/40 px-3 py-1.5 text-xs font-semibold text-signal-green hover:bg-signal-green/10">Reactivate</button>}
+                        </td>
                       </tr>
                     ))
                   )}

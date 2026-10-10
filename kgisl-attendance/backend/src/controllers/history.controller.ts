@@ -1,12 +1,46 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/prisma';
+import { Errors } from '../utils/AppError';
+import { COMPLETED_SESSION_STATUSES, PRESENT_STATUSES, SHORTAGE_RATIO, isPresentStatus } from '../utils/attendanceStatus';
+import { istDayWindow } from '../utils/time';
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Parses a `dateFrom` / `dateTo` query value. A plain "YYYY-MM-DD" means that whole IST calendar day (classes run on
+ * Indian time while the server runs on UTC), anything else is treated as an exact instant.
+ */
+export function parseDateFilter(value: unknown, edge: 'start' | 'end'): Date | undefined {
+  if (typeof value !== 'string' || value === '') return undefined;
+  if (DATE_ONLY.test(value)) {
+    const day = new Date(`${value}T00:00:00.000Z`);
+    if (Number.isNaN(day.getTime())) throw Errors.INVALID_DATE();
+    const window = istDayWindow(day);
+    return edge === 'start' ? window.start : window.end;
+  }
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) throw Errors.INVALID_DATE();
+  return instant;
+}
+
+type RosterStudent = { isActive: boolean; archivedAt: Date | null };
+
+/**
+ * Students expected in a session: everyone currently enrolled and active, plus anyone who has since been
+ * deactivated but still has a record for that session (so historic numbers stay consistent).
+ */
+function expectedStudents(activeCount: number, records: Array<{ student: RosterStudent }>): number {
+  const retired = records.filter((record) => !record.student.isActive || record.student.archivedAt !== null).length;
+  return activeCount + retired;
+}
+
+const activeRoster = { where: { isActive: true, archivedAt: null } } as const;
 
 export async function listSessionHistoryHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const dateFrom = typeof req.query.dateFrom === 'string' ? new Date(req.query.dateFrom) : undefined;
-    const dateTo = typeof req.query.dateTo === 'string' ? new Date(req.query.dateTo) : undefined;
-    if (dateTo && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.dateTo))) dateTo.setUTCHours(23, 59, 59, 999);
+    const dateFrom = parseDateFilter(req.query.dateFrom, 'start');
+    const dateTo = parseDateFilter(req.query.dateTo, 'end');
     const filters = {
       ...(typeof req.query.batchId === 'string' && { batchId: req.query.batchId }),
       ...(typeof req.query.subjectId === 'string' && { subjectId: req.query.subjectId }),
@@ -19,20 +53,14 @@ export async function listSessionHistoryHandler(req: Request, res: Response, nex
         faculty: { select: { name: true, email: true } },
         subject: { select: { name: true, code: true } },
         room: { select: { name: true } },
-        batch: {
-          include: {
-            _count: {
-              select: { students: true }
-            }
-          }
-        },
-        records: { select: { status: true, method: true } }
+        batch: { include: { _count: { select: { students: activeRoster } } } },
+        records: { select: { status: true, method: true, student: { select: { isActive: true, archivedAt: true } } } },
       },
       orderBy: { startedAt: 'desc' },
     });
 
     const history = sessions.map((session) => {
-      const totalStudents = session.batch._count.students;
+      const totalStudents = expectedStudents(session.batch._count.students, session.records);
       const statusCounts = session.records.reduce<Record<string, number>>((counts, record) => {
         counts[record.status] = (counts[record.status] || 0) + 1;
         return counts;
@@ -41,7 +69,7 @@ export async function listSessionHistoryHandler(req: Request, res: Response, nex
         counts[record.method] = (counts[record.method] || 0) + 1;
         return counts;
       }, {});
-      const present = (statusCounts.PRESENT || 0) + (statusCounts.LATE || 0) + (statusCounts.ON_DUTY || 0);
+      const present = session.records.filter((record) => isPresentStatus(record.status)).length;
       const absent = Math.max(0, totalStudents - present - (statusCounts.LEAVE || 0));
 
       return {
@@ -82,7 +110,7 @@ export async function getSessionAttendanceHandler(req: Request, res: Response, n
         batch: {
           include: {
             students: {
-              select: { id: true, name: true, rollNo: true, regNo: true, email: true },
+              select: { id: true, name: true, rollNo: true, regNo: true, email: true, isActive: true, archivedAt: true },
               orderBy: { rollNo: 'asc' },
             },
           },
@@ -109,23 +137,26 @@ export async function getSessionAttendanceHandler(req: Request, res: Response, n
     }
 
     const records = new Map(session.records.map((record) => [record.studentId, record]));
-    const students = session.batch.students.map((student) => {
-      const record = records.get(student.id);
-      return {
-        name: student.name,
-        rollNo: student.rollNo,
-        regNo: student.regNo,
-        email: student.email,
-        attendanceStatus: record?.status ?? 'ABSENT',
-        scanTime: record?.scanTime ?? null,
-        locationVerified: record?.locationVerified ?? false,
-        distanceFromCampus: record?.distanceFromCampus ?? null,
-        attendanceMethod: record?.method ?? null,
-        markedByFacultyId: record?.markedByFacultyId ?? null,
-        overrideReason: record?.overrideReason ?? null,
-        updatedAt: record?.updatedAt ?? null,
-      };
-    });
+    // Deactivated / passed-out students disappear from the roster unless they actually have a record in this class.
+    const students = session.batch.students
+      .filter((student) => (student.isActive && student.archivedAt === null) || records.has(student.id))
+      .map((student) => {
+        const record = records.get(student.id);
+        return {
+          name: student.name,
+          rollNo: student.rollNo,
+          regNo: student.regNo,
+          email: student.email,
+          attendanceStatus: record?.status ?? 'ABSENT',
+          scanTime: record?.scanTime ?? null,
+          locationVerified: record?.locationVerified ?? false,
+          distanceFromCampus: record?.distanceFromCampus ?? null,
+          attendanceMethod: record?.method ?? null,
+          markedByFacultyId: record?.markedByFacultyId ?? null,
+          overrideReason: record?.overrideReason ?? null,
+          updatedAt: record?.updatedAt ?? null,
+        };
+      });
 
     res.json({
       success: true,
@@ -150,14 +181,21 @@ export async function getSessionAttendanceHandler(req: Request, res: Response, n
 
 export async function analyticsSummaryHandler(req: Request, res: Response, next: NextFunction) {
   try {
+    // Finished classes only: a class that is still running has not produced its attendance yet.
     const sessions = await prisma.attendanceSession.findMany({
-      where: req.auth!.role === 'ADMIN' ? {} : { facultyId: req.auth!.sub },
-      include: { batch: { include: { _count: { select: { students: { where: { isActive: true } } } } } }, records: { select: { status: true } } },
+      where: {
+        status: { in: COMPLETED_SESSION_STATUSES },
+        ...(req.auth!.role === 'ADMIN' ? {} : { facultyId: req.auth!.sub }),
+      },
+      include: {
+        batch: { include: { _count: { select: { students: activeRoster } } } },
+        records: { select: { status: true, student: { select: { isActive: true, archivedAt: true } } } },
+      },
     });
     const statusCounts: Record<string, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, ON_DUTY: 0, LEAVE: 0 };
     let expected = 0;
     for (const session of sessions) {
-      expected += session.batch._count.students;
+      expected += expectedStudents(session.batch._count.students, session.records);
       for (const record of session.records) statusCounts[record.status] = (statusCounts[record.status] || 0) + 1;
     }
     const recorded = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
@@ -194,7 +232,7 @@ export async function attendanceReportHandler(req: Request, res: Response, next:
     const sessionWhere = {
       batchId,
       ...(subjectId ? { subjectId } : {}),
-      status: { in: ['ENDED', 'EXPIRED'] as ('ENDED' | 'EXPIRED')[] },
+      status: { in: COMPLETED_SESSION_STATUSES },
       ...(req.auth!.role === 'ADMIN' ? {} : { facultyId: req.auth!.sub }),
     };
     const [batch, subject, sessions, students] = await Promise.all([
@@ -208,7 +246,7 @@ export async function attendanceReportHandler(req: Request, res: Response, next:
     const sessionIds = sessions.map((item) => item.sessionId);
     const attended = sessionIds.length === 0 ? [] : await prisma.attendanceRecord.groupBy({
       by: ['studentId'],
-      where: { sessionId: { in: sessionIds }, status: { in: ['PRESENT', 'LATE', 'ON_DUTY'] } },
+      where: { sessionId: { in: sessionIds }, status: { in: PRESENT_STATUSES } },
       _count: { _all: true },
     });
     const attendedByStudent = new Map(attended.map((row) => [row.studentId, row._count._all]));
@@ -216,7 +254,7 @@ export async function attendanceReportHandler(req: Request, res: Response, next:
     const rows = students.map((student) => {
       const count = attendedByStudent.get(student.id) ?? 0;
       const percentage = total > 0 ? Math.round((count / total) * 1000) / 10 : 100;
-      return { rollNo: student.rollNo, regNo: student.regNo, name: student.name, total, attended: count, percentage, shortage: total > 0 && count / total < 0.75 };
+      return { rollNo: student.rollNo, regNo: student.regNo, name: student.name, total, attended: count, percentage, shortage: total > 0 && count / total < SHORTAGE_RATIO };
     });
 
     res.json({

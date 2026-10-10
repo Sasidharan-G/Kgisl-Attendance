@@ -138,7 +138,7 @@ export default function StudentScanPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getPasskeyStatus()
+    getPasskeyStatus(getDeviceId())
       .then((status) => { if (!cancelled) setPasskeyStatus(status); })
       // If the status check fails, fall back to the legacy device id rather than locking students out.
       .catch(() => { if (!cancelled) setPasskeyStatus({ enrolled: false, boundTo: 'unknown' }); });
@@ -401,7 +401,7 @@ export default function StudentScanPage() {
     setPasskeyError('');
     try {
       await enrollPasskey();
-      setPasskeyStatus(await getPasskeyStatus());
+      setPasskeyStatus(await getPasskeyStatus(getDeviceId()));
     } catch (err) {
       setPasskeyError(mapErrorCode(err.code, err.message));
     } finally {
@@ -457,7 +457,7 @@ export default function StudentScanPage() {
               return note('border-amber-500/30 bg-amber-500/10', <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-400" />,
                 'Open the secure site to continue', 'Your account is protected with Face ID / Touch ID, which needs the HTTPS site in a modern browser. Open the official attendance link and try again.');
             }
-            if (bound === 'device') {
+            if (bound === 'device' && !passkeyStatus.thisDevice) {
               return note('border-sky-400/30 bg-sky-400/5', <Smartphone size={18} className="mt-0.5 shrink-0 text-sky-300" />,
                 'Your account is linked to another phone', 'Attendance for this account can only be marked from the phone it was first linked to. Ask your faculty to reset your device to use this one.');
             }

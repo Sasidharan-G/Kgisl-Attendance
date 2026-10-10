@@ -22,7 +22,14 @@ const envSchema = z.object({
   JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 7), // 7 days
 
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  // Failed sign-in attempts allowed per ACCOUNT per window (a wrong password locks that account only).
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  // Failed attempts allowed per IP per window. High on purpose: a whole college shares one public IP.
+  AUTH_IP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  // Silent token refreshes per IP per window (every logged-in device refreshes every 15 minutes).
+  REFRESH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1500),
+  // Password-reset codes that may be requested for one e-mail address per window.
+  PASSWORD_RESET_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
 
   // Must be a 64-char hex string = 32 bytes = 256 bits
   QR_HMAC_SECRET: z

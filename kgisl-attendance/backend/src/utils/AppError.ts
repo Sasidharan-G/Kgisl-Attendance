@@ -24,6 +24,12 @@ export const Errors = {
   SESSION_ALREADY_ACTIVE: () => new AppError('SESSION_ALREADY_ACTIVE', 'End your current active session before starting another.', 409),
   WRONG_TIMETABLE_DAY: () => new AppError('WRONG_TIMETABLE_DAY', 'This class is not allocated for today.', 403),
   OUTSIDE_PERIOD_TIME: () => new AppError('OUTSIDE_PERIOD_TIME', 'Session can only be started within 15 minutes of its allocated period.', 403),
+  ALLOCATION_NOT_FOUND: () => new AppError('ALLOCATION_NOT_FOUND', 'This class is not assigned to you, or its details do not match the timetable.', 404),
+  SESSION_CANCEL_NOT_ALLOWED: () => new AppError('SESSION_CANCEL_NOT_ALLOWED', 'A session that already has attendance cannot be cancelled. End it instead.', 409),
+  ALREADY_PRESENT: () => new AppError('ALREADY_PRESENT', 'You are already marked present for this session.', 409),
+  DUPLICATE_REQUEST: () => new AppError('DUPLICATE_REQUEST', 'You have already submitted a request for this session.', 409),
+  SESSION_STILL_LIVE: () => new AppError('SESSION_STILL_LIVE', 'This session is still running. Ask your faculty to end it, or wait until it finishes.', 409),
+  INVALID_DATE: () => new AppError('INVALID_DATE', 'The date filter is not valid. Use YYYY-MM-DD.', 400),
 
   // QR validation
   INVALID_SIGNATURE: () =>
