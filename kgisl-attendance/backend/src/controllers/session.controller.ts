@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { prisma } from '../config/prisma';
+import { Errors } from '../utils/AppError';
 import {
+  cancelSession,
   endSession,
   getActiveSession,
   getSessionPublicInfo,
@@ -109,9 +112,38 @@ export async function endSessionHandler(req: Request, res: Response, next: NextF
   }
 }
 
+export async function cancelSessionHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { sessionId } = sessionParamsSchema.parse(req.params);
+    const facultyId = req.auth!.sub;
+    await cancelSession(sessionId, facultyId);
+    const ctx = requestContext(req);
+    await writeAuditLog({
+      actorId: facultyId,
+      actorType: 'FACULTY',
+      action: 'SESSION_CANCELLED',
+      sessionId: null, // the session row no longer exists
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { cancelledSessionId: sessionId },
+    });
+    res.status(200).json({ success: true, message: 'Session cancelled. It will not appear in attendance reports.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getSessionStatsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { sessionId } = sessionParamsSchema.parse(req.params);
+    // Counts are only for the session's own faculty (or a student of that section); not for any logged-in user.
+    const session = await prisma.attendanceSession.findUnique({ where: { sessionId }, select: { facultyId: true, batchId: true } });
+    if (!session) throw Errors.SESSION_NOT_FOUND();
+    if (req.auth!.role === 'FACULTY' && session.facultyId !== req.auth!.sub) throw Errors.SESSION_ACCESS_DENIED();
+    if (req.auth!.role === 'STUDENT') {
+      const student = await prisma.student.findUnique({ where: { id: req.auth!.sub }, select: { batchId: true } });
+      if (student?.batchId !== session.batchId) throw Errors.BATCH_MISMATCH();
+    }
     const stats = await getSessionStats(sessionId);
     res.status(200).json({ success: true, data: stats });
   } catch (err) {

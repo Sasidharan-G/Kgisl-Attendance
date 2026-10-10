@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { redis, refreshTokenKey, refreshFamilyKey } from '../config/redis';
+import { redis, refreshTokenKey, refreshFamilyKey, refreshGraceKey } from '../config/redis';
 import { env } from '../config/env';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, RefreshPayload } from '../middleware/auth.middleware';
 import { writeAuditLog } from './audit.service';
@@ -16,15 +16,29 @@ interface RedisRtRecord {
 }
 
 const TTL_SECONDS = env.JWT_REFRESH_TTL_SECONDS;
+/** How long a just-rotated refresh token keeps returning the pair it produced (see refreshGraceKey). */
+export const REFRESH_REUSE_GRACE_SECONDS = 20;
 
-async function mustChangePassword(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT'): Promise<boolean> {
-  const select = { mustChangePassword: true } as const;
+interface AccountState {
+  /** False once an administrator deactivated the account (or the student's batch was archived). */
+  active: boolean;
+  mustChangePassword: boolean;
+}
+
+async function accountState(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT'): Promise<AccountState | null> {
+  if (role === 'STUDENT') {
+    const student = await prisma.student.findUnique({ where: { id: sub }, select: { isActive: true, archivedAt: true, mustChangePassword: true } });
+    return student ? { active: student.isActive && student.archivedAt === null, mustChangePassword: student.mustChangePassword } : null;
+  }
+  const select = { isActive: true, mustChangePassword: true } as const;
   const account = role === 'ADMIN'
     ? await prisma.admin.findUnique({ where: { id: sub }, select })
-    : role === 'FACULTY'
-      ? await prisma.faculty.findUnique({ where: { id: sub }, select })
-      : await prisma.student.findUnique({ where: { id: sub }, select });
-  return Boolean(account?.mustChangePassword);
+    : await prisma.faculty.findUnique({ where: { id: sub }, select });
+  return account ? { active: account.isActive, mustChangePassword: account.mustChangePassword } : null;
+}
+
+async function mustChangePassword(sub: string, role: 'ADMIN' | 'FACULTY' | 'STUDENT'): Promise<boolean> {
+  return Boolean((await accountState(sub, role))?.mustChangePassword);
 }
 
 /**
@@ -71,6 +85,12 @@ export async function rotateRefreshToken(token: string, ctx: { ip: string | null
   const raw = await redis.get(refreshTokenKey(jti));
 
   if (!raw) {
+    // The same token presented twice within seconds is almost always a second browser tab (or a retry),
+    // not theft: hand back the pair the first request produced instead of revoking the whole login.
+    const graced = await redis.get(refreshGraceKey(jti));
+    if (graced) {
+      try { return JSON.parse(graced) as Awaited<ReturnType<typeof mintPair>>; } catch { /* fall through to reuse detection */ }
+    }
     // Possible replay of an already-rotated (or expired) token.
     const familyStillExists = await redis.exists(refreshFamilyKey(familyId));
     if (familyStillExists) {
@@ -90,6 +110,14 @@ export async function rotateRefreshToken(token: string, ctx: { ip: string | null
     throw Errors.INVALID_JWT();
   }
 
+  // A deactivated (or archived) account must not keep a login alive just because its refresh token is
+  // still inside its 7-day lifetime.
+  const state = await accountState(sub, role);
+  if (!state || !state.active) {
+    await revokeFamily(familyId);
+    throw Errors.INVALID_JWT();
+  }
+
   // Consume this token (single use) before minting the next one.
   await redis.del(refreshTokenKey(jti));
   await redis.srem(refreshFamilyKey(familyId), jti);
@@ -97,6 +125,7 @@ export async function rotateRefreshToken(token: string, ctx: { ip: string | null
   let carriedGate = false;
   try { carriedGate = Boolean((JSON.parse(raw) as RedisRtRecord).mcp); } catch { /* malformed record: treat as ungated */ }
   const pair = await mintPair(sub, role, familyId, carriedGate);
+  await redis.set(refreshGraceKey(jti), JSON.stringify(pair), 'EX', REFRESH_REUSE_GRACE_SECONDS);
 
   await writeAuditLog({
     actorId: sub,

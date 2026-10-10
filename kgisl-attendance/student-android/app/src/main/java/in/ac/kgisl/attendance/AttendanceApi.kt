@@ -22,8 +22,14 @@ class AttendanceApi(private val store: SessionStore) {
   fun login(email: String, password: String): JSONObject {
     val body = JSONObject().put("email", email.trim()).put("password", password)
     val result = send("POST", "/api/v1/auth/student/login", body, null)
+    val token = result.getString("token")
+    // The server refuses every call except "change password" until the initial password is replaced, and this app has
+    // no password screen. Say so now instead of letting the student sign in and then fail on every tab.
+    if (JwtClaims.requiresPasswordChange(token)) {
+      throw ApiException(403, "PASSWORD_CHANGE_REQUIRED", "You must set a new password before continuing.")
+    }
     val user = result.getJSONObject("user")
-    store.accessToken = result.getString("token")
+    store.accessToken = token
     store.refreshToken = result.getString("refreshToken")
     store.studentName = user.optString("name")
     store.rollNo = user.optString("rollNo")
@@ -42,6 +48,9 @@ class AttendanceApi(private val store: SessionStore) {
       .put("rssi", rssi)
       .put("deviceId", deviceId)
       .put("gps", fix.toJson()))
+
+  /** Cheap unauthenticated call whose only purpose is to learn the server's clock (see [ServerClock]). */
+  fun syncClock() { send("GET", "/health/live", null, null) }
 
   fun sessionPublicInfo(sessionId: String): JSONObject =
     authenticated("GET", "/api/v1/sessions/$sessionId/public", null).getJSONObject("data")
@@ -82,7 +91,9 @@ class AttendanceApi(private val store: SessionStore) {
       store.accessToken = pair.getString("accessToken")
       store.refreshToken = pair.getString("refreshToken")
     } catch (error: ApiException) {
-      if (error.status in 400..499) {
+      // Only a definite "this login is no longer valid" answer ends the session. A rate limit (429) or a server
+      // hiccup must not sign the student out in the middle of class.
+      if (error.status in setOf(400, 401, 403, 422)) {
         store.clearSession()
         throw ApiException(401, "SESSION_EXPIRED", "Your session expired. Please sign in again.")
       }
@@ -95,6 +106,7 @@ class AttendanceApi(private val store: SessionStore) {
     if (method == "GET") builder.get() else builder.method(method, (body ?: JSONObject()).toString().toRequestBody(jsonType))
     token?.let { builder.header("Authorization", "Bearer $it") }
     client.newCall(builder.build()).execute().use { response ->
+      response.headers.getDate("Date")?.let { ServerClock.observe(it.time, System.currentTimeMillis()) }
       val text = response.body?.string().orEmpty()
       val json = runCatching { JSONObject(text) }.getOrElse { JSONObject().put("message", text.take(200)) }
       if (!response.isSuccessful) {

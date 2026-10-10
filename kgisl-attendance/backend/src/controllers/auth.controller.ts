@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verifyAdminEmailMfa } from '../services/auth.service';
+import { findAdminByEmail, findFacultyByEmail, findStudentByEmail } from '../services/accountLookup';
 import { OAuth2Client } from 'google-auth-library';
 import { AppError } from '../utils/AppError';
 import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
@@ -8,15 +9,16 @@ import { issueTokenPair, revokeAllUserSessions } from '../services/refreshToken.
 import { requestContext, writeAuditLog } from '../services/audit.service';
 import { Errors } from '../utils/AppError';
 
+// E-mails are trimmed (phone keyboards and autofill often append a space); passwords never are.
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: z.string().min(1),
 });
-const adminMfaVerifySchema = z.object({ email: z.string().email(), code: z.string().regex(/^\d{6}$/) });
+const adminMfaVerifySchema = z.object({ email: z.string().trim().email(), code: z.string().trim().regex(/^\d{6}$/) });
 
 const registerFacultySchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
+  name: z.string().trim().min(1),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(6),
 });
 
@@ -61,19 +63,21 @@ export async function registerFacultyHandler(req: Request, res: Response, next: 
   try {
     const { name, email, password } = registerFacultySchema.parse(req.body);
     
-    const existing = await prisma.faculty.findUnique({ where: { email } });
+    const existing = await findFacultyByEmail(email);
     if (existing) {
-      res.status(400).json({ success: false, message: 'Faculty with this email already exists' });
+      res.status(409).json({ success: false, message: 'Faculty with this email already exists' });
       return;
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    await prisma.faculty.create({
+    const created = await prisma.faculty.create({
       data: { name, email, passwordHash, mustChangePassword: true },
+      select: { id: true, name: true, email: true, createdAt: true, isActive: true },
     });
 
-    const result = await loginFaculty(email, password, requestContext(req));
-    res.status(201).json(result);
+    // This route is administrator-only. It used to log the new faculty member in and hand their
+    // tokens back to the administrator's browser, which could replace the admin's own session.
+    res.status(201).json({ success: true, data: created });
   } catch (err) {
     next(err);
   }
@@ -179,9 +183,9 @@ export async function changePasswordHandler(req: Request, res: Response, next: N
   } catch (err) { next(err); }
 }
 
-const resetAccountSchema = z.object({ email: z.string().email().transform((value) => value.toLowerCase()), role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']) });
+const resetAccountSchema = z.object({ email: z.string().trim().email().transform((value) => value.toLowerCase()), role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']) });
 const confirmResetSchema = resetAccountSchema.extend({
-  code: z.string().regex(/^\d{6}$/),
+  code: z.string().trim().regex(/^\d{6}$/),
   newPassword: z.string().min(10).max(128).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
 });
 
@@ -191,8 +195,8 @@ export async function requestPasswordResetHandler(req: Request, res: Response, n
   try {
     const input = resetAccountSchema.pick({ email: true, role: true }).refine((value) => value.role !== 'ADMIN').parse(req.body);
     const account = input.role === 'FACULTY'
-      ? await prisma.faculty.findUnique({ where: { email: input.email }, select: { isActive: true } })
-      : await prisma.student.findUnique({ where: { email: input.email }, select: { isActive: true } });
+      ? await findFacultyByEmail(input.email)
+      : await findStudentByEmail(input.email);
     if (account?.isActive) {
       const code = crypto.randomInt(100000, 1000000).toString();
       await redis.set(resetKey(input.role, input.email), sha256Hex(code), 'EX', env.PASSWORD_RESET_TTL_SECONDS);
@@ -208,10 +212,10 @@ export async function createPasswordResetCodeHandler(req: Request, res: Response
   try {
     const input = resetAccountSchema.parse(req.body);
     const account = input.role === 'ADMIN'
-      ? await prisma.admin.findUnique({ where: { email: input.email } })
+      ? await findAdminByEmail(input.email)
       : input.role === 'FACULTY'
-        ? await prisma.faculty.findUnique({ where: { email: input.email } })
-        : await prisma.student.findUnique({ where: { email: input.email } });
+        ? await findFacultyByEmail(input.email)
+        : await findStudentByEmail(input.email);
     if (!account) { res.status(404).json({ success: false, message: 'Account not found' }); return; }
     const code = crypto.randomInt(100000, 1000000).toString();
     await redis.set(resetKey(input.role, input.email), sha256Hex(code), 'EX', env.PASSWORD_RESET_TTL_SECONDS);
@@ -228,12 +232,22 @@ export async function confirmPasswordResetHandler(req: Request, res: Response, n
       res.status(400).json({ success: false, code: 'INVALID_RESET_CODE', message: 'Reset code is invalid or expired.' });
       return;
     }
-    const passwordHash = await bcrypt.hash(input.newPassword, 12);
-    const account = input.role === 'ADMIN'
-      ? await prisma.admin.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } })
+    const target = input.role === 'ADMIN'
+      ? await findAdminByEmail(input.email)
       : input.role === 'FACULTY'
-        ? await prisma.faculty.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } })
-        : await prisma.student.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } });
+        ? await findFacultyByEmail(input.email)
+        : await findStudentByEmail(input.email);
+    if (!target) {
+      res.status(400).json({ success: false, code: 'INVALID_RESET_CODE', message: 'Reset code is invalid or expired.' });
+      return;
+    }
+    const passwordHash = await bcrypt.hash(input.newPassword, 12);
+    const data = { passwordHash, mustChangePassword: false };
+    const account = input.role === 'ADMIN'
+      ? await prisma.admin.update({ where: { id: target.id }, data })
+      : input.role === 'FACULTY'
+        ? await prisma.faculty.update({ where: { id: target.id }, data })
+        : await prisma.student.update({ where: { id: target.id }, data });
     await redis.del(key);
     await revokeAllUserSessions(account.id, input.role);
     res.json({ success: true, message: 'Password reset successfully. The code can no longer be used.' });

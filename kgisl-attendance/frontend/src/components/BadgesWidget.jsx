@@ -1,43 +1,48 @@
 import React from 'react';
 import { Flame, Award, Zap, ShieldCheck, Sparkles } from 'lucide-react';
+import { computeStreakDays, hasNoRecentAbsence, isEarlyBird } from '../utils/studentInsights.js';
 
-export default function BadgesWidget({ attendancePercentage = 88, streakDays = 7 }) {
+/**
+ * Badges are earned from the student's real attendance history. They used to be decorative: a hard-coded
+ * "7-day streak" for everybody and an "Early Bird" badge that was always unlocked.
+ *
+ * `sessions` is the list from GET /students/me/attendance; `attendancePercentage` is null until a class has finished.
+ */
+export default function BadgesWidget({ attendancePercentage = null, sessions = [] }) {
+  const streakDays = computeStreakDays(sessions);
+  const hasHistory = attendancePercentage !== null;
   const badges = [
     {
       id: 'streak',
-      title: `${streakDays}-Day Attendance Streak`,
-      desc: 'Attended all consecutive sessions without missing!',
+      title: streakDays > 0 ? `${streakDays}-Day Attendance Streak` : 'Attendance Streak',
+      desc: 'Attend every class on consecutive class days. Unlocks at 3 days.',
       icon: Flame,
       color: 'from-amber-500 to-orange-500',
-      textColor: 'text-amber-400',
       active: streakDays >= 3,
     },
     {
       id: 'early_bird',
       title: 'Early Bird Scanner',
-      desc: 'Top 3 fastest QR scanner in class session!',
+      desc: 'Mark within 5 minutes of the class starting in 3 of your last 5 scanned classes.',
       icon: Zap,
       color: 'from-yellow-400 to-amber-500',
-      textColor: 'text-yellow-400',
-      active: true,
+      active: isEarlyBird(sessions),
     },
     {
       id: 'golden_punctual',
       title: 'Golden Punctuality Badge',
-      desc: 'Maintained >=85% attendance across all subjects!',
+      desc: 'Keep 85% or more attendance overall.',
       icon: Award,
       color: 'from-emerald-400 to-teal-500',
-      textColor: 'text-emerald-400',
-      active: attendancePercentage >= 85,
+      active: hasHistory && attendancePercentage >= 85,
     },
     {
       id: 'master_shield',
       title: 'Anti-Bunk Shield',
-      desc: 'Zero unexcused absences this academic month!',
+      desc: 'No unexcused absence in the last 30 days.',
       icon: ShieldCheck,
       color: 'from-blue-500 to-indigo-500',
-      textColor: 'text-blue-400',
-      active: attendancePercentage >= 75,
+      active: hasNoRecentAbsence(sessions),
     },
   ];
 
@@ -55,12 +60,12 @@ export default function BadgesWidget({ attendancePercentage = 88, streakDays = 7
                 <Sparkles className="h-3 w-3" /> Gamified
               </span>
             </h3>
-            <p className="text-xs text-slate-400">Earn badges for regular attendance & early scanning</p>
+            <p className="text-xs text-slate-400">Earned from your own attendance record</p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 px-3 py-1.5 border border-amber-500/20">
-          <Flame className="h-4 w-4 text-orange-400 fill-orange-400 animate-bounce" />
+          <Flame className="h-4 w-4 text-orange-400 fill-orange-400" />
           <span className="text-xs font-extrabold text-amber-300">{streakDays} Day Streak</span>
         </div>
       </div>

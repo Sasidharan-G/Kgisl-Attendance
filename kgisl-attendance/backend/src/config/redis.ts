@@ -43,3 +43,9 @@ export const passkeyAuthChallengeKey = (studentId: string) => `attendance:passke
  */
 export const refreshTokenKey = (jti: string) => `attendance:rt:${jti}`;
 export const refreshFamilyKey = (familyId: string) => `attendance:rtfam:${familyId}`;
+/**
+ * Short-lived copy of the pair issued when a refresh token was rotated. A second request that presents the
+ * same (just-rotated) token - another open tab, a retry after a slow response - gets this pair back instead of
+ * being treated as token theft, which used to sign the user out of every tab.
+ */
+export const refreshGraceKey = (jti: string) => `attendance:rtgrace:${jti}`;

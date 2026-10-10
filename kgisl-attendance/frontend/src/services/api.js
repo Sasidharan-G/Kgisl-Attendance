@@ -22,6 +22,18 @@ function clearStoredSession() {
   localStorage.removeItem('kgisl_user');
 }
 
+function forceSignOut(err) {
+  clearStoredSession();
+  sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
+  window.location.assign('/');
+  return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
+}
+
+function bearerOf(config) {
+  const header = config?.headers?.Authorization;
+  return typeof header === 'string' ? header.replace(/^Bearer\s+/i, '') : '';
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -30,30 +42,32 @@ api.interceptors.response.use(
     const code = err.response?.data?.code;
 
     const isAuthEndpoint = original?.url?.includes('/auth/');
-    if (status === 401 && !isAuthEndpoint && !original?._retried) {
+    if (status === 401 && !isAuthEndpoint && original && !original._retried) {
+      original._retried = true;
+
+      // Tokens live in localStorage, which every tab shares. If another tab (or an earlier request) already
+      // refreshed them, just retry with the newer token instead of refreshing a second time.
+      const storedToken = localStorage.getItem('kgisl_token');
+      if (storedToken && storedToken !== bearerOf(original)) {
+        original.headers.Authorization = `Bearer ${storedToken}`;
+        return api(original);
+      }
+
       const refreshToken = localStorage.getItem('kgisl_refresh_token');
-      if (refreshToken) {
-        original._retried = true;
-        try {
-          refreshInFlight = refreshInFlight ?? refreshAccessToken(refreshToken);
-          const { accessToken, refreshToken: nextRefresh } = await refreshInFlight;
-          refreshInFlight = null;
-          localStorage.setItem('kgisl_token', accessToken);
-          localStorage.setItem('kgisl_refresh_token', nextRefresh);
-          original.headers.Authorization = `Bearer ${accessToken}`;
-          return api(original);
-        } catch {
-          refreshInFlight = null;
-          clearStoredSession();
-          sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
-          window.location.assign('/');
-          return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
-        }
-      } else {
-        clearStoredSession();
-        sessionStorage.setItem('kgisl_session_notice', 'Your session expired for security. Please sign in again.');
-        window.location.assign('/');
-        return Promise.reject({ ...err, message: 'Your session expired. Please sign in again.', code: 'SESSION_EXPIRED' });
+      if (!refreshToken) return forceSignOut(err);
+      try {
+        refreshInFlight = refreshInFlight ?? refreshAccessToken(refreshToken).finally(() => { refreshInFlight = null; });
+        const { accessToken, refreshToken: nextRefresh } = await refreshInFlight;
+        localStorage.setItem('kgisl_token', accessToken);
+        localStorage.setItem('kgisl_refresh_token', nextRefresh);
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return api(original);
+      } catch (refreshError) {
+        // Only a definite "this login is no longer valid" answer ends the session. A dropped connection, a timeout or a
+        // server hiccup (all common on classroom Wi-Fi) used to sign the user out; they should just be able to retry.
+        const refreshStatus = refreshError?.response?.status;
+        if (refreshStatus === 400 || refreshStatus === 401 || refreshStatus === 403 || refreshStatus === 422) return forceSignOut(err);
+        return Promise.reject({ ...err, message: 'Could not reach the server. Check your connection and try again.', code: 'NETWORK_ERROR' });
       }
     }
 
@@ -120,7 +134,8 @@ export const resumeSession = (sessionId) => api.post(`/sessions/${sessionId}/res
 export const getAttendanceReport = (params) => api.get('/history/report', { params }).then((r) => r.data.data);
 export const getSessionStats = (sessionId) => api.get(`/sessions/${sessionId}/stats`).then((r) => r.data);
 export const getSessionPublicInfo = (sessionId) => api.get(`/sessions/${sessionId}/public`).then((r) => r.data);
-export const markManualAttendance = (sessionId, rollNo) => api.post(`/sessions/${sessionId}/manual-attendance`, { rollNo }).then((r) => r.data);
+/** "Wrong class" undo: removes a session nobody has marked yet so it never shows up in reports. */
+export const cancelSession = (sessionId) => api.post(`/sessions/${sessionId}/cancel`).then((r) => r.data);
 export const correctAttendance = (sessionId, payload) => api.patch(`/sessions/${sessionId}/attendance`, payload).then((r) => r.data);
 
 // ---- Scan ----
@@ -128,7 +143,8 @@ export const submitScan = (payload) => api.post('/scan', payload).then((r) => r.
 export const submitBeaconScan = (payload) => api.post('/scan/beacon', payload).then((r) => r.data);
 
 // ---- Admin/Faculty Manage ----
-export const listFaculty = () => api.get('/faculty').then((r) => r.data.data);
+/** `includeInactive` is for the admin directory so deactivated faculty can be re-enabled; dropdowns keep the default. */
+export const listFaculty = (includeInactive = false) => api.get('/faculty', { params: includeInactive ? { includeInactive: true } : {} }).then((r) => r.data.data);
 export const createFaculty = (payload) => api.post('/faculty', payload).then((r) => r.data);
 export const deleteFaculty = (id) => api.delete(`/faculty/${id}`).then((r) => r.data);
 export const setFacultyActive = (id, isActive) => api.patch(`/faculty/${id}/status`, { isActive }).then((r) => r.data.data);
@@ -153,4 +169,12 @@ export const listAllocations = (scope) => api.get('/timetable', { params: scope 
 export const createAllocation = (payload) => api.post('/timetable', payload).then((r) => r.data.data);
 export const deleteAllocation = (id) => api.delete(`/timetable/${id}`).then((r) => r.data);
 
-// ---- AI Agent ----
+// ---- Academic calendar and block tests (saved on the server, visible to everyone) ----
+export const listCalendarEvents = (params) => api.get('/calendar/events', { params }).then((r) => r.data.data);
+export const createCalendarEvent = (payload) => api.post('/calendar/events', payload).then((r) => r.data.data);
+export const importCalendarEvents = (events) => api.post('/calendar/events/bulk', { events }).then((r) => r.data.data);
+export const deleteCalendarEvent = (id) => api.delete(`/calendar/events/${id}`).then((r) => r.data);
+export const listBlockTests = (params) => api.get('/calendar/block-tests', { params }).then((r) => r.data.data);
+export const createBlockTest = (payload) => api.post('/calendar/block-tests', payload).then((r) => r.data.data);
+export const importBlockTests = (tests) => api.post('/calendar/block-tests/bulk', { tests }).then((r) => r.data.data);
+export const deleteBlockTest = (id) => api.delete(`/calendar/block-tests/${id}`).then((r) => r.data);

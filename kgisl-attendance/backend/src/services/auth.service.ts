@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import { prisma } from '../config/prisma';
 import { issueTokenPair } from './refreshToken.service';
 import { writeAuditLog } from './audit.service';
 import { Errors } from '../utils/AppError';
@@ -7,6 +6,7 @@ import crypto from 'crypto';
 import { redis } from '../config/redis';
 import { sha256Hex } from '../utils/crypto';
 import { isEmailDeliveryConfigured, sendAdminLoginOtp } from './email.service';
+import { findAdminByEmail, findFacultyByEmail, findStudentByEmail } from './accountLookup';
 
 export interface LoginContext {
   ip: string | null;
@@ -18,10 +18,10 @@ export type LoginRole = 'ADMIN' | 'FACULTY' | 'STUDENT';
 export async function loginWithGoogle(email: string, role: LoginRole, ctx: LoginContext) {
   const normalizedEmail = email.toLowerCase();
   const account = role === 'ADMIN'
-    ? await prisma.admin.findUnique({ where: { email: normalizedEmail } })
+    ? await findAdminByEmail(normalizedEmail)
     : role === 'FACULTY'
-      ? await prisma.faculty.findUnique({ where: { email: normalizedEmail } })
-      : await prisma.student.findUnique({ where: { email: normalizedEmail } });
+      ? await findFacultyByEmail(normalizedEmail)
+      : await findStudentByEmail(normalizedEmail);
 
   if (!account) {
     await writeAuditLog({ actorType: role, action: 'GOOGLE_LOGIN_FAILED', success: false, reasonCode: 'ACCOUNT_NOT_FOUND', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { email: normalizedEmail } });
@@ -46,7 +46,7 @@ export async function loginWithGoogle(email: string, role: LoginRole, ctx: Login
 }
 
 export async function loginAdmin(email: string, password: string, ctx: LoginContext) {
-  const admin = await prisma.admin.findUnique({ where: { email } });
+  const admin = await findAdminByEmail(email);
   if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
     await writeAuditLog({ actorId: admin?.id ?? null, actorType: 'ADMIN', action: 'LOGIN_FAILED', success: false, reasonCode: 'INVALID_CREDENTIALS', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { email } });
     throw Errors.INVALID_CREDENTIALS();
@@ -60,8 +60,8 @@ export async function loginAdmin(email: string, password: string, ctx: LoginCont
 const adminMfaKey = (email: string) => `attendance:admin-mfa:${email}`;
 
 export async function beginAdminEmailMfa(email: string, password: string, ctx: LoginContext) {
-  const normalizedEmail = email.toLowerCase();
-  const admin = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const admin = await findAdminByEmail(normalizedEmail);
   if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
     await writeAuditLog({ actorId: admin?.id ?? null, actorType: 'ADMIN', action: 'LOGIN_FAILED', success: false, reasonCode: 'INVALID_CREDENTIALS', ip: ctx.ip, userAgent: ctx.userAgent, metadata: { email: normalizedEmail } });
     throw Errors.INVALID_CREDENTIALS();
@@ -95,11 +95,11 @@ export async function beginAdminEmailMfa(email: string, password: string, ctx: L
 }
 
 export async function verifyAdminEmailMfa(email: string, code: string, ctx: LoginContext) {
-  const normalizedEmail = email.toLowerCase(); const key = adminMfaKey(normalizedEmail);
+  const normalizedEmail = email.trim().toLowerCase(); const key = adminMfaKey(normalizedEmail);
   const expected = await redis.get(key);
   if (!expected || expected !== sha256Hex(code)) throw Errors.INVALID_CREDENTIALS();
   await redis.del(key);
-  const admin = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
+  const admin = await findAdminByEmail(normalizedEmail);
   if (!admin || !admin.isActive) throw Errors.INVALID_CREDENTIALS();
   const { accessToken, refreshToken, expiresIn } = await issueTokenPair(admin.id, 'ADMIN');
   await writeAuditLog({ actorId: admin.id, actorType: 'ADMIN', action: 'ADMIN_MFA_LOGIN_SUCCESS', ip: ctx.ip, userAgent: ctx.userAgent });
@@ -107,7 +107,7 @@ export async function verifyAdminEmailMfa(email: string, code: string, ctx: Logi
 }
 
 export async function loginFaculty(email: string, password: string, ctx: LoginContext) {
-  const faculty = await prisma.faculty.findUnique({ where: { email } });
+  const faculty = await findFacultyByEmail(email);
   if (!faculty || !(await bcrypt.compare(password, faculty.passwordHash))) {
     await writeAuditLog({
       actorId: faculty?.id ?? null,
@@ -141,7 +141,7 @@ export async function loginFaculty(email: string, password: string, ctx: LoginCo
 }
 
 export async function loginStudent(email: string, password: string, ctx: LoginContext) {
-  const student = await prisma.student.findUnique({ where: { email } });
+  const student = await findStudentByEmail(email);
   if (!student || !(await bcrypt.compare(password, student.passwordHash))) {
     await writeAuditLog({
       actorId: student?.id ?? null,

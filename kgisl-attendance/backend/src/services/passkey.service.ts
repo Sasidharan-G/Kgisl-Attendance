@@ -32,14 +32,16 @@ async function takeChallenge(key: string): Promise<string> {
   return challenge;
 }
 
-export async function getPasskeyStatus(studentId: string) {
+export async function getPasskeyStatus(studentId: string, deviceId?: string) {
   const [student, count] = await Promise.all([
     prisma.student.findUnique({ where: { id: studentId }, select: { deviceId: true } }),
     prisma.studentPasskey.count({ where: { studentId } }),
   ]);
   if (!student) throw Errors.STUDENT_NOT_FOUND();
   const boundTo = isPasskeyDeviceId(student.deviceId) ? 'passkey' : student.deviceId ? 'device' : 'none';
-  return { enrolled: count > 0, boundTo };
+  // True when the account is bound to the very device that is asking (a plain device binding only).
+  const thisDevice = boundTo === 'device' && Boolean(deviceId) && student.deviceId === deviceId;
+  return { enrolled: count > 0, boundTo, thisDevice };
 }
 
 /** Enrolment is only allowed while the account is unbound, so a passkey can never override an existing binding. */

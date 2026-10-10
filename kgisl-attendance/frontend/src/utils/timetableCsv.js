@@ -8,7 +8,7 @@ export const TIMETABLE_CSV_TEMPLATE = 'day,start,end,subjectCode,facultyEmail\nM
 const DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 /** Splits one CSV line, honouring double quotes. */
-function splitLine(line) {
+export function splitLine(line) {
   const cells = [];
   let current = '';
   let quoted = false;

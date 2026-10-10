@@ -18,6 +18,13 @@ object BeaconPacket {
       data.size == BINARY_LENGTH && data[0] == 0x4b.toByte() && data[1] == 1.toByte()
     }.getOrDefault(false)
 
+  /**
+   * A packet is usable when it was issued at most 30 s ago and not more than 3 s in the future, judged on the
+   * SERVER's clock (see [ServerClock]); the backend enforces the same window.
+   */
+  fun isFresh(issuedAtMillis: Long, serverNowMillis: Long): Boolean =
+    serverNowMillis - issuedAtMillis in -3_000L..30_000L
+
   fun issuedAtMillis(packet: String): Long? = runCatching {
     if (!isValidText(packet)) return null
     val data = Base64.decode(packet, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)

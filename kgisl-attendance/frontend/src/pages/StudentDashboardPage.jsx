@@ -1,99 +1,69 @@
 import { useEffect, useState } from 'react';
-import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert, BookOpenCheck, Building, PartyPopper, ChevronRight, Calculator, Radio, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Calendar, CalendarCheck, Clock3, ScanLine, ShieldAlert, BookOpenCheck, Building, ChevronRight, Calculator, Radio, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getMyAttendance, listAttendanceCorrections, listLeaveRequests } from '../services/api.js';
+import { getMyAttendance, listAllocations, listAttendanceCorrections, listBlockTests, listCalendarEvents, listLeaveRequests } from '../services/api.js';
 import BadgesWidget from '../components/BadgesWidget.jsx';
 import StatePanel from '../components/StatePanel.jsx';
+import { format12HourRange } from '../utils/timeFormat.js';
+import { attendanceAdvice, istNow, overallPercentage, todaysPeriods } from '../utils/studentInsights.js';
 
-const TODAY_DAILY_SCHEDULE = [
-  { period: 'Period 1', time: '09:10 AM – 10:00 AM', start: '09:10', end: '10:00', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', room: 'MCA Lab 1' },
-  { period: 'Period 2', time: '10:10 AM – 11:00 AM', start: '10:10', end: '11:00', subjectCode: 'PHP', subjectName: 'Open Source Scripting - PHP', room: 'Hall 204' },
-  { period: 'Period 3', time: '11:10 AM – 12:00 PM', start: '11:10', end: '12:00', subjectCode: 'OSC', subjectName: 'Open Source Concepts', room: 'Hall 204' },
-  { period: 'Period 4', time: '01:40 PM – 02:30 PM', start: '13:40', end: '14:30', subjectCode: 'NSC', subjectName: 'Network Security & Cryptography', room: 'MCA Lab 2' },
-  { period: 'Period 5', time: '02:40 PM – 03:30 PM', start: '14:40', end: '15:30', subjectCode: 'CC', subjectName: 'Cloud Computing Architecture', room: 'Hall 201' },
-];
+const EVENT_LABEL = { HOLIDAY: 'College Holiday', EXAM: 'Examination', EVENT: 'College Event', WORKING: 'Working Day' };
+const EVENT_TONE = { HOLIDAY: 'text-rose-400', EXAM: 'text-amber-400', EVENT: 'text-emerald-400', WORKING: 'text-sky-400' };
 
-function getPeriodStatus(startStr, endStr) {
-  const now = new Date();
-  const [startH, startM] = startStr.split(':').map(Number);
-  const [endH, endM] = endStr.split(':').map(Number);
-  
-  const startTime = new Date(now);
-  startTime.setHours(startH, startM, 0, 0);
-  
-  const endTime = new Date(now);
-  endTime.setHours(endH, endM, 0, 0);
-  
-  if (now >= startTime && now <= endTime) {
-    return 'ACTIVE';
-  } else if (now > endTime) {
-    return 'COMPLETED';
-  } else {
-    return 'UPCOMING';
-  }
-}
-
-const UPCOMING_BLOCK_TESTS = [
-  { id: 'bt1', subjectCode: 'AIML', subjectName: 'Artificial Intelligence & ML', date: '2026-08-24', day: 'Monday', time: '09:30 AM – 12:30 PM', room: 'MCA Lab / Hall 1' },
-  { id: 'bt2', subjectCode: 'PHP', subjectName: 'Open Source Scripting - PHP', date: '2026-08-25', day: 'Tuesday', time: '09:30 AM – 12:30 PM', room: 'Exam Hall 2' },
-  { id: 'bt3', subjectCode: 'OSC', subjectName: 'Open Source Concepts', date: '2026-08-26', day: 'Wednesday', time: '09:30 AM – 12:30 PM', room: 'Exam Hall 2' },
-  { id: 'bt4', subjectCode: 'NSC', subjectName: 'Network Security & Cryptography', date: '2026-08-27', day: 'Thursday', time: '09:30 AM – 12:30 PM', room: 'MCA Lab' },
-  { id: 'bt5', subjectCode: 'CC', subjectName: 'Cloud Computing Architecture', date: '2026-08-28', day: 'Friday', time: '09:30 AM – 12:30 PM', room: 'Exam Hall 1' },
-];
-
-const UPCOMING_HOLIDAYS = [
-  { id: 'h1', date: '2026-08-15', title: 'Independence Day', type: 'HOLIDAY', desc: 'National Holiday' },
-  { id: 'h2', date: '2026-08-28', title: 'TechSymposium 2026', type: 'EVENT', desc: 'Annual Tech Fest' },
-  { id: 'h3', date: '2026-09-17', title: 'Vinayagar Chaturthi', type: 'HOLIDAY', desc: 'Government Holiday' },
-];
-
-function calculateAttendanceAdvice(attended = 0, total = 0) {
-  if (total === 0) return { status: 'SAFE', text: 'No classes held yet.' };
-  const currentPct = (attended / total) * 100;
-
-  if (currentPct >= 75) {
-    const maxBunk = Math.floor((attended - 0.75 * total) / 0.75);
-    if (maxBunk > 0) {
-      return { status: 'SAFE', count: maxBunk, text: `Safe: You can safely miss ${maxBunk} class${maxBunk > 1 ? 'es' : ''} and stay above 75%.` };
-    }
-    return { status: 'MARGIN', count: 0, text: `On the 75% margin. Attend next class to stay safe.` };
-  } else {
-    const needed = Math.ceil((0.75 * total - attended) / 0.25);
-    return { status: 'SHORTAGE', count: needed, text: `Shortage: Must attend next ${needed} consecutive class${needed > 1 ? 'es' : ''} to reach 75%.` };
-  }
-}
-
+/** Everything below is the student's own data from the server; nothing on this page is a placeholder. */
 export default function StudentDashboardPage() {
   const navigate = useNavigate();
   const [attendance, setAttendance] = useState(null);
   const [updates, setUpdates] = useState([]);
+  const [timetable, setTimetable] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [blockTests, setBlockTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [clock, setClock] = useState(() => new Date());
 
   useEffect(() => {
-    Promise.all([getMyAttendance(), listLeaveRequests(), listAttendanceCorrections()])
-      .then(([history, leaves, corrections]) => {
+    let cancelled = false;
+    const today = istNow().dateKey;
+    (async () => {
+      try {
+        // Attendance is the page's purpose: if it cannot load, say so. The widgets around it are optional, so
+        // a failure there (for example the calendar) must not blank the whole dashboard.
+        const [history, extras] = await Promise.all([
+          getMyAttendance(),
+          Promise.allSettled([listLeaveRequests(), listAttendanceCorrections(), listAllocations(), listCalendarEvents({ from: today }), listBlockTests({ from: today })]),
+        ]);
+        if (cancelled) return;
+        const [leaves, corrections, allocations, calendar, tests] = extras.map((result) => (result.status === 'fulfilled' ? result.value : []));
         setAttendance(history);
+        setTimetable(allocations);
+        setEvents(calendar.slice(0, 3));
+        setBlockTests(tests.slice(0, 3));
         setUpdates([
           ...leaves.map((item) => ({ id: `l-${item.id}`, label: `${item.type === 'ON_DUTY' ? 'OD' : 'Leave'} request`, status: item.status, date: item.createdAt })),
           ...corrections.map((item) => ({ id: `c-${item.id}`, label: `Attendance correction · ${item.session.subject.code}`, status: item.status, date: item.createdAt })),
         ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5));
-      })
-      .catch((err) => setError(err.message || 'Could not load your dashboard.'))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Could not load your dashboard.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  const shortage = attendance?.subjects.filter((item) => item.shortage) || [];
-  const average = attendance?.subjects.length
-    ? Math.round(attendance.subjects.reduce((sum, item) => sum + item.percentage, 0) / attendance.subjects.length)
-    : 100;
+  // Keeps the "live period" highlight honest while the page stays open.
+  useEffect(() => {
+    const timer = setInterval(() => setClock(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const todayScheduleWithStatus = TODAY_DAILY_SCHEDULE.map(item => {
-    const status = getPeriodStatus(item.start, item.end);
-    return { ...item, status };
-  });
-
-  const activePeriod = todayScheduleWithStatus.find(item => item.status === 'ACTIVE');
+  const subjects = attendance?.subjects || [];
+  const shortage = subjects.filter((item) => item.shortage);
+  const average = overallPercentage(subjects);
+  const periods = todaysPeriods(timetable, clock);
+  const activePeriod = periods.find((item) => item.status === 'ACTIVE');
+  const sectionName = attendance?.student?.batchName;
 
   return (
     <div className="student-workspace min-h-screen px-4 sm:px-8 py-8">
@@ -122,17 +92,17 @@ export default function StudentDashboardPage() {
           <>
             {/* Top Cards */}
             <div className="mt-7 grid gap-4 sm:grid-cols-3">
-              <Card icon={<CalendarCheck/>} title="Overall attendance" value={`${average}%`} text="Across enrolled subjects"/>
+              <Card icon={<CalendarCheck/>} title="Overall attendance" value={average === null ? '—' : `${average}%`} text={average === null ? 'No class has finished yet' : 'Across enrolled subjects'}/>
               <Card icon={<ShieldAlert/>} title="Shortage alerts" value={String(shortage.length)} text={shortage.length ? shortage.map((item) => item.code).join(', ') : 'You are on track'}/>
               <Card icon={<Clock3/>} title="Recent sessions" value={String(attendance?.sessions?.length || 0)} text="View complete history" onClick={() => navigate('/student/attendance')}/>
             </div>
 
-            {/* GAMIFIED ATTENDANCE STREAKS & PUNCTUALITY BADGES */}
+            {/* Streaks and badges, computed from the attendance history */}
             <div className="mt-7">
-              <BadgesWidget attendancePercentage={average} streakDays={7} />
+              <BadgesWidget attendancePercentage={average} sessions={attendance?.sessions || []} />
             </div>
 
-            {/* FEATURE 2: Today's Daily Schedule & Live Class Indicator */}
+            {/* Today's classes, from the section's real timetable */}
             <section className="mt-7 rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-5 shadow-card">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
@@ -149,70 +119,68 @@ export default function StudentDashboardPage() {
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/80 px-2.5 py-0.5 text-xs font-bold text-slate-400 border border-slate-700/60">
-                          <span className="h-2 w-2 rounded-full bg-slate-550" />
+                          <span className="h-2 w-2 rounded-full bg-slate-500" />
                           No Active Period
                         </span>
                       )}
                     </h2>
-                    <p className="text-xs text-slate-400">Real-time daily class timetable & ongoing session tracker</p>
+                    <p className="text-xs text-slate-400">{sectionName ? `Timetable for ${sectionName}` : 'Your section timetable'}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => navigate('/student/scan')}
                   className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/30"
                 >
-                  <ScanLine size={14} /> Scan Today's QR
+                  <ScanLine size={14} /> Mark attendance
                 </button>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {todayScheduleWithStatus.map((item) => {
-                  const isActive = item.status === 'ACTIVE';
-                  const isCompleted = item.status === 'COMPLETED';
-
-                  return (
-                    <div
-                      key={item.period}
-                      className={`rounded-xl border p-3.5 flex flex-col justify-between transition ${
-                        isActive
-                          ? 'border-emerald-500 bg-emerald-950/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40'
-                          : isCompleted
-                          ? 'border-slate-800 bg-slate-900/40 opacity-70'
-                          : 'border-slate-800 bg-slate-900/90'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-emerald-400' : 'text-slate-400'}`}>
-                            {item.period}
-                          </span>
-                          {isActive && (
-                            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-bold text-slate-950">
-                              LIVE
+              {periods.length === 0 ? (
+                <StatePanel type="empty" compact title="No classes scheduled today" description="Your administrator has not assigned any period for today in your section's timetable." />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {periods.map((item) => {
+                    const isActive = item.status === 'ACTIVE';
+                    const isCompleted = item.status === 'COMPLETED';
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-xl border p-3.5 flex flex-col justify-between transition ${
+                          isActive
+                            ? 'border-emerald-500 bg-emerald-950/60 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40'
+                            : isCompleted
+                            ? 'border-slate-800 bg-slate-900/40 opacity-70'
+                            : 'border-slate-800 bg-slate-900/90'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-emerald-400' : 'text-slate-400'}`}>
+                              {item.period}
                             </span>
-                          )}
-                          {isCompleted && (
-                            <span className="text-[10px] font-bold text-slate-500">Done ✓</span>
-                          )}
+                            {isActive && <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-bold text-slate-950">LIVE</span>}
+                            {isCompleted && <span className="text-[10px] font-bold text-slate-500">Done ✓</span>}
+                          </div>
+                          <p className="text-sm font-bold text-white">{item.subject?.code}</p>
+                          <p className="text-xs text-slate-300 truncate mt-0.5">{item.subject?.name}</p>
+                          {item.faculty?.name && <p className="text-[11px] text-slate-500 truncate mt-0.5">{item.faculty.name}</p>}
                         </div>
-                        <p className="text-sm font-bold text-white">{item.subjectCode}</p>
-                        <p className="text-xs text-slate-300 truncate mt-0.5">{item.subjectName}</p>
-                      </div>
 
-                      <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-0.5">
-                        <p className="font-mono">{item.time}</p>
-                        <p className="flex items-center gap-1 font-semibold text-slate-300">
-                          <Building size={11} className="text-slate-400" />
-                          {item.room}
-                        </p>
+                        <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-0.5">
+                          <p className="font-mono">{format12HourRange(item.startTime, item.endTime)}</p>
+                          <p className="flex items-center gap-1 font-semibold text-slate-300">
+                            <Building size={11} className="text-slate-400" />
+                            {item.room?.name}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
-            {/* FEATURE 1: Smart Attendance Calculator ("Classes Needed / Safe Classes") */}
+            {/* Smart attendance calculator, from the real present / total counts */}
             <section className="mt-7 rounded-2xl border border-blue-500/40 bg-blue-950/20 p-5 shadow-card">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
@@ -222,47 +190,49 @@ export default function StudentDashboardPage() {
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     Smart Attendance & Safe Bunk Calculator
                   </h2>
-                  <p className="text-xs text-slate-400">Instant calculation of safe classes to miss or mandatory classes needed to reach 75%</p>
+                  <p className="text-xs text-slate-400">Classes you can still miss, or must attend, to stay at 75% in each subject</p>
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {attendance?.subjects?.map((sub) => {
-                  const advice = calculateAttendanceAdvice(sub.attended || 16, sub.total || 20);
-                  const isSafe = advice.status === 'SAFE';
+              {subjects.length === 0 ? (
+                <StatePanel type="empty" compact title="Nothing to calculate yet" description="Subjects appear here after their first class has finished." />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {subjects.map((sub) => {
+                    const advice = attendanceAdvice(sub.present, sub.total);
+                    const isSafe = advice.status !== 'SHORTAGE';
+                    return (
+                      <div
+                        key={sub.code}
+                        className={`rounded-xl border p-4 transition ${
+                          isSafe ? 'border-emerald-500/30 bg-slate-900/90' : 'border-rose-500/40 bg-rose-950/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-white">{sub.code}</span>
+                          <span className={`rounded-lg px-2.5 py-0.5 text-xs font-bold font-mono ${
+                            sub.percentage >= 75 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          }`}>
+                            {sub.percentage}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300 mb-1 truncate">{sub.name}</p>
+                        <p className="text-[11px] text-slate-500 mb-3">{sub.present} of {sub.total} classes attended</p>
 
-                  return (
-                    <div
-                      key={sub.code}
-                      className={`rounded-xl border p-4 transition ${
-                        isSafe
-                          ? 'border-emerald-500/30 bg-slate-900/90'
-                          : 'border-rose-500/40 bg-rose-950/20'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-white">{sub.code}</span>
-                        <span className={`rounded-lg px-2.5 py-0.5 text-xs font-bold font-mono ${
-                          sub.percentage >= 75 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        <div className={`rounded-lg p-2.5 text-xs font-semibold flex items-start gap-2 ${
+                          isSafe ? 'bg-emerald-950/50 text-emerald-200 border border-emerald-500/20' : 'bg-rose-950/60 text-rose-200 border border-rose-500/30'
                         }`}>
-                          {sub.percentage}%
-                        </span>
+                          {isSafe ? <CheckCircle size={15} className="shrink-0 text-emerald-400 mt-0.5" /> : <AlertTriangle size={15} className="shrink-0 text-rose-400 mt-0.5" />}
+                          <span>{advice.text}</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-300 mb-3 truncate">{sub.name}</p>
-
-                      <div className={`rounded-lg p-2.5 text-xs font-semibold flex items-start gap-2 ${
-                        isSafe ? 'bg-emerald-950/50 text-emerald-200 border border-emerald-500/20' : 'bg-rose-950/60 text-rose-200 border border-rose-500/30'
-                      }`}>
-                        {isSafe ? <CheckCircle size={15} className="shrink-0 text-emerald-400 mt-0.5" /> : <AlertTriangle size={15} className="shrink-0 text-rose-400 mt-0.5" />}
-                        <span>{advice.text}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
-            {/* Block Test Timetable Widget */}
+            {/* Block tests announced by the administrator */}
             <section className="mt-7 rounded-2xl border border-amber-500/40 bg-amber-950/20 p-5 shadow-card">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
@@ -271,12 +241,14 @@ export default function StudentDashboardPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      Upcoming Block Test Timetable
-                      <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-300 border border-amber-500/30">
-                        MCA-C · Semester III
-                      </span>
+                      Upcoming Block Tests
+                      {sectionName && (
+                        <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-300 border border-amber-500/30">
+                          {sectionName}
+                        </span>
+                      )}
                     </h2>
-                    <p className="text-xs text-slate-400">Next examination schedule & hall allocation</p>
+                    <p className="text-xs text-slate-400">Examination schedule and hall allocation</p>
                   </div>
                 </div>
                 <button
@@ -287,26 +259,29 @@ export default function StudentDashboardPage() {
                 </button>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {UPCOMING_BLOCK_TESTS.slice(0, 3).map((bt) => (
-                  <div key={bt.id} className="rounded-xl border border-amber-500/30 bg-slate-900/90 p-3.5 space-y-1.5 shadow-sm">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="rounded bg-amber-500/20 px-2 py-0.5 font-mono font-bold text-amber-300">{bt.date} ({bt.day})</span>
-                      <span className="font-mono text-[10px] text-slate-400">{bt.time}</span>
+              {blockTests.length === 0 ? (
+                <StatePanel type="empty" compact title="No block tests announced" description="When your administrator publishes a block-test timetable it appears here." />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {blockTests.map((bt) => (
+                    <div key={bt.id} className="rounded-xl border border-amber-500/30 bg-slate-900/90 p-3.5 space-y-1.5 shadow-sm">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="rounded bg-amber-500/20 px-2 py-0.5 font-mono font-bold text-amber-300">{bt.date}</span>
+                        <span className="font-mono text-[10px] text-slate-400">{format12HourRange(bt.startTime, bt.endTime)}</span>
+                      </div>
+                      <h3 className="text-sm font-bold text-white">{bt.subjectCode} · {bt.subjectName}</h3>
+                      <p className="text-xs text-slate-400 flex items-center gap-1">
+                        <Building size={12} className="text-amber-400" />
+                        Hall: <span className="text-slate-200 font-semibold">{bt.room}</span>
+                      </p>
                     </div>
-                    <h3 className="text-sm font-bold text-white">{bt.subjectCode} · {bt.subjectName}</h3>
-                    <p className="text-xs text-slate-400 flex items-center gap-1">
-                      <Building size={12} className="text-amber-400" />
-                      Hall: <span className="text-slate-200 font-semibold">{bt.room}</span>
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
 
-            {/* Academic Calendar & Request Updates */}
+            {/* Academic calendar & request updates */}
             <div className="mt-7 grid gap-6 lg:grid-cols-2">
-              {/* Upcoming Holidays & Events Card */}
               <section className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-bold text-white flex items-center gap-2">
@@ -317,25 +292,27 @@ export default function StudentDashboardPage() {
                     Full Calendar →
                   </button>
                 </div>
-                <div className="space-y-2.5">
-                  {UPCOMING_HOLIDAYS.map((h) => (
-                    <div key={h.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-xs">
-                      <div>
-                        <p className="font-bold text-white">{h.title}</p>
-                        <p className="text-slate-400 mt-0.5">{h.desc}</p>
+                {events.length === 0 ? (
+                  <StatePanel type="empty" compact title="Nothing scheduled" description="No upcoming holidays or events have been published." />
+                ) : (
+                  <div className="space-y-2.5">
+                    {events.map((h) => (
+                      <div key={h.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-xs">
+                        <div>
+                          <p className="font-bold text-white">{h.title}</p>
+                          {h.description && <p className="text-slate-400 mt-0.5">{h.description}</p>}
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono font-bold text-blue-400">{h.date}</span>
+                          <span className={`block text-[10px] font-bold ${EVENT_TONE[h.type] || 'text-slate-400'}`}>{EVENT_LABEL[h.type] || h.type}</span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-mono font-bold text-blue-400">{h.date}</span>
-                        <span className={`block text-[10px] font-bold ${h.type === 'HOLIDAY' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          {h.type === 'HOLIDAY' ? 'College Holiday' : 'College Event'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </section>
 
-              {/* Attendance Alerts & Requests */}
+              {/* Attendance alerts & requests */}
               <section className="rounded-2xl border border-ink-border bg-ink-850/60 p-5">
                 <h2 className="font-bold text-white">Attendance Alerts & Requests</h2>
                 {shortage.length ? shortage.map((item) => (
@@ -344,6 +321,17 @@ export default function StudentDashboardPage() {
                     <p className="mt-1 text-xs text-slate-300">Below 75%. Attend upcoming classes consistently.</p>
                   </div>
                 )) : <StatePanel type="success" compact title="No attendance shortage" description="Your attendance is currently on track." />}
+
+                {updates.length > 0 && (
+                  <ul className="mt-4 space-y-1.5 text-xs text-slate-300">
+                    {updates.map((update) => (
+                      <li key={update.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-900/60 px-3 py-2">
+                        <span className="truncate">{update.label}</span>
+                        <span className="font-bold text-signal-blue">{update.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 <div className="mt-5 flex gap-4 border-t border-slate-800 pt-4">
                   <button onClick={() => navigate('/student/leave')} className="text-sm font-semibold text-signal-blue">Apply Leave / OD</button>

@@ -111,6 +111,8 @@ class MarkFragment : Fragment(R.layout.fragment_mark) {
     if (adapter == null || !adapter.isEnabled) { setStatus("Turn on Bluetooth and try again."); return }
     if (!scanner.start()) { setStatus("Could not start Bluetooth scanning. Turn Bluetooth off and on, then retry."); return }
     scanning = true
+    // Learn the server's clock before the first packet is judged, so a phone with the wrong time still works.
+    app.worker.execute { runCatching { app.api.syncClock() } }
     location.start() // warm GPS up so a precise fix is ready when the beacon is seen
     render()
   }
@@ -124,7 +126,7 @@ class MarkFragment : Fragment(R.layout.fragment_mark) {
   private fun onBeacon(packet: String, rssi: Int) {
     if (busy || !submitted.add(packet)) return
     val issuedAt = BeaconPacket.issuedAtMillis(packet)
-    if (issuedAt == null || System.currentTimeMillis() - issuedAt !in -3_000L..30_000L) {
+    if (issuedAt == null || !BeaconPacket.isFresh(issuedAt, ServerClock.now())) {
       app.diagnostics.record("LOCAL_PACKET_EXPIRED", rssi)
       return
     }

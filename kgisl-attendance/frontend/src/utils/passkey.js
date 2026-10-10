@@ -6,7 +6,8 @@ export function passkeySupported() {
   return typeof window !== 'undefined' && window.isSecureContext && typeof window.PublicKeyCredential === 'function';
 }
 
-export const getPasskeyStatus = () => api.get('/passkey/status').then((r) => r.data.data);
+/** `deviceId` lets the server recognise a student bound to *this* browser instead of calling it "another phone". */
+export const getPasskeyStatus = (deviceId) => api.get('/passkey/status', { params: deviceId ? { deviceId } : {} }).then((r) => r.data.data);
 
 /** Turns a browser/authenticator failure into a code + message the scan page can show. */
 function explain(error) {

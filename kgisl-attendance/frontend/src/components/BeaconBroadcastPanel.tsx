@@ -23,7 +23,10 @@ type BeaconBroadcastPanelProps = {
 };
 
 const AUTOSTART_STORAGE = 'kgisl_beacon_autostart';
-const MAX_REFRESH_RETRIES = 3;
+// While the class is running a refresh that fails (Wi-Fi blip, ESP32 re-enumerating) keeps being retried, because the
+// board goes silent 35 s after its last packet. Only an answer that can never succeed (session over, wrong room...) stops it.
+const REFRESH_RETRY_MS = 2_000;
+const FATAL_REFRESH_CODES = new Set(['SESSION_NOT_ACTIVE', 'SESSION_NOT_FOUND', 'SESSION_ACCESS_DENIED', 'BEACON_NOT_FOUND', 'BEACON_ROOM_MISMATCH', 'SESSION_EXPIRED']);
 const STEP_LABELS = ['Classroom helper connected', 'ESP32 beacon ready', 'Signed packet broadcasting'] as const;
 
 function readAutoStart(): boolean {
@@ -73,10 +76,13 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
     refreshTimerRef.current = null;
   }, []);
 
-  const stopBroadcast = useCallback(() => {
+  const stopBroadcast = useCallback((options: { allowAutoRestart?: boolean } = {}) => {
     // The ESP32 firmware stops advertising on its own 35 s after the last packet;
     // revoking server-side invalidates the in-air packet immediately.
     runIdRef.current += 1;
+    // A pause (or the session ending) is not the faculty's decision to switch the beacon off: forget that auto-start
+    // already ran for this session so it can start again by itself on resume. A manual Stop keeps it off.
+    if (options.allowAutoRestart) autoStartedForRef.current = null;
     if (sessionId) void revokeBeaconPacket(sessionId).catch(() => undefined);
     clearRefreshTimer();
     setLastIssue(null);
@@ -104,16 +110,18 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
       if (runIdRef.current !== runId) return;
       // First start: surface the problem immediately (wrong key, helper off, ESP32 unplugged).
       if (!refresh) throw pushError;
-      // A refresh hiccup (Wi-Fi blip, ESP32 re-enumerating) should not kill a running class:
-      // retry quickly while the packet already in the air is still valid.
-      if (retry < MAX_REFRESH_RETRIES) {
-        clearRefreshTimer();
-        refreshTimerRef.current = window.setTimeout(() => { void pushPacket(runId, key, beacon, true, retry + 1); }, 1_500);
+      clearRefreshTimer();
+      const message = pushError instanceof Error ? pushError.message : (pushError as { message?: string })?.message ?? 'Beacon refresh failed.';
+      const code = (pushError as { code?: string })?.code;
+      if (code && FATAL_REFRESH_CODES.has(code)) {
+        setError(message);
+        setState('error');
         return;
       }
-      clearRefreshTimer();
-      setError(pushError instanceof Error ? pushError.message : 'Beacon refresh failed.');
-      setState('error');
+      // A refresh hiccup should not kill a running class: keep the "broadcasting" state, say what is happening and retry
+      // until it works again (the packet already in the air stays valid for a while).
+      setError(`${message} Retrying…`);
+      refreshTimerRef.current = window.setTimeout(() => { void pushPacket(runId, key, beacon, true, retry + 1); }, REFRESH_RETRY_MS);
     }
   }, [clearRefreshTimer, sessionId]);
 
@@ -144,7 +152,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
   }, [beaconId, clearRefreshTimer, helperKey, pushPacket, sessionActive, sessionId, sessionPaused]);
 
   useEffect(() => {
-    if (!sessionActive || sessionPaused || !sessionId) stopBroadcast();
+    if (!sessionActive || sessionPaused || !sessionId) stopBroadcast({ allowAutoRestart: true });
   }, [sessionActive, sessionId, sessionPaused, stopBroadcast]);
 
   // One-click flow: when a session goes live and the helper is paired, start the beacon by itself.
@@ -250,7 +258,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
       {error && <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-[11px] text-red-200"><TriangleAlert size={14} className="mt-0.5 shrink-0" />{error}</div>}
 
       {broadcasting ? (
-        <button type="button" onClick={stopBroadcast} className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/30 bg-red-400/10 py-2.5 text-xs font-semibold text-red-200 transition hover:bg-red-400/20"><Square size={13} fill="currentColor" />Stop BLE Beacon</button>
+        <button type="button" onClick={() => stopBroadcast()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/30 bg-red-400/10 py-2.5 text-xs font-semibold text-red-200 transition hover:bg-red-400/20"><Square size={13} fill="currentColor" />Stop BLE Beacon</button>
       ) : (
         <button type="button" disabled={disabled || starting} onClick={() => void startBroadcast()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 py-2.5 text-xs font-semibold text-white shadow-lg shadow-sky-950/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
           {starting ? <Loader2 size={15} className="animate-spin" /> : <Bluetooth size={15} />}{starting ? 'Starting…' : state === 'error' ? 'Retry BLE Beacon' : 'Start BLE Beacon'}

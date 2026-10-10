@@ -2,17 +2,25 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { findFacultyByEmail } from '../services/accountLookup';
+import { endActiveSessionsForFaculty } from '../services/session.service';
+import { revokeAllUserSessions } from '../services/refreshToken.service';
 
 const createFacultySchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
+  name: z.string().trim().min(1),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(6),
 });
 
-export async function listFacultyHandler(_req: Request, res: Response, next: NextFunction) {
+/**
+ * Administrators manage the directory (`includeInactive=true` also returns deactivated faculty so they can be
+ * re-enabled). Dropdowns that assign classes keep the default, active-only list.
+ */
+export async function listFacultyHandler(req: Request, res: Response, next: NextFunction) {
   try {
+    const includeInactive = req.query.includeInactive === 'true';
     const faculties = await prisma.faculty.findMany({
-      where: { isActive: true },
+      where: includeInactive ? {} : { isActive: true },
       select: {
         id: true,
         name: true,
@@ -32,11 +40,11 @@ export async function listFacultyHandler(_req: Request, res: Response, next: Nex
 export async function createFacultyHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { name, email, password } = createFacultySchema.parse(req.body);
-    
-    // Check if faculty already exists
-    const existing = await prisma.faculty.findUnique({ where: { email } });
+
+    // Case-insensitive: "Chithra@x.edu" and "chithra@x.edu" are the same mailbox.
+    const existing = await findFacultyByEmail(email);
     if (existing) {
-      res.status(400).json({ success: false, message: 'Faculty with this email already exists' });
+      res.status(409).json({ success: false, message: 'Faculty with this email already exists' });
       return;
     }
 
@@ -63,6 +71,12 @@ export async function createFacultyHandler(req: Request, res: Response, next: Ne
   }
 }
 
+/** A deactivated login must stop working immediately: close its running class and revoke its refresh tokens. */
+async function lockOut(facultyId: string) {
+  await endActiveSessionsForFaculty(facultyId);
+  await revokeAllUserSessions(facultyId, 'FACULTY');
+}
+
 export async function deleteFacultyHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const faculty = await prisma.faculty.findUnique({
@@ -74,6 +88,7 @@ export async function deleteFacultyHandler(req: Request, res: Response, next: Ne
       return;
     }
     await prisma.faculty.update({ where: { id: faculty.id }, data: { isActive: false } });
+    await lockOut(faculty.id);
     res.json({ success: true, message: 'Faculty account deactivated; attendance history was preserved.' });
   } catch (err) {
     next(err);
@@ -88,6 +103,7 @@ export async function setFacultyStatusHandler(req: Request, res: Response, next:
       data: { isActive },
       select: { id: true, name: true, email: true, isActive: true, createdAt: true },
     });
+    if (!isActive) await lockOut(faculty.id);
     res.json({ success: true, data: faculty });
   } catch (err) { next(err); }
 }

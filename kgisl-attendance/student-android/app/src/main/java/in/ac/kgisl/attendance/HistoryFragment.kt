@@ -61,13 +61,20 @@ class HistoryFragment : Fragment(R.layout.fragment_list) {
     for (i in 0 until minOf(sessions.length(), 60)) {
       val session = sessions.getJSONObject(i)
       val status = session.optString("status")
+      val inProgress = session.optBoolean("inProgress", false)
       val method = session.optString("method").takeIf { it.isNotBlank() && it != "null" }
       addRow(
         b.content,
         session.optString("subjectName"),
         formatApiTime(session.optString("startedAt")) + (method?.let { " · ${methodLabel(it)}" } ?: ""),
-        status.replace('_', ' '),
-        if (status in setOf("PRESENT", "LATE", "ON_DUTY")) Color.parseColor("#0F766E") else Color.parseColor("#B3261E"),
+        // A class that is still running is not an absence yet, and approved leave is not one either.
+        if (inProgress && status == "ABSENT") "IN PROGRESS" else status.replace('_', ' '),
+        when {
+          status in setOf("PRESENT", "LATE", "ON_DUTY") -> Color.parseColor("#0F766E")
+          status == "LEAVE" -> Color.parseColor("#B45309")
+          inProgress -> Color.parseColor("#475569")
+          else -> Color.parseColor("#B3261E")
+        },
       )
     }
   }

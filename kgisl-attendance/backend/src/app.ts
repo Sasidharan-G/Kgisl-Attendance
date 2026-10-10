@@ -13,6 +13,7 @@ import historyRoutes from './routes/history.routes';
 import leaveRoutes from './routes/leave.routes';
 import correctionRoutes from './routes/correction.routes';
 import passkeyRoutes from './routes/passkey.routes';
+import calendarRoutes from './routes/calendar.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
 import { prisma } from './config/prisma';
@@ -78,6 +79,7 @@ export function createApp() {
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/leave-requests', leaveRoutes);
   app.use('/api/v1/attendance-corrections', correctionRoutes);
+  app.use('/api/v1/calendar', calendarRoutes);
 
   // Serve frontend static files in production
   if (process.env.NODE_ENV === 'production') {
