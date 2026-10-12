@@ -16,19 +16,8 @@ export const scanIpRateLimiter = rateLimit({
   message: { code: 'RATE_LIMITED', message: 'Too many requests from this network, slow down.' },
 });
 
-/**
- * Brute-force protection on login/refresh endpoints. IP-scoped: a single actor
- * hammering credentials from one address gets slowed regardless of which
- * account they're guessing.
- */
-export const authRateLimiter = rateLimit({
-  windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
-  max: env.AUTH_RATE_LIMIT_MAX,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { code: 'RATE_LIMITED', message: 'Too many authentication attempts, try again later.' },
-});
-
+// Authentication limiters live in authLimiters.middleware.ts (per-account, NAT-safe).
+export { authRateLimiter, refreshRateLimiter, passwordResetRequestLimiter } from './authLimiters.middleware';
 
 /**
  * Fine-grained per-student rate limit using Redis, independent of IP -

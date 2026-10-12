@@ -1,38 +1,56 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verifyAdminEmailMfa } from '../services/auth.service';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
-import { AppError } from '../utils/AppError';
-import { rotateRefreshToken, revokeRefreshToken } from '../services/refreshToken.service';
-import { issueTokenPair, revokeAllUserSessions } from '../services/refreshToken.service';
+import { beginAdminEmailMfa, loginFaculty, loginStudent, loginWithGoogle, verifyAdminEmailMfa } from '../services/auth.service';
+import { findAdminByEmail, findFacultyByEmail, findStudentByEmail } from '../services/accountLookup';
+import { AppError, Errors } from '../utils/AppError';
+import { rotateRefreshToken, revokeRefreshToken, issueTokenPair, revokeAllUserSessions } from '../services/refreshToken.service';
 import { requestContext, writeAuditLog } from '../services/audit.service';
-import { Errors } from '../utils/AppError';
+import { sendPasswordResetEmail } from '../services/email.service';
+import { prisma } from '../config/prisma';
+import { redis } from '../config/redis';
+import { env } from '../config/env';
+import { sha256Hex } from '../utils/crypto';
+import { logger } from '../utils/logger';
+import type { Role } from '../middleware/auth.middleware';
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-const adminMfaVerifySchema = z.object({ email: z.string().email(), code: z.string().regex(/^\d{6}$/) });
+// E-mails are trimmed (phone keyboards and autofill often append a space); passwords never are.
+const loginSchema = z.object({ email: z.string().trim().email(), password: z.string().min(1) });
+const adminMfaVerifySchema = z.object({ email: z.string().trim().email(), code: z.string().trim().regex(/^\d{6}$/) });
+const refreshSchema = z.object({ refreshToken: z.string().min(10) });
+const googleLoginSchema = z.object({ credential: z.string().min(20), role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']) });
 
-const registerFacultySchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(6),
-});
+const strongPassword = z
+  .string()
+  .min(10, 'Password must be at least 10 characters')
+  .max(128)
+  .regex(/[A-Z]/, 'Password needs an uppercase letter')
+  .regex(/[a-z]/, 'Password needs a lowercase letter')
+  .regex(/[0-9]/, 'Password needs a number');
+const changePasswordSchema = z.object({ currentPassword: z.string().min(1), newPassword: strongPassword });
 
-const refreshSchema = z.object({
-  refreshToken: z.string().min(10),
-});
-
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(10, 'New password must be at least 10 characters').max(128).regex(/[A-Z]/, 'New password needs an uppercase letter').regex(/[a-z]/, 'New password needs a lowercase letter').regex(/[0-9]/, 'New password needs a number'),
-});
-
-const googleLoginSchema = z.object({
-  credential: z.string().min(20),
+const accountSchema = z.object({
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
   role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']),
 });
+const confirmResetSchema = accountSchema.extend({ code: z.string().trim().regex(/^\d{6}$/), newPassword: strongPassword });
+
+const BCRYPT_ROUNDS = 12;
+const resetKey = (role: string, email: string) => `attendance:password-reset:${role}:${email}`;
+
+function findAccount(role: Role, email: string) {
+  if (role === 'ADMIN') return findAdminByEmail(email);
+  if (role === 'FACULTY') return findFacultyByEmail(email);
+  return findStudentByEmail(email);
+}
+
+async function storeResetCode(role: Role, email: string): Promise<string> {
+  const code = crypto.randomInt(100000, 1000000).toString();
+  await redis.set(resetKey(role, email), sha256Hex(code), 'EX', env.PASSWORD_RESET_TTL_SECONDS);
+  return code;
+}
 
 export function googleAuthConfigHandler(_req: Request, res: Response) {
   res.json({ success: true, data: { enabled: Boolean(env.GOOGLE_CLIENT_ID), clientId: env.GOOGLE_CLIENT_ID || null } });
@@ -49,44 +67,18 @@ export async function googleLoginHandler(req: Request, res: Response, next: Next
   } catch (err) { next(err); }
 }
 
-import { prisma } from '../config/prisma';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { redis } from '../config/redis';
-import { sha256Hex } from '../utils/crypto';
-import { env } from '../config/env';
-import { sendPasswordResetEmail } from '../services/email.service';
-
-export async function registerFacultyHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { name, email, password } = registerFacultySchema.parse(req.body);
-    
-    const existing = await prisma.faculty.findUnique({ where: { email } });
-    if (existing) {
-      res.status(400).json({ success: false, message: 'Faculty with this email already exists' });
-      return;
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    await prisma.faculty.create({
-      data: { name, email, passwordHash, mustChangePassword: true },
-    });
-
-    const result = await loginFaculty(email, password, requestContext(req));
-    res.status(201).json(result);
-  } catch (err) {
-    next(err);
-  }
-}
-
 export async function facultyLoginHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = loginSchema.parse(req.body);
-    const result = await loginFaculty(email, password, requestContext(req));
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+    res.json(await loginFaculty(email, password, requestContext(req)));
+  } catch (err) { next(err); }
+}
+
+export async function studentLoginHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email, password } = loginSchema.parse(req.body);
+    res.json(await loginStudent(email, password, requestContext(req)));
+  } catch (err) { next(err); }
 }
 
 export async function adminLoginHandler(req: Request, res: Response, next: NextFunction) {
@@ -97,36 +89,21 @@ export async function adminLoginHandler(req: Request, res: Response, next: NextF
 }
 
 export async function verifyAdminMfaHandler(req: Request, res: Response, next: NextFunction) {
-  try { const { email, code } = adminMfaVerifySchema.parse(req.body); res.json(await verifyAdminEmailMfa(email, code, requestContext(req))); }
-  catch (err) { next(err); }
-}
-
-export async function studentLoginHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { email, password } = loginSchema.parse(req.body);
-    const result = await loginStudent(email, password, requestContext(req));
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+    const { email, code } = adminMfaVerifySchema.parse(req.body);
+    res.json(await verifyAdminEmailMfa(email, code, requestContext(req)));
+  } catch (err) { next(err); }
 }
 
 /**
- * Exchanges a still-valid refresh token for a new access + refresh token pair.
- * The old refresh token is single-use (rotated) — replaying it after this call
- * revokes the entire device family (see refreshToken.service).
+ * Exchanges a still-valid refresh token for a new access + refresh token pair. The old refresh token is single-use
+ * (rotated): replaying it after this call revokes the whole login family (see refreshToken.service).
  */
 export async function refreshHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { refreshToken } = refreshSchema.parse(req.body);
-    if (!refreshToken) return next(Errors.INVALID_JWT());
-
-    const ctx = requestContext(req);
-    const pair = await rotateRefreshToken(refreshToken, ctx);
-    res.json({ success: true, data: pair });
-  } catch (err) {
-    next(err);
-  }
+    res.json({ success: true, data: await rotateRefreshToken(refreshToken, requestContext(req)) });
+  } catch (err) { next(err); }
 }
 
 export async function logoutHandler(req: Request, res: Response, next: NextFunction) {
@@ -134,9 +111,7 @@ export async function logoutHandler(req: Request, res: Response, next: NextFunct
     const { refreshToken } = refreshSchema.parse(req.body);
     await revokeRefreshToken(refreshToken);
     res.json({ success: true, message: 'Logged out' });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 }
 
 export async function changePasswordHandler(req: Request, res: Response, next: NextFunction) {
@@ -148,9 +123,7 @@ export async function changePasswordHandler(req: Request, res: Response, next: N
       : role === 'FACULTY'
         ? await prisma.faculty.findUnique({ where: { id } })
         : await prisma.student.findUnique({ where: { id } });
-    if (!account || !(await bcrypt.compare(currentPassword, account.passwordHash))) {
-      throw Errors.INVALID_CREDENTIALS();
-    }
+    if (!account || !(await bcrypt.compare(currentPassword, account.passwordHash))) throw Errors.INVALID_CREDENTIALS();
     if (currentPassword === newPassword) {
       res.status(400).json({ success: false, code: 'PASSWORD_UNCHANGED', message: 'Choose a password different from the current one.' });
       return;
@@ -160,8 +133,7 @@ export async function changePasswordHandler(req: Request, res: Response, next: N
       res.status(400).json({ success: false, code: 'PASSWORD_TOO_GUESSABLE', message: 'Do not use your email name inside the password.' });
       return;
     }
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    const data = { passwordHash, mustChangePassword: false };
+    const data = { passwordHash: await bcrypt.hash(newPassword, BCRYPT_ROUNDS), mustChangePassword: false };
     if (role === 'ADMIN') await prisma.admin.update({ where: { id }, data });
     else if (role === 'FACULTY') await prisma.faculty.update({ where: { id }, data });
     else await prisma.student.update({ where: { id }, data });
@@ -171,51 +143,48 @@ export async function changePasswordHandler(req: Request, res: Response, next: N
     const { accessToken, refreshToken, expiresIn } = await issueTokenPair(id, role);
     const ctx = requestContext(req);
     await writeAuditLog({ actorId: id, actorType: role, action: 'PASSWORD_CHANGED', ip: ctx.ip, userAgent: ctx.userAgent });
+    res.json({ success: true, message: 'Password updated successfully.', data: { token: accessToken, refreshToken, expiresIn } });
+  } catch (err) { next(err); }
+}
+
+/** Self-service reset for faculty and students: a 6-digit code is e-mailed. The answer never reveals whether the account exists. */
+export async function requestPasswordResetHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = accountSchema.refine((value) => value.role !== 'ADMIN', { message: 'Administrators ask another administrator for a reset code.' }).parse(req.body);
+    const account = await findAccount(input.role, input.email);
+    if (account?.isActive) {
+      const code = await storeResetCode(input.role, input.email);
+      try { await sendPasswordResetEmail(input.email, code); }
+      catch (error) { logger.error('[password-reset] e-mail delivery failed', { error: (error as Error).message }); }
+    }
     res.json({
       success: true,
-      message: 'Password updated successfully.',
-      data: { token: accessToken, refreshToken, expiresIn },
+      message: 'If an active account exists, a reset code has been sent to that e-mail.',
+      expiresInSeconds: env.PASSWORD_RESET_TTL_SECONDS,
     });
   } catch (err) { next(err); }
 }
 
-const resetAccountSchema = z.object({ email: z.string().email().transform((value) => value.toLowerCase()), role: z.enum(['ADMIN', 'FACULTY', 'STUDENT']) });
-const confirmResetSchema = resetAccountSchema.extend({
-  code: z.string().regex(/^\d{6}$/),
-  newPassword: z.string().min(10).max(128).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
-});
-
-const resetKey = (role: string, email: string) => `attendance:password-reset:${role}:${email}`;
-
-export async function requestPasswordResetHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const input = resetAccountSchema.pick({ email: true, role: true }).refine((value) => value.role !== 'ADMIN').parse(req.body);
-    const account = input.role === 'FACULTY'
-      ? await prisma.faculty.findUnique({ where: { email: input.email }, select: { isActive: true } })
-      : await prisma.student.findUnique({ where: { email: input.email }, select: { isActive: true } });
-    if (account?.isActive) {
-      const code = crypto.randomInt(100000, 1000000).toString();
-      await redis.set(resetKey(input.role, input.email), sha256Hex(code), 'EX', env.PASSWORD_RESET_TTL_SECONDS);
-      try { await sendPasswordResetEmail(input.email, code); }
-      catch (error: any) { console.error('Password reset email failed:', error.message); }
-    }
-    // Same response for existing and unknown accounts prevents email enumeration.
-    res.json({ success: true, message: 'If an active account exists, a reset code has been sent to that email.', expiresInSeconds: env.PASSWORD_RESET_TTL_SECONDS });
-  } catch (err) { next(err); }
-}
-
+/** Administrator hands a one-time reset code to the account owner (used when e-mail delivery is not available). */
 export async function createPasswordResetCodeHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const input = resetAccountSchema.parse(req.body);
-    const account = input.role === 'ADMIN'
-      ? await prisma.admin.findUnique({ where: { email: input.email } })
-      : input.role === 'FACULTY'
-        ? await prisma.faculty.findUnique({ where: { email: input.email } })
-        : await prisma.student.findUnique({ where: { email: input.email } });
-    if (!account) { res.status(404).json({ success: false, message: 'Account not found' }); return; }
-    const code = crypto.randomInt(100000, 1000000).toString();
-    await redis.set(resetKey(input.role, input.email), sha256Hex(code), 'EX', env.PASSWORD_RESET_TTL_SECONDS);
-    res.json({ success: true, data: { code, expiresInSeconds: env.PASSWORD_RESET_TTL_SECONDS }, message: 'One-time reset code created. Share it securely with the account owner.' });
+    const input = accountSchema.parse(req.body);
+    const account = await findAccount(input.role, input.email);
+    if (!account) {
+      res.status(404).json({ success: false, code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
+      return;
+    }
+    const code = await storeResetCode(input.role, input.email);
+    const ctx = requestContext(req);
+    await writeAuditLog({
+      actorId: req.auth!.sub,
+      actorType: 'ADMIN',
+      action: 'PASSWORD_RESET_CODE_ISSUED',
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      metadata: { role: input.role, email: input.email },
+    });
+    res.json({ success: true, data: { code, expiresInSeconds: env.PASSWORD_RESET_TTL_SECONDS } });
   } catch (err) { next(err); }
 }
 
@@ -223,19 +192,20 @@ export async function confirmPasswordResetHandler(req: Request, res: Response, n
   try {
     const input = confirmResetSchema.parse(req.body);
     const key = resetKey(input.role, input.email);
+    const invalid = () => res.status(400).json({ success: false, code: 'INVALID_RESET_CODE', message: 'Reset code is invalid or expired.' });
+
     const expectedHash = await redis.get(key);
-    if (!expectedHash || expectedHash !== sha256Hex(input.code)) {
-      res.status(400).json({ success: false, code: 'INVALID_RESET_CODE', message: 'Reset code is invalid or expired.' });
-      return;
-    }
-    const passwordHash = await bcrypt.hash(input.newPassword, 12);
-    const account = input.role === 'ADMIN'
-      ? await prisma.admin.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } })
-      : input.role === 'FACULTY'
-        ? await prisma.faculty.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } })
-        : await prisma.student.update({ where: { email: input.email }, data: { passwordHash, mustChangePassword: false } });
+    if (!expectedHash || expectedHash !== sha256Hex(input.code)) { invalid(); return; }
+    const target = await findAccount(input.role, input.email);
+    if (!target) { invalid(); return; }
+
+    const data = { passwordHash: await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS), mustChangePassword: false };
+    if (input.role === 'ADMIN') await prisma.admin.update({ where: { id: target.id }, data });
+    else if (input.role === 'FACULTY') await prisma.faculty.update({ where: { id: target.id }, data });
+    else await prisma.student.update({ where: { id: target.id }, data });
+
     await redis.del(key);
-    await revokeAllUserSessions(account.id, input.role);
+    await revokeAllUserSessions(target.id, input.role);
     res.json({ success: true, message: 'Password reset successfully. The code can no longer be used.' });
   } catch (err) { next(err); }
 }

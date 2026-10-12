@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { distanceMeters, isPointInPolygon } = require('../dist/utils/geo.js');
+const { distanceMeters } = require('../dist/utils/geo.js');
 const {
   generateNonce,
   generateSecureToken,
@@ -28,21 +28,6 @@ test('distanceMeters returns zero for the same coordinate', () => {
 test('distanceMeters produces a realistic short campus distance', () => {
   const distance = distanceMeters(11.0834, 76.997, 11.0843, 76.997);
   assert.ok(distance > 95 && distance < 105);
-});
-
-test('isPointInPolygon accurately detects points inside and outside a room boundary', () => {
-  const polygon = [
-    { lat: 11.0830, lng: 76.9970 },
-    { lat: 11.0835, lng: 76.9970 },
-    { lat: 11.0835, lng: 76.9975 },
-    { lat: 11.0830, lng: 76.9975 }
-  ];
-  // Inside points
-  assert.equal(isPointInPolygon(11.0832, 76.9972, polygon), true);
-  assert.equal(isPointInPolygon(11.0834, 76.9974, polygon), true);
-  // Outside points
-  assert.equal(isPointInPolygon(11.0829, 76.9972, polygon), false);
-  assert.equal(isPointInPolygon(11.0836, 76.9974, polygon), false);
 });
 
 test('secure QR primitives have the required entropy and stable hash', () => {

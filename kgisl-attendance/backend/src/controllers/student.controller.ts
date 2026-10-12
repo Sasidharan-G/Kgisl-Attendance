@@ -3,12 +3,21 @@ import { prisma } from '../config/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { requestContext, writeAuditLog } from '../services/audit.service';
+import { revokeAllUserSessions } from '../services/refreshToken.service';
+import {
+  COMPLETED_SESSION_STATUSES,
+  LIVE_SESSION_STATUSES,
+  PRESENT_STATUSES,
+  SHORTAGE_RATIO,
+  isPresentStatus,
+} from '../utils/attendanceStatus';
 
 const createStudentSchema = z.object({
   name: z.string().trim().min(1).max(100),
   rollNo: z.string().trim().min(1).max(20).transform((value) => value.toUpperCase()),
   regNo: z.string().trim().min(1).max(20).transform((value) => value.toUpperCase()),
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
+  // Only an initial password: the student must replace it at the first sign-in.
   password: z.string().min(6),
   batchId: z.string().uuid(),
 });
@@ -103,24 +112,6 @@ export async function bulkCreateStudentsHandler(req: Request, res: Response, nex
   } catch (err) { next(err); }
 }
 
-export async function deleteStudentHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const student = await prisma.student.findUnique({
-      where: { id: req.params.id },
-      select: { id: true, batchId: true },
-    });
-    if (!student) {
-      res.status(404).json({ success: false, message: 'Student does not exist' });
-      return;
-    }
-    const access = await requireMentorBatch(req, student.batchId); if ('error' in access) { res.status(access.status).json({ success: false, message: access.error }); return; }
-    await prisma.student.update({ where: { id: student.id }, data: { isActive: false } });
-    res.json({ success: true, message: 'Student account deactivated; attendance history was preserved.' });
-  } catch (err) {
-    next(err);
-  }
-}
-
 export async function setStudentStatusHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { isActive } = z.object({ isActive: z.boolean() }).parse(req.body);
@@ -132,6 +123,8 @@ export async function setStudentStatusHandler(req: Request, res: Response, next:
       data: { isActive },
       select: { id: true, isActive: true },
     });
+    // A deactivated student must not keep marking attendance on a still-valid refresh token.
+    if (!isActive) await revokeAllUserSessions(student.id, 'STUDENT');
     res.json({ success: true, data: student });
   } catch (err) { next(err); }
 }
@@ -164,36 +157,43 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
         ...(batchId ? { batchId } : {}),
         ...(req.auth!.role === 'FACULTY' ? { batch: { mentorId: req.auth!.sub, lifecycle: { not: 'ARCHIVED' } } } : {}),
       },
-      include: {
-        batch: true,
-        records: {
-          where: { status: { in: ['PRESENT', 'LATE', 'ON_DUTY'] } },
-          orderBy: { scanTime: 'desc' },
-        },
-      },
+      include: { batch: true },
       orderBy: { rollNo: 'asc' },
     });
 
-    // Get total ended sessions per batch to calculate attendance percentage
-    const endedSessions = await prisma.attendanceSession.findMany({
-      select: {
-        batchId: true,
-      },
-    });
+    const batchIds = [...new Set(students.map((student) => student.batchId))];
+    const studentIds = students.map((student) => student.id);
 
-    const sessionsCountByBatch = endedSessions.reduce((acc: Record<string, number>, s) => {
-      acc[s.batchId] = (acc[s.batchId] || 0) + 1;
-      return acc;
-    }, {});
+    // Percentages use finished classes only, exactly like the student dashboard and the reports. The old query counted
+    // every session of the batch (including the one still running), so a student's % dropped the moment a class started.
+    const [sessionTotals, attended, lastScans] = await Promise.all([
+      prisma.attendanceSession.groupBy({
+        by: ['batchId'],
+        where: { batchId: { in: batchIds }, status: { in: COMPLETED_SESSION_STATUSES } },
+        _count: { _all: true },
+      }),
+      prisma.attendanceRecord.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, status: { in: PRESENT_STATUSES }, session: { status: { in: COMPLETED_SESSION_STATUSES } } },
+        _count: { _all: true },
+      }),
+      prisma.attendanceRecord.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, status: { in: PRESENT_STATUSES } },
+        _max: { scanTime: true },
+      }),
+    ]);
+
+    const totalByBatch = new Map(sessionTotals.map((row) => [row.batchId, row._count._all]));
+    const attendedByStudent = new Map(attended.map((row) => [row.studentId, row._count._all]));
+    const lastScanByStudent = new Map(lastScans.map((row) => [row.studentId, row._max.scanTime]));
 
     const studentListWithStats = students.map((student) => {
-      const totalBatchSessions = sessionsCountByBatch[student.batchId] || 0;
-      const attendedSessions = student.records.length;
-      const percentage = totalBatchSessions > 0 
-        ? Math.round((attendedSessions / totalBatchSessions) * 100) 
+      const totalBatchSessions = totalByBatch.get(student.batchId) ?? 0;
+      const attendedSessions = attendedByStudent.get(student.id) ?? 0;
+      const percentage = totalBatchSessions > 0
+        ? Math.min(100, Math.round((attendedSessions / totalBatchSessions) * 100))
         : 100;
-
-      const lastScan = student.records[0];
 
       return {
         id: student.id,
@@ -205,7 +205,7 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
         archivedAt: student.archivedAt,
         batchName: student.batch.name,
         batchId: student.batchId,
-        lastScanTime: lastScan ? lastScan.scanTime : null,
+        lastScanTime: lastScanByStudent.get(student.id) ?? null,
         attendancePercentage: percentage,
         totalSessions: totalBatchSessions,
         attendedSessions,
@@ -223,13 +223,48 @@ export async function getMyAttendanceHandler(req: Request, res: Response, next: 
     const student = await prisma.student.findUnique({ where: { id: req.auth!.sub }, include: { batch: true } });
     if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
     const sessions = await prisma.attendanceSession.findMany({
-      where: { batchId: student.batchId, status: { in: ['ENDED', 'ACTIVE'] } },
+      // EXPIRED (auto-ended) classes are real classes too; leaving them out hid whole days from the student.
+      where: { batchId: student.batchId, status: { in: [...COMPLETED_SESSION_STATUSES, ...LIVE_SESSION_STATUSES] } },
       include: { subject: true, faculty: { select: { name: true } }, records: { where: { studentId: student.id }, select: { scanTime: true, status: true, method: true, overrideReason: true } } },
       orderBy: { startedAt: 'desc' },
     });
+
+    // Only finished classes count towards percentages; a class that is still running is shown in the list
+    // but is not yet "absent" for anyone.
     const grouped = new Map<string, { code: string; name: string; total: number; present: number }>();
-    for (const session of sessions) { const current = grouped.get(session.subjectId) || { code: session.subject.code, name: session.subject.name, total: 0, present: 0 }; current.total += 1; if (session.records.some((record) => ['PRESENT', 'LATE', 'ON_DUTY'].includes(record.status))) current.present += 1; grouped.set(session.subjectId, current); }
-    const subjects = [...grouped.values()].map((item) => ({ ...item, absent: item.total - item.present, percentage: item.total ? Math.round(item.present / item.total * 100) : 100, shortage: item.total > 0 && item.present / item.total < 0.75 }));
-    res.json({ success: true, data: { student: { name: student.name, rollNo: student.rollNo, regNo: student.regNo, batchName: student.batch.name }, subjects, sessions: sessions.map((session) => ({ sessionId: session.sessionId, subjectCode: session.subject.code, subjectName: session.subject.name, facultyName: session.faculty.name, startedAt: session.startedAt, status: session.records[0]?.status ?? 'ABSENT', method: session.records[0]?.method ?? null, overrideReason: session.records[0]?.overrideReason ?? null, scanTime: session.records[0]?.scanTime ?? null })) } });
+    for (const session of sessions) {
+      if (!COMPLETED_SESSION_STATUSES.includes(session.status)) continue;
+      const current = grouped.get(session.subjectId) || { code: session.subject.code, name: session.subject.name, total: 0, present: 0 };
+      current.total += 1;
+      if (session.records.some((record) => isPresentStatus(record.status))) current.present += 1;
+      grouped.set(session.subjectId, current);
+    }
+    const subjects = [...grouped.values()].map((item) => ({
+      ...item,
+      absent: item.total - item.present,
+      percentage: item.total ? Math.round((item.present / item.total) * 100) : 100,
+      shortage: item.total > 0 && item.present / item.total < SHORTAGE_RATIO,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        student: { name: student.name, rollNo: student.rollNo, regNo: student.regNo, batchName: student.batch.name },
+        subjects,
+        sessions: sessions.map((session) => ({
+          sessionId: session.sessionId,
+          subjectCode: session.subject.code,
+          subjectName: session.subject.name,
+          facultyName: session.faculty.name,
+          startedAt: session.startedAt,
+          status: session.records[0]?.status ?? 'ABSENT',
+          method: session.records[0]?.method ?? null,
+          overrideReason: session.records[0]?.overrideReason ?? null,
+          scanTime: session.records[0]?.scanTime ?? null,
+          sessionStatus: session.status,
+          inProgress: LIVE_SESSION_STATUSES.includes(session.status),
+        })),
+      },
+    });
   } catch (err) { next(err); }
 }

@@ -10,9 +10,13 @@ import { requestContext, writeAuditLog } from '../services/audit.service';
 import { AppError } from '../utils/AppError';
 import { registrationResponseSchema } from '../utils/passkeySchemas';
 
+const statusQuerySchema = z.object({ deviceId: z.string().trim().min(1).max(256).optional() });
+
 export async function passkeyStatusHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    res.json({ success: true, data: await getPasskeyStatus(req.auth!.sub) });
+    // The browser may tell us its own device id so a student bound to *this* browser is not told "linked to another phone".
+    const { deviceId } = statusQuerySchema.parse(req.query);
+    res.json({ success: true, data: await getPasskeyStatus(req.auth!.sub, deviceId) });
   } catch (err) { next(err); }
 }
 

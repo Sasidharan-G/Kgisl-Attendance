@@ -1,13 +1,14 @@
 import { prisma } from '../config/prisma';
-import { qrRedisKey, redis, scanLockKey } from '../config/redis';
+import { qrRedisKey, qrPreviousRedisKey, redis, scanLockKey } from '../config/redis';
 import { env } from '../config/env';
 import { verifyQrSignature, sha256Hex, QrSignableFields } from '../utils/crypto';
-import { distanceMeters, isPointInPolygon, minDistanceToPolygonMeters } from '../utils/geo';
+import { distanceMeters } from '../utils/geo';
 import { Errors } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import { broadcastAttendanceMarked, broadcastGeofenceViolation } from '../websocket/socket';
 import { claimBeaconToken } from './beaconToken.service';
 import { resolveBeaconPacket } from './beacon.service';
+import { isPresentStatus } from '../utils/attendanceStatus';
 
 interface StudentScanBase {
   studentId: string;
@@ -16,8 +17,6 @@ interface StudentScanBase {
 }
 
 export interface ScanRequest extends StudentScanBase {
-  batchIdClaimed: string;
-  subjectIdClaimed: string;
   qr: {
     sessionId: string;
     token: string;
@@ -33,7 +32,7 @@ export interface BeaconScanRequest extends StudentScanBase {
   rssi: number;
 }
 
-export interface ScanResult {
+interface ScanResult {
   record: { id: string; scanTime: Date; status: string; method: string };
   student: { id: string; name: string; rollNo: string };
   sessionId: string;
@@ -43,8 +42,15 @@ export interface ScanResult {
 
 type ValidatedContext = Awaited<ReturnType<typeof validateStudentSessionContext>>;
 
-// QR validation and the per-student claim occur in one Redis operation. In
-// particular, a refresh cannot replace the token after a GET and before claim.
+interface QrRedisEntry {
+  tokenHash: string;
+  nonce: string;
+  issuedAt: number;
+  expiresAt: number;
+}
+
+// One Redis operation re-checks that the token is still the stored one and claims it for this student, so a rotation
+// cannot slip in between the check and the claim.
 const CLAIM_QR_TOKEN_SCRIPT = `
 local storedRaw = redis.call('GET', KEYS[1])
 if not storedRaw then
@@ -55,7 +61,7 @@ if stored.tokenHash ~= ARGV[1]
   or stored.nonce ~= ARGV[2]
   or tonumber(stored.issuedAt) ~= tonumber(ARGV[3])
   or tonumber(stored.expiresAt) ~= tonumber(ARGV[4])
-  or tonumber(stored.expiresAt) < tonumber(ARGV[5]) then
+  or tonumber(stored.expiresAt) + tonumber(ARGV[7]) < tonumber(ARGV[5]) then
   return 0
 end
 local claimed = redis.call('SET', KEYS[2], ARGV[1], 'NX', 'PX', ARGV[6])
@@ -65,23 +71,45 @@ end
 return 0
 `;
 
-async function claimQrTokenOnce(
-  req: ScanRequest,
-  tokenHash: string,
-  now: number
-): Promise<boolean> {
-  const ttlMs = Math.max(1000, req.qr.expiresAt - now);
+/** Returns the Redis key (current or just-replaced) that holds exactly this QR token, or null when it is stale. */
+async function findLiveQrKey(qr: ScanRequest['qr'], tokenHash: string): Promise<string | null> {
+  const keys = [qrRedisKey(qr.sessionId), qrPreviousRedisKey(qr.sessionId)];
+  const values = await redis.mget(keys);
+  for (let index = 0; index < keys.length; index += 1) {
+    const raw = values[index];
+    if (!raw) continue;
+    try {
+      const entry = JSON.parse(raw) as QrRedisEntry;
+      if (
+        entry.tokenHash === tokenHash &&
+        entry.nonce === qr.nonce &&
+        entry.issuedAt === qr.issuedAt &&
+        entry.expiresAt === qr.expiresAt
+      ) {
+        return keys[index];
+      }
+    } catch {
+      /* a malformed entry can never match */
+    }
+  }
+  return null;
+}
+
+async function claimQrTokenOnce(req: ScanRequest, tokenHash: string, now: number, key: string): Promise<boolean> {
+  const graceMs = env.QR_GRACE_SECONDS * 1000;
+  const lockTtlMs = Math.max(1000, req.qr.expiresAt + graceMs - now);
   const claimed = await redis.eval(
     CLAIM_QR_TOKEN_SCRIPT,
     2,
-    qrRedisKey(req.qr.sessionId),
+    key,
     scanLockKey(req.qr.sessionId, req.studentId),
     tokenHash,
     req.qr.nonce,
     req.qr.issuedAt.toString(),
     req.qr.expiresAt.toString(),
     now.toString(),
-    ttlMs.toString()
+    lockTtlMs.toString(),
+    graceMs.toString()
   );
   return claimed === 1;
 }
@@ -96,41 +124,21 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
   ]);
 
   if (!student) throw Errors.STUDENT_NOT_FOUND();
+  // A deactivated or passed-out student may still hold a valid access token for up to its lifetime.
+  if (!student.isActive || student.archivedAt !== null) throw Errors.ACCOUNT_INACTIVE();
   if (!session) throw Errors.SESSION_NOT_FOUND();
   if (session.status !== 'ACTIVE') throw Errors.SESSION_NOT_ACTIVE();
-  if (session.scheduledEndAt && session.scheduledEndAt.getTime() < Date.now()) {
-    throw Errors.OUTSIDE_TIME_WINDOW();
-  }
+  if (session.scheduledEndAt && session.scheduledEndAt.getTime() < Date.now()) throw Errors.OUTSIDE_TIME_WINDOW();
   if (student.batchId !== session.batchId) throw Errors.BATCH_MISMATCH();
-
 
   const { gps } = input;
   if (!Number.isFinite(gps.lat) || !Number.isFinite(gps.lng)) throw Errors.GPS_REQUIRED();
-  if (!Number.isFinite(gps.accuracy) || gps.accuracy > env.MAX_GPS_ACCURACY_METERS) {
-    throw Errors.GPS_ACCURACY_TOO_LOW();
-  }
+  if (!Number.isFinite(gps.accuracy) || gps.accuracy > env.MAX_GPS_ACCURACY_METERS) throw Errors.GPS_ACCURACY_TOO_LOW();
 
+  // Conservative boundary: the whole GPS uncertainty circle must fit inside the classroom radius. A reading 190 m
+  // away with +-20 m accuracy is rejected instead of possibly accepting a student who is really 210 m away.
   const dist = distanceMeters(gps.lat, gps.lng, session.room.latitude, session.room.longitude);
-  const allowedRadius = session.room.geofenceRadiusM ?? env.DEFAULT_GEOFENCE_RADIUS_M;
-
-  let isAccurate = false;
-  let isWithinBuffer = false;
-  if (session.room.polygon && Array.isArray(session.room.polygon) && session.room.polygon.length >= 3) {
-    const polyCoords = session.room.polygon as any as { lat: number; lng: number }[];
-    isAccurate = isPointInPolygon(gps.lat, gps.lng, polyCoords);
-    if (!isAccurate) {
-      const distanceToPolygon = minDistanceToPolygonMeters(gps.lat, gps.lng, polyCoords);
-      if (distanceToPolygon <= 5) {
-        isWithinBuffer = true;
-      }
-    }
-  }
-
-  // Conservative boundary: the complete GPS uncertainty circle must fit inside
-  // the geofence. A 190 m reading with ±20 m accuracy is therefore rejected
-  // instead of potentially accepting a student who is actually 210 m away.
-  const boundaryDistance = dist + gps.accuracy;
-  if (!isAccurate && !isWithinBuffer && boundaryDistance > allowedRadius) {
+  if (dist + gps.accuracy > session.room.geofenceRadiusM) {
     broadcastGeofenceViolation(session.sessionId, {
       studentId: student.id,
       studentName: student.name,
@@ -140,12 +148,6 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
     });
     throw Errors.OUTSIDE_GEOFENCE();
   }
-
-  const verificationStatus = isAccurate 
-    ? 'ACCURATE' 
-    : isWithinBuffer
-      ? 'ACCURATE (Within 5m Buffer)'
-      : `APPROXIMATE (${Math.round(dist)}m)`;
 
   if (student.deviceId === null) {
     // Conditional update closes the first-scan race between two devices.
@@ -167,9 +169,12 @@ async function validateStudentSessionContext(input: StudentScanBase & { sessionI
   const existing = await prisma.attendanceRecord.findUnique({
     where: { uq_student_session: { studentId: student.id, sessionId: session.sessionId } },
   });
-  if (existing) throw Errors.DUPLICATE_ATTENDANCE();
+  // Only a record that already counts as attended is a duplicate. A student who has an approved LEAVE (added
+  // automatically when the class started) but actually turns up must still be able to mark themselves present,
+  // and a faculty "absent" override from earlier in the same class must not lock them out either.
+  if (existing && isPresentStatus(existing.status)) throw Errors.DUPLICATE_ATTENDANCE();
 
-  return { student, session, distanceMeters: dist, locationVerificationStatus: verificationStatus };
+  return { student, session, distanceMeters: dist };
 }
 
 async function persistAttendance(
@@ -178,21 +183,26 @@ async function persistAttendance(
   method: 'QR' | 'BEACON'
 ): Promise<ScanResult> {
   try {
-    const record = await prisma.attendanceRecord.create({
-      data: {
-        studentId: context.student.id,
-        sessionId: context.session.sessionId,
-        gpsLat: input.gps.lat,
-        gpsLng: input.gps.lng,
-        gpsAccuracy: input.gps.accuracy,
-        distanceFromCampus: context.distanceMeters,
-        locationVerified: true,
-        locationVerificationStatus: context.locationVerificationStatus,
-        locationVerifiedAt: new Date(),
-        deviceId: input.deviceId,
-        status: 'PRESENT',
-        method,
-      },
+    const evidence = {
+      scanTime: new Date(),
+      gpsLat: input.gps.lat,
+      gpsLng: input.gps.lng,
+      gpsAccuracy: input.gps.accuracy,
+      distanceFromCampus: context.distanceMeters,
+      locationVerified: true,
+      locationVerificationStatus: 'GPS_VERIFIED',
+      locationVerifiedAt: new Date(),
+      deviceId: input.deviceId,
+      status: 'PRESENT' as const,
+      method,
+      // A genuine scan replaces any earlier system/faculty placeholder (e.g. auto-applied leave).
+      markedByFacultyId: null,
+      overrideReason: null,
+    };
+    const record = await prisma.attendanceRecord.upsert({
+      where: { uq_student_session: { studentId: context.student.id, sessionId: context.session.sessionId } },
+      create: { studentId: context.student.id, sessionId: context.session.sessionId, ...evidence },
+      update: evidence,
     });
 
     logger.info('[scan] attendance recorded', {
@@ -205,21 +215,13 @@ async function persistAttendance(
       studentName: context.student.name,
       studentRoll: context.student.rollNo,
       scanTime: record.scanTime.toISOString(),
+      method,
       distanceMeters: Math.round(context.distanceMeters),
     });
 
     return {
-      record: {
-        id: record.id,
-        scanTime: record.scanTime,
-        status: record.status,
-        method: record.method,
-      },
-      student: {
-        id: context.student.id,
-        name: context.student.name,
-        rollNo: context.student.rollNo,
-      },
+      record: { id: record.id, scanTime: record.scanTime, status: record.status, method: record.method },
+      student: { id: context.student.id, name: context.student.name, rollNo: context.student.rollNo },
       sessionId: context.session.sessionId,
       subjectName: context.session.subject.name,
       distanceMeters: context.distanceMeters,
@@ -234,7 +236,6 @@ async function persistAttendance(
 
 export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResult> {
   const now = Date.now();
-  const skewMs = env.QR_CLOCK_SKEW_TOLERANCE_SECONDS * 1000;
   const signableFields: QrSignableFields = {
     sessionId: req.qr.sessionId,
     token: req.qr.token,
@@ -243,30 +244,12 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
     nonce: req.qr.nonce,
   };
   if (!verifyQrSignature(signableFields, req.qr.signature)) throw Errors.INVALID_SIGNATURE();
-  if (now > req.qr.expiresAt + skewMs || req.qr.issuedAt > now + skewMs) {
-    throw Errors.QR_EXPIRED();
-  }
+  if (now > req.qr.expiresAt + env.QR_GRACE_SECONDS * 1000) throw Errors.QR_EXPIRED();
 
-  const redisRaw = await redis.get(qrRedisKey(req.qr.sessionId));
-  if (!redisRaw) throw Errors.QR_EXPIRED();
-  let redisEntry: { tokenHash: string; nonce: string; issuedAt: number; expiresAt: number };
-  try {
-    redisEntry = JSON.parse(redisRaw) as typeof redisEntry;
-  } catch {
-    throw Errors.QR_EXPIRED();
-  }
+  // The signature is genuine, so a token that is neither the current nor the just-replaced one is simply old.
   const tokenHash = sha256Hex(req.qr.token);
-  if (
-    redisEntry.tokenHash !== tokenHash ||
-    redisEntry.nonce !== req.qr.nonce ||
-    redisEntry.issuedAt !== req.qr.issuedAt ||
-    redisEntry.expiresAt !== req.qr.expiresAt
-  ) {
-    throw Errors.INVALID_SIGNATURE();
-  }
-
-  const history = await prisma.attendanceQrHistory.findUnique({ where: { tokenHash } });
-  if (!history || history.revoked || history.isExpired) throw Errors.TOKEN_REVOKED();
+  const liveKey = await findLiveQrKey(req.qr, tokenHash);
+  if (!liveKey) throw Errors.QR_EXPIRED();
 
   const context = await validateStudentSessionContext({
     studentId: req.studentId,
@@ -274,10 +257,8 @@ export async function validateAndRecordScan(req: ScanRequest): Promise<ScanResul
     gps: req.gps,
     sessionId: req.qr.sessionId,
   });
-  if (req.batchIdClaimed !== context.session.batchId) throw Errors.BATCH_MISMATCH();
-  if (req.subjectIdClaimed !== context.session.subjectId) throw Errors.SUBJECT_MISMATCH();
 
-  const claimed = await claimQrTokenOnce(req, tokenHash, now);
+  const claimed = await claimQrTokenOnce(req, tokenHash, now, liveKey);
   if (!claimed) throw Errors.TOKEN_ALREADY_USED();
   return persistAttendance(context, req, 'QR');
 }

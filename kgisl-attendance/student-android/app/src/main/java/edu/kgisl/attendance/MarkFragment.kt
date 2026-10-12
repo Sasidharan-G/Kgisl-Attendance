@@ -111,6 +111,8 @@ class MarkFragment : Fragment(R.layout.fragment_mark) {
     if (adapter == null || !adapter.isEnabled) { setStatus("Turn on Bluetooth and try again."); return }
     if (!scanner.start()) { setStatus("Could not start Bluetooth scanning. Turn Bluetooth off and on, then retry."); return }
     scanning = true
+    // Learn the server's clock before the first packet is judged, so a phone with the wrong time still works.
+    app.worker.execute { runCatching { app.api.syncClock() } }
     location.start() // warm GPS up so a precise fix is ready when the beacon is seen
     render()
   }
@@ -124,14 +126,10 @@ class MarkFragment : Fragment(R.layout.fragment_mark) {
   private fun onBeacon(packet: String, rssi: Int) {
     if (busy || !submitted.add(packet)) return
     val issuedAt = BeaconPacket.issuedAtMillis(packet)
-    if (issuedAt == null || System.currentTimeMillis() - issuedAt !in -3_000L..30_000L) {
-      app.diagnostics.record("LOCAL_PACKET_EXPIRED", rssi)
-      return
-    }
+    if (issuedAt == null || !BeaconPacket.isFresh(issuedAt, ServerClock.now())) return
     while (submitted.size > 20) submitted.remove(submitted.first())
     setStatus("Beacon detected ($rssi dBm). Getting your location…")
     startSubmit(onFailure = { error ->
-      app.diagnostics.record("SUBMIT_FAILED", rssi)
       // Transient failures (expired signal, weak RSSI, network) retry on the next beacon packet.
       if (!ErrorMessages.isPermanent(error)) submitted.remove(packet)
       if (ErrorMessages.isPermanent(error)) stopBeaconScan()
@@ -155,38 +153,25 @@ class MarkFragment : Fragment(R.layout.fragment_mark) {
     if (payload == null) { setStatus("That is not a KGiSL attendance QR code."); return }
     if (busy) return
     busy = true
-    setBusy(true, "Verifying session and location…")
+    setBusy(true, "Checking your location…")
 
-    // Session lookup and GPS run in parallel so the rotating QR does not expire while we wait.
-    var session: JSONObject? = null
-    var gps: GpsFix? = null
-    var pending = 2
-    var failed = false
-    fun fail(message: String) {
-      if (failed) return
-      failed = true
-      busy = false
-      location.stop()
-      setBusy(false, message)
-    }
-    fun join() {
-      pending -= 1
-      if (pending > 0 || failed) return
-      val info = session ?: return fail("Could not verify the session. Retry.")
-      val fix = gps ?: return fail("Could not get your location. Turn on precise location and retry.")
-      setBusy(true, "Marking attendance…")
-      app.worker.execute {
-        runCatching { app.api.submitQr(payload, info.getString("batchId"), info.getString("subjectId"), DeviceId.get(requireContext()), fix) }
-          .onSuccess { ui { busy = false; showSuccess(it.getJSONObject("data")) } }
-          .onFailure { error -> ui { busy = false; setBusy(false, failure(error)) } }
+    // The server already knows the class from the QR, so only the GPS fix is needed before submitting.
+    location.bestFix { fix ->
+      ui {
+        if (fix == null) {
+          busy = false
+          location.stop()
+          setBusy(false, "Could not get your location. Turn on precise location and retry.")
+          return@ui
+        }
+        setBusy(true, "Marking attendance…")
+        app.worker.execute {
+          runCatching { app.api.submitQr(payload, DeviceId.get(requireContext()), fix) }
+            .onSuccess { ui { busy = false; showSuccess(it.getJSONObject("data")) } }
+            .onFailure { error -> ui { busy = false; setBusy(false, failure(error)) } }
+        }
       }
     }
-    app.worker.execute {
-      runCatching { app.api.sessionPublicInfo(payload.sessionId) }
-        .onSuccess { value -> ui { session = value; join() } }
-        .onFailure { error -> ui { fail(failure(error)) } }
-    }
-    location.bestFix { result -> ui { gps = result; join() } }
   }
 
   // ---- Shared submit path ------------------------------------------------------------------

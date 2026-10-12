@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Users2, ShieldAlert, Timer, GraduationCap } from 'lucide-react';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
@@ -12,9 +12,19 @@ import ManualAttendance from '../components/ManualAttendance';
 import BeaconBroadcastPanel from '../components/BeaconBroadcastPanel';
 import SeatingGridHeatmap from '../components/SeatingGridHeatmap.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { startSession, endSession, pauseSession, resumeSession, getActiveSession, getSessionStats, listAllocations, getSessionAttendance } from '../services/api.js';
+import { startSession, endSession, cancelSession, pauseSession, resumeSession, getActiveSession, listAllocations, getSessionAttendance } from '../services/api.js';
 import { getSocket, disconnectSocket } from '../services/socket.js';
 import { format12Hour, format12HourRange } from '../utils/timeFormat.js';
+import { istNow } from '../utils/studentInsights.js';
+import { pickCurrentAllocation } from '../utils/schedule.js';
+
+/** Dropdown options for one day's periods, in time order. */
+function periodOptions(allocations, day) {
+  return allocations
+    .filter((allocation) => String(allocation.dayOfWeek) === day)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    .map((allocation, index) => ({ id: allocation.id, name: `Period ${index + 1} · ${format12HourRange(allocation.startTime, allocation.endTime)} · ${allocation.subject.code} · ${allocation.batch.name}` }));
+}
 
 export default function FacultyDashboard() {
   const { user } = useAuth();
@@ -40,16 +50,24 @@ export default function FacultyDashboard() {
   const [sessionMeta, setSessionMeta] = useState(null);
   const [qr, setQr] = useState(null);
   const [qrSecondsLeft, setQrSecondsLeft] = useState(0);
-  const [stats, setStats] = useState({ totalStudents: 0, present: 0, absent: 0, progressPercent: 0 });
   const [scans, setScans] = useState([]);
   const [violations, setViolations] = useState(0);
   const [connected, setConnected] = useState(false);
   const [showStartConfirm, setShowStartConfirm] = useState(false);
   const [cancelGraceUntil, setCancelGraceUntil] = useState(0);
   const [sessionStudents, setSessionStudents] = useState([]);
+  const stats = useMemo(() => {
+    const totalStudents = sessionStudents.length;
+    const present = sessionStudents.filter((student) => student.attendanceStatus !== 'ABSENT').length;
+    return { totalStudents, present, absent: totalStudents - present, progressPercent: totalStudents ? Math.round((present / totalStudents) * 100) : 0 };
+  }, [sessionStudents]);
+
+  const lastStudentsRefreshRef = useRef(0);
+  const studentRefreshTimerRef = useRef(null);
 
   const refreshSessionStudents = useCallback(async (sessionId) => {
     if (!sessionId) return;
+    lastStudentsRefreshRef.current = Date.now();
     try {
       const data = await getSessionAttendance(sessionId);
       if (data && data.students) {
@@ -93,10 +111,12 @@ export default function FacultyDashboard() {
       }
       currentSessionIdRef.current = session.sessionId;
       setSessionMeta({ sessionId: session.sessionId, startedBy: user.name, startedAt: new Date(session.startedAt).toLocaleTimeString(), subject: session.subject?.name, batch: session.batch?.name, room: session.room?.name });
+      // After a page reload the dropdowns are empty. The BLE panel picks the beacon of the selected room, so without
+      // this it could pick a beacon from a different room and every student scan would fail with "beacon room mismatch".
+      setRoomId(session.roomId);
+      setBatchId(session.batchId);
       setSessionActive(true);
       setSessionPaused(session.status === 'PAUSED');
-      const currentStats = await getSessionStats(session.sessionId);
-      setStats(currentStats.data);
       await refreshSessionStudents(session.sessionId);
       socketRef.current?.emit('join_session', session.sessionId);
     }).catch(() => void 0);
@@ -129,9 +149,12 @@ export default function FacultyDashboard() {
             batch: session.batch?.name,
             room: session.room?.name,
           });
+          setRoomId(session.roomId);
+          setBatchId(session.batchId);
           socketRef.current?.emit('join_session', session.sessionId);
         }
-        await refreshSessionStudents(session.sessionId);
+        // The full roster is a heavy query; the live events already refresh it, so only top it up now and then.
+        if (Date.now() - lastStudentsRefreshRef.current > 15_000) await refreshSessionStudents(session.sessionId);
       } catch {
         // A temporary network failure must not incorrectly mark a live session idle.
       }
@@ -149,6 +172,20 @@ export default function FacultyDashboard() {
         const a = await listAllocations();
         setAllocations(a);
         setSubjects([]);
+        // Start on today's timetable (Indian time) and pre-select the period that is open right now, so the usual
+        // "pick the right day, then the right period" step cannot go wrong. If a class is already running the
+        // active-session effect fills the room/section from that session instead.
+        const today = String(istNow().dayOfWeek);
+        if (a.some((allocation) => String(allocation.dayOfWeek) === today)) {
+          setSelectedDay(today);
+          setSubjects(periodOptions(a, today));
+          const current = pickCurrentAllocation(a);
+          if (current && !currentSessionIdRef.current) {
+            setSubjectId(current.id);
+            setRooms([current.room]); setBatches([current.batch]);
+            setRoomId(current.roomId); setBatchId(current.batchId);
+          }
+        }
       } catch (err) {
         setCatalogError(err.message || 'Could not load subjects/rooms/batches. Run the backend seed script.');
       } finally {
@@ -160,10 +197,7 @@ export default function FacultyDashboard() {
   function selectDay(day) {
     setSelectedDay(day);
     setSubjectId(''); setRoomId(''); setBatchId('');
-    setSubjects(allocations
-      .filter((allocation) => String(allocation.dayOfWeek) === day)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
-      .map((allocation, index) => ({ id: allocation.id, name: `Period ${index + 1} · ${format12HourRange(allocation.startTime, allocation.endTime)} · ${allocation.subject.code} · ${allocation.batch.name}` })));
+    setSubjects(periodOptions(allocations, day));
     setRooms([]); setBatches([]);
   }
 
@@ -197,13 +231,16 @@ export default function FacultyDashboard() {
 
     socket.on('qr_updated', (payload) => {
       setQr(payload);
-      setStats(payload.stats);
     });
 
     socket.on('attendance_marked', (data) => {
       setScans((prev) => [data, ...prev].slice(0, 50));
+      // When a whole class marks within a few seconds this fired one full-roster request per student. Coalesce them.
       if (currentSessionIdRef.current) {
-        refreshSessionStudents(currentSessionIdRef.current);
+        clearTimeout(studentRefreshTimerRef.current);
+        studentRefreshTimerRef.current = setTimeout(() => {
+          if (currentSessionIdRef.current) refreshSessionStudents(currentSessionIdRef.current);
+        }, 800);
       }
     });
 
@@ -211,7 +248,6 @@ export default function FacultyDashboard() {
       setScans((prev) => [{ ...data, scanTime: data.updatedAt, isCorrection: true }, ...prev].slice(0, 50));
       const sessionId = currentSessionIdRef.current;
       if (sessionId) {
-        getSessionStats(sessionId).then((currentStats) => setStats(currentStats.data)).catch(() => void 0);
         refreshSessionStudents(sessionId);
       }
     });
@@ -235,6 +271,7 @@ export default function FacultyDashboard() {
     });
 
     return () => {
+      clearTimeout(studentRefreshTimerRef.current);
       disconnectSocket();
     };
   }, [refreshSessionStudents]);
@@ -262,16 +299,18 @@ export default function FacultyDashboard() {
         sessionId: session.sessionId,
         startedBy: user.name,
         startedAt: new Date(session.startedAt).toLocaleTimeString(),
+        subject: allocation.subject?.name,
+        batch: allocation.batch?.name,
+        room: allocation.room?.name,
       });
       setSessionActive(true);
       setSessionPaused(false);
       setQr(session.initialQr ?? null);
-      if (session.initialQr?.stats) setStats(session.initialQr.stats);
       setScans([]);
       setViolations(0);
       currentSessionIdRef.current = session.sessionId;
-      setCancelGraceUntil(Date.now() + 10_000);
-      setTimeout(() => setCancelGraceUntil(0), 10_000);
+      setCancelGraceUntil(Date.now() + 120_000);
+      setTimeout(() => setCancelGraceUntil(0), 120_000);
 
       socketRef.current?.emit('join_session', session.sessionId);
       await refreshSessionStudents(session.sessionId);
@@ -297,6 +336,24 @@ export default function FacultyDashboard() {
     }
   }
 
+  // "Wrong class?" undo. Unlike End, this deletes a session nobody has marked yet, so an accidental start never
+  // counts as a class that was held (which would lower every student's percentage).
+  async function handleCancel() {
+    if (!sessionMeta?.sessionId) return;
+    try {
+      await cancelSession(sessionMeta.sessionId);
+      setSessionActive(false);
+      setSessionPaused(false);
+      setSessionMeta(null);
+      setQr(null);
+      setCancelGraceUntil(0);
+      currentSessionIdRef.current = null;
+      setSessionStudents([]);
+    } catch (err) {
+      alert(err.message || 'Could not cancel the session. End it instead.');
+    }
+  }
+
   async function handlePause() {
     if (!sessionMeta?.sessionId) return;
     try {
@@ -314,7 +371,6 @@ export default function FacultyDashboard() {
       const { data: session } = await resumeSession(sessionMeta.sessionId);
       setSessionPaused(false);
       setQr(session.initialQr ?? null);
-      if (session.initialQr?.stats) setStats(session.initialQr.stats);
     } catch (err) {
       alert(err.message || 'Could not resume session');
     }
@@ -323,8 +379,6 @@ export default function FacultyDashboard() {
   async function handleManualUpdated() {
     if (!sessionMeta?.sessionId) return;
     try {
-      const currentStats = await getSessionStats(sessionMeta.sessionId);
-      setStats(currentStats.data);
       await refreshSessionStudents(sessionMeta.sessionId);
     } catch {
       // The websocket remains the primary live update path. A temporary stats
@@ -369,7 +423,7 @@ export default function FacultyDashboard() {
           dayAllocations={allocations.filter((allocation) => String(allocation.dayOfWeek) === selectedDay).sort((a, b) => a.startTime.localeCompare(b.startTime))}
       />
       {showStartConfirm && (() => { const allocation = allocations.find((x) => x.id === subjectId); return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-ink-border bg-ink-850 p-6"><h2 className="text-lg font-bold text-white">Confirm attendance session</h2><p className="mt-3 text-sm text-slate-300">Check before opening attendance. Students in this section will be able to mark presence.</p><dl className="mt-4 space-y-2 rounded-xl bg-ink-900 p-4 text-sm"><div className="flex justify-between"><dt className="text-slate-500">Subject</dt><dd className="text-white">{allocation?.subject?.code} · {allocation?.subject?.name}</dd></div><div className="flex justify-between"><dt className="text-slate-500">Section</dt><dd className="text-white">{allocation?.batch?.name}</dd></div><div className="flex justify-between"><dt className="text-slate-500">Room</dt><dd className="text-white">{allocation?.room?.name}</dd></div><div className="flex justify-between"><dt className="text-slate-500">Time</dt><dd className="text-white">{format12HourRange(allocation?.startTime, allocation?.endTime)}</dd></div></dl><div className="mt-5 flex gap-3"><button onClick={() => setShowStartConfirm(false)} className="flex-1 rounded-xl border border-ink-border py-2.5 text-sm text-slate-300">Back</button><button onClick={confirmStart} className="flex-1 rounded-xl bg-signal-green py-2.5 text-sm font-bold text-ink-950">Confirm & start</button></div></div></div>; })()}
-      {sessionActive && cancelGraceUntil > Date.now() && <div className="fixed bottom-5 right-5 z-40 rounded-xl border border-signal-amber/30 bg-ink-850 p-4 shadow-xl"><p className="text-sm text-slate-200">Session started. Wrong class-aa?</p><button onClick={handleEnd} className="mt-2 text-sm font-bold text-signal-amber">Cancel session (10 sec grace)</button></div>}
+      {sessionActive && cancelGraceUntil > Date.now() && <div className="fixed bottom-5 right-5 z-40 rounded-xl border border-signal-amber/30 bg-ink-850 p-4 shadow-xl"><p className="text-sm text-slate-200">Session started. Wrong class-aa?</p><button onClick={handleCancel} className="mt-2 text-sm font-bold text-signal-amber">Cancel session (only before anyone marks)</button></div>}
 
         <div className="mt-3 grid grid-cols-1 gap-3 px-3 sm:mt-6 sm:gap-6 sm:px-6 md:px-8 lg:grid-cols-[1fr_1.3fr_1fr]">
           <div className="flex flex-col items-center rounded-2xl border border-ink-border bg-ink-850/60 p-4 shadow-card sm:p-6">

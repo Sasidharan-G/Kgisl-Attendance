@@ -24,14 +24,19 @@ export const Errors = {
   SESSION_ALREADY_ACTIVE: () => new AppError('SESSION_ALREADY_ACTIVE', 'End your current active session before starting another.', 409),
   WRONG_TIMETABLE_DAY: () => new AppError('WRONG_TIMETABLE_DAY', 'This class is not allocated for today.', 403),
   OUTSIDE_PERIOD_TIME: () => new AppError('OUTSIDE_PERIOD_TIME', 'Session can only be started within 15 minutes of its allocated period.', 403),
+  ALLOCATION_NOT_FOUND: () => new AppError('ALLOCATION_NOT_FOUND', 'This class is not assigned to you, or its details do not match the timetable.', 404),
+  SESSION_CANCEL_NOT_ALLOWED: () => new AppError('SESSION_CANCEL_NOT_ALLOWED', 'A session that already has attendance cannot be cancelled. End it instead.', 409),
+  ALREADY_PRESENT: () => new AppError('ALREADY_PRESENT', 'You are already marked present for this session.', 409),
+  DUPLICATE_REQUEST: () => new AppError('DUPLICATE_REQUEST', 'You have already submitted a request for this session.', 409),
+  SESSION_STILL_LIVE: () => new AppError('SESSION_STILL_LIVE', 'This session is still running. Ask your faculty to end it, or wait until it finishes.', 409),
+  INVALID_DATE: () => new AppError('INVALID_DATE', 'The date filter is not valid. Use YYYY-MM-DD.', 400),
+  BATCH_NOT_ACTIVE: () => new AppError('BATCH_NOT_ACTIVE', 'Classes can only be held for an active section.', 409),
 
   // QR validation
   INVALID_SIGNATURE: () =>
     new AppError('INVALID_QR_SIGNATURE', 'The QR code is invalid or has been modified.', 401),
   QR_EXPIRED: () =>
     new AppError('QR_EXPIRED', 'This QR code has expired. Scan the latest QR code.', 410),
-  TOKEN_REVOKED: () =>
-    new AppError('TOKEN_REVOKED', 'This QR token has been revoked.', 410),
   TOKEN_ALREADY_USED: () =>
     new AppError('TOKEN_ALREADY_USED', 'This QR code has already been used.', 409),
   BEACON_TOKEN_INVALID: () =>
@@ -52,8 +57,6 @@ export const Errors = {
   // Student-session checks
   BATCH_MISMATCH: () =>
     new AppError('BATCH_MISMATCH', 'You are not enrolled in this session\'s batch.', 403),
-  SUBJECT_MISMATCH: () =>
-    new AppError('SUBJECT_MISMATCH', 'Subject does not match the active session.', 403),
   OUTSIDE_TIME_WINDOW: () =>
     new AppError('OUTSIDE_TIME_WINDOW', 'Scan is outside the allowed attendance time window.', 403),
 

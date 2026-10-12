@@ -10,7 +10,7 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
 import { prisma } from '../config/prisma';
-import { redis, passkeyAuthChallengeKey, passkeyRegisterChallengeKey } from '../config/redis';
+import { redis, passkeyAuthChallengeKey, passkeyRegisterChallengeKey, takeValue } from '../config/redis';
 import { allowedOrigins, env } from '../config/env';
 import { Errors } from '../utils/AppError';
 import { isPasskeyDeviceId, passkeyDeviceId, userHandleFor } from '../utils/passkey';
@@ -20,26 +20,22 @@ const AUTH_CHALLENGE_TTL_S = 180; // Face ID is confirmed at the tap, then the Q
 
 // Challenges are strictly single-use: read and delete in one atomic step so a captured
 // response can never be replayed against the same challenge.
-const TAKE_CHALLENGE_SCRIPT = `
-local value = redis.call('GET', KEYS[1])
-if value then redis.call('DEL', KEYS[1]) end
-return value
-`;
-
 async function takeChallenge(key: string): Promise<string> {
-  const challenge = (await redis.eval(TAKE_CHALLENGE_SCRIPT, 1, key)) as string | null;
+  const challenge = await takeValue(key);
   if (!challenge) throw Errors.PASSKEY_CHALLENGE_EXPIRED();
   return challenge;
 }
 
-export async function getPasskeyStatus(studentId: string) {
+export async function getPasskeyStatus(studentId: string, deviceId?: string) {
   const [student, count] = await Promise.all([
     prisma.student.findUnique({ where: { id: studentId }, select: { deviceId: true } }),
     prisma.studentPasskey.count({ where: { studentId } }),
   ]);
   if (!student) throw Errors.STUDENT_NOT_FOUND();
   const boundTo = isPasskeyDeviceId(student.deviceId) ? 'passkey' : student.deviceId ? 'device' : 'none';
-  return { enrolled: count > 0, boundTo };
+  // True when the account is bound to the very device that is asking (a plain device binding only).
+  const thisDevice = boundTo === 'device' && Boolean(deviceId) && student.deviceId === deviceId;
+  return { enrolled: count > 0, boundTo, thisDevice };
 }
 
 /** Enrolment is only allowed while the account is unbound, so a passkey can never override an existing binding. */

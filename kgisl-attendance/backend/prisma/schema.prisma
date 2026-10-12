@@ -134,6 +134,7 @@ model Batch {
   students     Student[]
   sessions     AttendanceSession[]
   allocations  TimetableAllocation[]
+  blockTests   BlockTest[]
 
   @@index([mentorId])
   @@index([lifecycle, completionDate])
@@ -156,8 +157,6 @@ model Room {
   latitude           Float
   longitude          Float
   geofenceRadiusM    Int                   @default(120) @map("geofence_radius_m")
-  wifiBssidWhitelist String[]              @map("wifi_bssid_whitelist")
-  polygon            Json?                 @map("polygon") // Array of 4 corners coordinates
   sessions           AttendanceSession[]
   allocations        TimetableAllocation[]
   beacons            ClassroomBeacon[]
@@ -224,10 +223,9 @@ model AttendanceSession {
   scheduledEndAt DateTime?     @map("scheduled_end_at")
   sessionType    String        @default("SCHEDULED") @map("session_type")
   notes          String?
-
-  // Only a HASH of the currently active token is ever persisted.
-  currentQrTokenHash String?   @map("current_qr_token_hash")
-  currentQrExpiry    DateTime? @map("current_qr_expiry")
+  // Timetable period this session was opened for (no FK: an allocation can be deleted later).
+  // Lets a faculty member re-open the same period instead of creating a duplicate class.
+  allocationId   String?       @map("allocation_id")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -253,8 +251,6 @@ model AttendanceQrHistory {
   expiresAt       DateTime  @map("expires_at")
   isExpired       Boolean   @default(false) @map("is_expired")
   revoked         Boolean   @default(false)
-  usedAt          DateTime? @map("used_at") // set on first successful scan (replay prevention)
-  usedByStudentId String?   @map("used_by_student_id")
 
   session AttendanceSession @relation(fields: [sessionId], references: [sessionId])
 
@@ -341,6 +337,52 @@ model LeaveRequest {
   @@index([studentId, createdAt])
   @@index([status, createdAt])
   @@map("leave_request")
+}
+
+// ------------------------------------------------------------
+// Academic calendar (holidays, exams, events) and block-test timetable.
+// Previously these were hard-coded in the browser, so nothing an administrator
+// entered was ever saved or visible to students.
+// ------------------------------------------------------------
+
+enum CalendarEventType {
+  HOLIDAY
+  EXAM
+  EVENT
+  WORKING
+}
+
+model CalendarEvent {
+  id          String            @id @default(uuid())
+  date        DateTime          @db.Date
+  title       String
+  type        CalendarEventType @default(EVENT)
+  description String            @default("")
+  createdBy   String?           @map("created_by")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("calendar_event")
+}
+
+model BlockTest {
+  id          String   @id @default(uuid())
+  date        DateTime @db.Date
+  startTime   String   @map("start_time")
+  endTime     String   @map("end_time")
+  subjectCode String   @map("subject_code")
+  subjectName String   @map("subject_name")
+  room        String
+  // null = applies to every section.
+  batchId     String?  @map("batch_id")
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  batch Batch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([batchId, date])
+  @@map("block_test")
 }
 
 // ------------------------------------------------------------

@@ -22,15 +22,24 @@ const envSchema = z.object({
   JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 7), // 7 days
 
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  // Failed sign-in attempts allowed per ACCOUNT per window (a wrong password locks that account only).
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  // Failed attempts allowed per IP per window. High on purpose: a whole college shares one public IP.
+  AUTH_IP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  // Silent token refreshes per IP per window (every logged-in device refreshes every 15 minutes).
+  REFRESH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1500),
+  // Password-reset codes that may be requested for one e-mail address per window.
+  PASSWORD_RESET_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
 
   // Must be a 64-char hex string = 32 bytes = 256 bits
   QR_HMAC_SECRET: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, 'QR_HMAC_SECRET must be a 64-char hex string (256-bit)'),
 
-  QR_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
-  QR_CLOCK_SKEW_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(2),
+  // How long one QR image stays current, and how long a just-replaced QR is still accepted so that a scan decoded
+  // right before the rotation is not rejected because of GPS or network delay.
+  QR_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  QR_GRACE_SECONDS: z.coerce.number().int().min(0).max(30).default(5),
 
   // Pepper for short BLE beacon bearer tokens. This must be independent from
   // the QR signing key so compromise of one channel does not expose the other.
@@ -54,7 +63,7 @@ const envSchema = z.object({
   WEBAUTHN_RP_ID: z.string().min(1).default('localhost'),
   WEBAUTHN_RP_NAME: z.string().min(1).default('KGiSL Attendance'),
 
-  // Geofence / GPS settings
+  // Geofence / GPS settings. The default radius is pre-filled when an administrator adds a classroom.
   DEFAULT_GEOFENCE_RADIUS_M: z.coerce.number().int().positive().default(120),
   // Reject scans whose GPS accuracy reading is worse than this threshold (metres).
   MAX_GPS_ACCURACY_METERS: z.coerce.number().int().positive().default(50),
@@ -76,11 +85,11 @@ const envSchema = z.object({
   SMTP_SECURE: z.enum(['true', 'false']).default('true').transform((value) => value === 'true'),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
+  // TEMPORARY demo switch: when true the sign-in forms accept any password (and skip the admin e-mail code), so
+  // typing an account's e-mail and pressing Sign in is enough. Set to false to restore normal authentication.
+  AUTH_BYPASS: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   // Public OAuth audience used to verify Google Identity Services ID tokens.
   GOOGLE_CLIENT_ID: z.string().default(''),
-
-  // Online AI assistant. Keep disabled until an API key is configured.
-
 }).superRefine((value, ctx) => {
   // Email delivery is optional at startup. The attendance portal remains
   // available until an administrator configures a mail provider.

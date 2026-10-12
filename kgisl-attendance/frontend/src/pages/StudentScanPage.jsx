@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { submitScan, submitBeaconScan, getSessionPublicInfo } from '../services/api.js';
+import { submitScan, submitBeaconScan } from '../services/api.js';
 import { BLE_UNSUPPORTED_MESSAGES, bleSupport, isPacketFresh, selectBeaconDevice, watchBeacon } from '../features/beacon/webBle.js';
 import { createLocationTracker } from '../utils/locationFix.js';
 import { enrollPasskey, getPasskeyAssertion, getPasskeyStatus, passkeySupported } from '../utils/passkey.js';
@@ -138,7 +138,7 @@ export default function StudentScanPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getPasskeyStatus()
+    getPasskeyStatus(getDeviceId())
       .then((status) => { if (!cancelled) setPasskeyStatus(status); })
       // If the status check fails, fall back to the legacy device id rather than locking students out.
       .catch(() => { if (!cancelled) setPasskeyStatus({ enrolled: false, boundTo: 'unknown' }); });
@@ -181,20 +181,12 @@ export default function StudentScanPage() {
       stopCamera();
 
       try {
-        // Step A: fetch session public info (batchId + subjectId)
+        // Obtain GPS coordinates (the server already knows the class from the signed QR)
         setStatus('locating');
-        setMessage('Looking up session…');
-
-        // Fetch session metadata and GPS together so network latency does not
-        // add extra waiting time after the QR has already been decoded.
-        const sessionInfoPromise = getSessionPublicInfo(qrPayload.sessionId);
-
-        // Step B: obtain GPS coordinates in parallel
         setMessage('Verifying your location…');
-        const locationPromise = locationRef.current.getBest({
+        const gps = await locationRef.current.getBest({
           onProgress: (accuracy) => setMessage(`Improving location accuracy… ±${Math.round(accuracy)} m`),
         });
-        const [{ data: sessionInfo }, gps] = await Promise.all([sessionInfoPromise, locationPromise]);
 
         // Step C: submit attendance
         setStatus('submitting');
@@ -204,8 +196,6 @@ export default function StudentScanPage() {
         const passkey = passkeyRef.current;
         passkeyRef.current = null;
         const response = await submitScan({
-          batchId: sessionInfo.batchId,
-          subjectId: sessionInfo.subjectId,
           deviceId: getDeviceId(),
           gps, // { lat, lng, accuracy }
           qr: qrPayload, // full signed QR object
@@ -401,7 +391,7 @@ export default function StudentScanPage() {
     setPasskeyError('');
     try {
       await enrollPasskey();
-      setPasskeyStatus(await getPasskeyStatus());
+      setPasskeyStatus(await getPasskeyStatus(getDeviceId()));
     } catch (err) {
       setPasskeyError(mapErrorCode(err.code, err.message));
     } finally {
@@ -457,7 +447,7 @@ export default function StudentScanPage() {
               return note('border-amber-500/30 bg-amber-500/10', <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-400" />,
                 'Open the secure site to continue', 'Your account is protected with Face ID / Touch ID, which needs the HTTPS site in a modern browser. Open the official attendance link and try again.');
             }
-            if (bound === 'device') {
+            if (bound === 'device' && !passkeyStatus.thisDevice) {
               return note('border-sky-400/30 bg-sky-400/5', <Smartphone size={18} className="mt-0.5 shrink-0 text-sky-300" />,
                 'Your account is linked to another phone', 'Attendance for this account can only be marked from the phone it was first linked to. Ask your faculty to reset your device to use this one.');
             }

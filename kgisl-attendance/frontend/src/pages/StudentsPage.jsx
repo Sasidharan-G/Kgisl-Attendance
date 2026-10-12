@@ -5,6 +5,7 @@ import { approveBatchArchive, bulkCreateStudents, createStudent, resetStudentDev
 import { Search, GraduationCap, Plus, Power, Users, X, FileUp } from 'lucide-react';
 import StatePanel from '../components/StatePanel.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { splitLine } from '../utils/timetableCsv.js';
 
 const emptyForm = { name: '', rollNo: '', regNo: '', email: '', password: '', batchId: '' };
 
@@ -94,11 +95,12 @@ export default function StudentsPage() {
     if (!file) return;
     const text = await file.text();
     const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
-    const headers = (lines.shift() || '').split(',').map((value) => value.trim().toLowerCase());
+    // Quote-aware split: a name like "Kumar, A" or a password containing a comma used to shift every column.
+    const headers = splitLine(lines.shift() || '').map((value) => value.toLowerCase().replace(/[^a-z]/g, ''));
     const required = ['name', 'rollno', 'regno', 'email', 'password'];
     if (required.some((key) => !headers.includes(key))) { setError('CSV header must be: name,rollNo,regNo,email,password'); return; }
     const rows = lines.map((line) => {
-      const values = line.split(',').map((value) => value.trim());
+      const values = splitLine(line);
       return Object.fromEntries(headers.map((header, index) => [header, values[index] || '']));
     });
     if (!rows.length) { setError('CSV does not contain any student rows'); return; }

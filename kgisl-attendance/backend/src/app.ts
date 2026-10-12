@@ -13,6 +13,7 @@ import historyRoutes from './routes/history.routes';
 import leaveRoutes from './routes/leave.routes';
 import correctionRoutes from './routes/correction.routes';
 import passkeyRoutes from './routes/passkey.routes';
+import calendarRoutes from './routes/calendar.routes';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { allowedOrigins } from './config/env';
 import { prisma } from './config/prisma';
@@ -47,7 +48,8 @@ export function createApp() {
     })
   );
   app.use(cors({ origin: allowedOrigins, credentials: true }));
-  app.use(express.json({ limit: '32kb' })); // QR/scan payloads are tiny — cap body size
+  // Scan payloads are tiny; the larger allowance is for CSV imports (up to 500 students / timetable rows).
+  app.use(express.json({ limit: '256kb' }));
 
   app.get('/health/live', (_req, res) => {
     res.json({ status: 'ok', uptimeSeconds: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
@@ -78,6 +80,7 @@ export function createApp() {
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/leave-requests', leaveRoutes);
   app.use('/api/v1/attendance-corrections', correctionRoutes);
+  app.use('/api/v1/calendar', calendarRoutes);
 
   // Serve frontend static files in production
   if (process.env.NODE_ENV === 'production') {

@@ -62,7 +62,7 @@ kgisl-attendance/
    stores `SHA-256(token)`. The raw token lives only inside the signed QR payload
    and in Redis, which self-deletes via `PX` TTL exactly at `expiresAt`.
 4. **Push, not poll**: `session.service.ts` runs a `setInterval` every
-   `QR_REFRESH_INTERVAL_SECONDS` (default 10s) that generates a new QR and
+   `QR_REFRESH_INTERVAL_SECONDS` (default 30s) that generates a new QR and
    broadcasts it over the session's Socket.IO room — the frontend just swaps the
    `<img>` src and resets its countdown, no reload.
 5. **Single-use enforcement**: scan validation uses a Lua script (`EVAL`) to

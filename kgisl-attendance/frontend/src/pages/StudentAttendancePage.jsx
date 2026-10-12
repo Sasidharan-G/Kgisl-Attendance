@@ -4,6 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { createAttendanceCorrection, getMyAttendance } from '../services/api.js';
 import StatePanel from '../components/StatePanel.jsx';
 
+const ATTENDED = ['PRESENT', 'LATE', 'ON_DUTY'];
+
+// Only PRESENT used to be green, so on-duty, late and approved-leave classes were shown in red like an absence.
+function statusTone(session) {
+  if (ATTENDED.includes(session.status)) return 'text-signal-green';
+  if (session.status === 'LEAVE') return 'text-amber-300';
+  if (session.inProgress) return 'text-slate-300';
+  return 'text-signal-red';
+}
+
 export default function StudentAttendancePage() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -30,7 +40,7 @@ export default function StudentAttendancePage() {
     {success && <div className="mt-5"><StatePanel type="success" compact title="Request submitted" description={success} /></div>}
     {data && <>
       {data.subjects.length ? <div className="mt-7 grid gap-4 md:grid-cols-3">{data.subjects.map((subject) => <div key={subject.code} className={`rounded-2xl border p-5 ${subject.shortage ? 'border-signal-red/30 bg-signal-red/10' : 'border-ink-border bg-ink-850/60'}`}><div className="flex justify-between"><BookOpen className="text-signal-blue" size={20}/>{subject.shortage && <ShieldAlert className="text-signal-red" size={20}/>}</div><h2 className="mt-3 font-bold text-white">{subject.code} · {subject.name}</h2><p className={`mt-2 text-3xl font-bold ${subject.shortage ? 'text-signal-red' : 'text-signal-green'}`}>{subject.percentage}%</p><p className="mt-1 text-xs text-slate-400">{subject.present} present · {subject.absent} absent · {subject.total} sessions</p></div>)}</div> : <div className="mt-7"><StatePanel type="empty" title="No attendance subjects yet" description="Your subjects will appear after the academic setup is assigned." /></div>}
-      <div className="mt-7 overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60">{data.sessions.length ? <table className="w-full min-w-[720px] text-sm"><thead><tr>{['Date','Subject','Faculty','Status','Check-in',''].map((label) => <th key={label} className="px-4 py-3 text-left text-slate-400">{label}</th>)}</tr></thead><tbody>{data.sessions.map((session) => <tr key={session.sessionId} className="border-t border-ink-border"><td className="px-4 py-3">{new Date(session.startedAt).toLocaleString('en-IN')}</td><td className="px-4 py-3 font-bold text-white">{session.subjectCode}</td><td className="px-4 py-3">{session.facultyName}</td><td className={session.status === 'PRESENT' ? 'px-4 py-3 font-bold text-signal-green' : 'px-4 py-3 font-bold text-signal-red'}>{session.status}</td><td className="px-4 py-3">{session.scanTime ? new Date(session.scanTime).toLocaleTimeString('en-IN') : '—'}</td><td className="px-4 py-3">{session.status === 'ABSENT' && <button onClick={() => requestCorrection(session)} className="text-xs font-semibold text-signal-blue">Report issue</button>}</td></tr>)}</tbody></table> : <StatePanel type="empty" compact title="No completed sessions" description="Attendance records will appear after your first class session." />}</div>
+      <div className="mt-7 overflow-x-auto rounded-2xl border border-ink-border bg-ink-850/60">{data.sessions.length ? <table className="w-full min-w-[720px] text-sm"><thead><tr>{['Date','Subject','Faculty','Status','Check-in',''].map((label) => <th key={label} className="px-4 py-3 text-left text-slate-400">{label}</th>)}</tr></thead><tbody>{data.sessions.map((session) => <tr key={session.sessionId} className="border-t border-ink-border"><td className="px-4 py-3">{new Date(session.startedAt).toLocaleString('en-IN')}</td><td className="px-4 py-3 font-bold text-white">{session.subjectCode}</td><td className="px-4 py-3">{session.facultyName}</td><td className={`px-4 py-3 font-bold ${statusTone(session)}`}>{session.inProgress && session.status === 'ABSENT' ? 'IN PROGRESS' : session.status.replace('_', ' ')}</td><td className="px-4 py-3">{session.scanTime ? new Date(session.scanTime).toLocaleTimeString('en-IN') : '—'}</td><td className="px-4 py-3">{session.status === 'ABSENT' && !session.inProgress && <button onClick={() => requestCorrection(session)} className="text-xs font-semibold text-signal-blue">Report issue</button>}</td></tr>)}</tbody></table> : <StatePanel type="empty" compact title="No completed sessions" description="Attendance records will appear after your first class session." />}</div>
     </>}
   </main></div>;
 }
