@@ -59,12 +59,17 @@ export function createApp() {
 
   const readinessHandler = async (_req: express.Request, res: express.Response) => {
     const checks = { database: false, redis: false };
-    try { await prisma.$queryRaw`SELECT 1`; checks.database = true; } catch { /* reported below */ }
-    try { checks.redis = (await redis.ping()) === 'PONG'; } catch { /* reported below */ }
+    // Round-trip times show at a glance whether the web service, database and Redis share a region.
+    const latencyMs = { database: -1, redis: -1 };
+    const dbStart = Date.now();
+    try { await prisma.$queryRaw`SELECT 1`; checks.database = true; latencyMs.database = Date.now() - dbStart; } catch { /* reported below */ }
+    const redisStart = Date.now();
+    try { checks.redis = (await redis.ping()) === 'PONG'; latencyMs.redis = Date.now() - redisStart; } catch { /* reported below */ }
     const healthy = checks.database && checks.redis;
     res.status(healthy ? 200 : 503).json({
       status: healthy ? 'ok' : 'degraded',
       checks,
+      latencyMs,
       timestamp: new Date().toISOString(),
     });
   };
