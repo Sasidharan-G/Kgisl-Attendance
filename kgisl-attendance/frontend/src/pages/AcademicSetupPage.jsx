@@ -28,6 +28,9 @@ export default function AcademicSetupPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const load = async () => { const [batchData, subjectData, roomData, facultyData] = await Promise.all([listBatches(), listSubjects(), listRooms(), listFaculty()]); setBatches(batchData); setSubjects(subjectData); setRooms(roomData); setFaculties(facultyData); };
+  const loadBatches = async () => setBatches(await listBatches());
+  const loadSubjects = async () => setSubjects(await listSubjects());
+  const loadRooms = async () => setRooms(await listRooms());
   useEffect(() => { load(); }, []);
 
   async function submit(e) {
@@ -35,12 +38,12 @@ export default function AcademicSetupPage() {
     try {
       const payload = { ...form, semester: Number(form.semester), mentorId: form.mentorId || null, completionDate: form.completionDate ? new Date(`${form.completionDate}T23:59:59`).toISOString() : null };
       if (editing) await updateBatch(editing, payload); else await createBatch(payload);
-      setForm(empty); setEditing(''); await load();
+      setForm(empty); setEditing(''); await loadBatches();
     } catch (e) { setError(e.message || 'Could not save academic section'); }
     finally { setSaving(false); }
   }
   function edit(row) { setEditing(row.id); setForm({ name: row.name, department: row.department, programme: row.programme, semester: row.semester, academicYear: row.academicYear, mentorId: row.mentorId || '', completionDate: row.completionDate ? new Date(row.completionDate).toISOString().slice(0, 10) : '' }); }
-  async function addSubject(event) { event.preventDefault(); setError(''); try { await createSubject(subjectForm); setSubjectForm({ name: '', code: '' }); await load(); } catch (e) { setError(e.message || 'Could not add subject'); } }
+  async function addSubject(event) { event.preventDefault(); setError(''); try { await createSubject(subjectForm); setSubjectForm({ name: '', code: '' }); await loadSubjects(); } catch (e) { setError(e.message || 'Could not add subject'); } }
   async function addRoom(event) {
     event.preventDefault();
     setError('');
@@ -69,7 +72,7 @@ export default function AcademicSetupPage() {
         c3Lat: '', c3Lng: '',
         c4Lat: '', c4Lng: '',
       });
-      await load();
+      await loadRooms();
     } catch (e) {
       setError(e.message || 'Could not add room');
     }

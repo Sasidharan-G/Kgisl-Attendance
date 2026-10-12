@@ -379,3 +379,23 @@ test('an administrator can issue a one-time reset code for a student', { skip },
   assert.equal((await api('POST', '/auth/student/login', { body: { email: student.email, password } })).status, 401);
   assert.equal((await api('POST', '/auth/student/login', { body: { email: student.email, password: 'Campus-2026-Fresh1' } })).status, 200);
 });
+
+test('timetable: an admin assigns a class, an overlapping one is refused, and it can be listed and removed', { skip }, async () => {
+  const slot = { facultyId: ctx.faculty.id, subjectId: ctx.subject.id, batchId: ctx.batch.id, roomId: ctx.room.id, dayOfWeek: 3, startTime: '09:10', endTime: '10:00' };
+  const created = await api('POST', '/timetable', { token: ctx.tokens.admin, body: slot });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.equal(created.body.data.faculty.name, ctx.faculty.name);
+  assert.equal(created.body.data.subject.code, ctx.subject.code);
+  assert.equal(created.body.data.room.name, ctx.room.name);
+
+  const overlap = await api('POST', '/timetable', { token: ctx.tokens.admin, body: { ...slot, startTime: '09:30', endTime: '10:30' } });
+  assert.equal(overlap.status, 409);
+  assert.equal(overlap.body.code, 'TIMETABLE_CONFLICT');
+
+  const listed = await api('GET', '/timetable', { token: ctx.tokens.admin });
+  assert.ok(listed.body.data.some((row) => row.id === created.body.data.id));
+  const own = await api('GET', '/timetable', { token: ctx.tokens.faculty });
+  assert.ok(own.body.data.every((row) => row.facultyId === ctx.faculty.id));
+
+  assert.equal((await api('DELETE', `/timetable/${created.body.data.id}`, { token: ctx.tokens.admin })).status, 200);
+});

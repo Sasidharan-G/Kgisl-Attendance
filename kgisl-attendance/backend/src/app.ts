@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
 import path from 'path';
 import sessionRoutes from './routes/session.routes';
 import scanRoutes from './routes/scan.routes';
@@ -47,6 +48,7 @@ export function createApp() {
       crossOriginResourcePolicy: { policy: 'same-site' },
     })
   );
+  app.use(compression());
   app.use(cors({ origin: allowedOrigins, credentials: true }));
   // Scan payloads are tiny; the larger allowance is for CSV imports (up to 500 students / timetable rows).
   app.use(express.json({ limit: '256kb' }));
@@ -85,8 +87,11 @@ export function createApp() {
   // Serve frontend static files in production
   if (process.env.NODE_ENV === 'production') {
     const frontendPath = path.join(__dirname, '../../frontend/dist');
-    app.use(express.static(frontendPath));
+    // Hashed bundles never change, so browsers keep them; index.html must always be re-checked.
+    app.use('/assets', express.static(path.join(frontendPath, 'assets'), { maxAge: '365d', immutable: true }));
+    app.use(express.static(frontendPath, { maxAge: '1h', index: false }));
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(frontendPath, 'index.html'));
     });
   }

@@ -2,13 +2,25 @@ import { prisma } from '../config/prisma';
 
 /** Subjects, rooms, sections and beacons: the reference data the dropdowns and the timetable are built from. */
 
-export function listSubjects() {
-  return prisma.subject.findMany({ orderBy: { name: 'asc' } });
+/** Tiny in-process cache: these lists change a few times a term but are read by every page load. */
+function cached<T>(load: () => Promise<T>, ttlMs = 30_000) {
+  let value: T | undefined;
+  let expires = 0;
+  const read = async (): Promise<T> => {
+    if (value !== undefined && Date.now() < expires) return value;
+    value = await load();
+    expires = Date.now() + ttlMs;
+    return value;
+  };
+  read.clear = () => { value = undefined; expires = 0; };
+  return read;
 }
 
-export function listRooms() {
-  return prisma.room.findMany({ orderBy: { name: 'asc' } });
-}
+const subjectsCache = cached(() => prisma.subject.findMany({ orderBy: { name: 'asc' } }));
+const roomsCache = cached(() => prisma.room.findMany({ orderBy: { name: 'asc' } }));
+
+export const listSubjects = () => subjectsCache();
+export const listRooms = () => roomsCache();
 
 const activeStudents = { where: { isActive: true, archivedAt: null } } as const;
 
@@ -54,12 +66,12 @@ export function updateBatch(id: string, data: BatchInput) {
 }
 
 interface SubjectInput { name: string; code: string }
-export function createSubject(data: SubjectInput) { return prisma.subject.create({ data }); }
-export function updateSubject(id: string, data: SubjectInput) { return prisma.subject.update({ where: { id }, data }); }
+export async function createSubject(data: SubjectInput) { try { return await prisma.subject.create({ data }); } finally { subjectsCache.clear(); } }
+export async function updateSubject(id: string, data: SubjectInput) { try { return await prisma.subject.update({ where: { id }, data }); } finally { subjectsCache.clear(); } }
 
 interface RoomInput { name: string; latitude: number; longitude: number; geofenceRadiusM: number }
-export function createRoom(data: RoomInput) { return prisma.room.create({ data }); }
-export function updateRoom(id: string, data: RoomInput) { return prisma.room.update({ where: { id }, data }); }
+export async function createRoom(data: RoomInput) { try { return await prisma.room.create({ data }); } finally { roomsCache.clear(); } }
+export async function updateRoom(id: string, data: RoomInput) { try { return await prisma.room.update({ where: { id }, data }); } finally { roomsCache.clear(); } }
 
 interface BeaconInput { beaconId: number; name: string; roomId: string; enabled: boolean }
 export function listBeacons() {

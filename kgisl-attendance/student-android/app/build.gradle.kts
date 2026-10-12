@@ -19,8 +19,8 @@ android {
     applicationId = "in.ac.kgisl.attendance"
     minSdk = 26
     targetSdk = 35
-    versionCode = 3
-    versionName = "1.1.0"
+    versionCode = 4
+    versionName = "1.2.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // Prototype manufacturer ID shared with the ESP32 firmware. Replace with a
     // lawfully assigned identifier before commercial distribution.

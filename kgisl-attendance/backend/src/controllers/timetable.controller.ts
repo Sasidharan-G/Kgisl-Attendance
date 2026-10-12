@@ -11,6 +11,8 @@ const allocationSchema = z.object({
 }).refine((v) => v.startTime < v.endTime, { message: 'End time must be after start time' });
 
 const include = { faculty: { select: { id: true, name: true } }, subject: true, batch: true, room: true } as const;
+// One SQL statement with joins instead of one query per relation (the database is a network hop away).
+const join = { relationLoadStrategy: 'join' } as const;
 
 export async function listAllocationsHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -32,7 +34,7 @@ export async function listAllocationsHandler(req: Request, res: Response, next: 
         where = { facultyId: req.auth!.sub };
       }
     }
-    const data = await prisma.timetableAllocation.findMany({ where, include, orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] });
+    const data = await prisma.timetableAllocation.findMany({ ...join, where, include, orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] });
     res.json({ success: true, data });
   } catch (err) { next(err); }
 }
@@ -40,9 +42,19 @@ export async function listAllocationsHandler(req: Request, res: Response, next: 
 export async function createAllocationHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const body = allocationSchema.parse(req.body);
-    const [faculty, batch] = await Promise.all([
+    const [faculty, batch, conflict] = await Promise.all([
       prisma.faculty.findUnique({ where: { id: body.facultyId }, select: { isActive: true } }),
       prisma.batch.findUnique({ where: { id: body.batchId }, select: { lifecycle: true } }),
+      prisma.timetableAllocation.findFirst({
+        ...join,
+        where: {
+          dayOfWeek: body.dayOfWeek,
+          startTime: { lt: body.endTime },
+          endTime: { gt: body.startTime },
+          OR: [{ facultyId: body.facultyId }, { batchId: body.batchId }, { roomId: body.roomId }],
+        },
+        include,
+      }),
     ]);
     if (!faculty?.isActive) {
       res.status(409).json({ success: false, code: 'FACULTY_UNAVAILABLE', message: 'The selected faculty account is inactive or does not exist.' });
@@ -52,19 +64,6 @@ export async function createAllocationHandler(req: Request, res: Response, next:
       res.status(409).json({ success: false, code: 'BATCH_NOT_ACTIVE', message: 'Classes can only be assigned to an active section.' });
       return;
     }
-    const conflict = await prisma.timetableAllocation.findFirst({
-      where: {
-        dayOfWeek: body.dayOfWeek,
-        startTime: { lt: body.endTime },
-        endTime: { gt: body.startTime },
-        OR: [
-          { facultyId: body.facultyId },
-          { batchId: body.batchId },
-          { roomId: body.roomId },
-        ],
-      },
-      include,
-    });
     if (conflict) {
       const resource = conflict.facultyId === body.facultyId
         ? `faculty ${conflict.faculty.name}`
@@ -78,7 +77,7 @@ export async function createAllocationHandler(req: Request, res: Response, next:
       });
       return;
     }
-    const data = await prisma.timetableAllocation.create({ data: body, include });
+    const data = await prisma.timetableAllocation.create({ ...join, data: body, include });
     res.status(201).json({ success: true, data });
   } catch (err) { next(err); }
 }

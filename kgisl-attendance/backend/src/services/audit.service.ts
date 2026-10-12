@@ -21,7 +21,22 @@ export interface AuditEntry {
  * never block or fail the underlying request. Falls back to structured
  * Winston output if the DB write itself fails, so nothing is silently lost.
  */
-export async function writeAuditLog(entry: AuditEntry): Promise<void> {
+export function writeAuditLog(entry: AuditEntry): Promise<void> {
+  // Callers do not wait for the write: with the database in another region it cost a full round trip per request.
+  const pending = persist(entry);
+  inFlight.add(pending);
+  void pending.finally(() => inFlight.delete(pending));
+  return Promise.resolve();
+}
+
+const inFlight = new Set<Promise<void>>();
+
+/** Resolves once every audit write started so far has finished (used by tests). */
+export async function flushAuditLogs(): Promise<void> {
+  await Promise.allSettled([...inFlight]);
+}
+
+async function persist(entry: AuditEntry): Promise<void> {
   try {
     await prisma.auditLog.create({
       data: {

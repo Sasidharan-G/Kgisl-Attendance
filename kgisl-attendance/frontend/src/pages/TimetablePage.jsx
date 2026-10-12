@@ -51,14 +51,20 @@ export default function TimetablePage() {
     }
   }
   useEffect(() => { load().catch((e) => setError(e.message)); }, []);
+  const byTime = (a, b) => a.dayOfWeek - b.dayOfWeek || String(a.startTime).localeCompare(String(b.startTime));
+  async function loadRows() { setRows(await listAllocations(admin ? undefined : 'section')); }
 
   async function submit(e) {
     e.preventDefault(); setError('');
-    try { await createAllocation({ ...form, dayOfWeek: Number(form.dayOfWeek) }); await load(); }
+    try { const created = await createAllocation({ ...form, dayOfWeek: Number(form.dayOfWeek) }); setRows((current) => [...current, created].sort(byTime)); }
     catch (e) { setError(e.message || 'Could not assign class'); }
   }
 
-  async function remove(id) { await deleteAllocation(id); await load(); }
+  async function remove(id) {
+    const before = rows;
+    setRows((current) => current.filter((row) => row.id !== id));
+    try { await deleteAllocation(id); } catch (e) { setRows(before); setError(e.message || 'Could not remove the class'); }
+  }
   async function analyzeFile() {
     setImportNotice('');
     if (!importFile) { setError('Choose the timetable CSV file first'); return; }
@@ -96,7 +102,7 @@ export default function TimetablePage() {
     setImporting(false);
     setPreview([]); setImportFile(null); setImportErrors(failed.map((message) => ({ line: '', message })));
     setImportNotice(`${created} of ${created + failed.length} classes created.`);
-    await load();
+    await loadRows();
   }
   const field = (key, options) => <select value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-sm text-white">{options.map((x) => <option key={x.id} value={x.id}>{x.name || x.code}</option>)}</select>;
   const filteredRows = rows.filter((row) => !query || [DAYS[row.dayOfWeek - 1], row.startTime, row.endTime, row.faculty?.name, row.subject?.code, row.subject?.name, row.batch?.name, row.room?.name].filter(Boolean).join(' ').toLowerCase().includes(query));

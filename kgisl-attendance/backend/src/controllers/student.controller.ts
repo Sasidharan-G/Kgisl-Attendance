@@ -152,12 +152,16 @@ export async function listStudentsHandler(req: Request, res: Response, next: Nex
     const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : undefined;
     const archived = req.auth!.role === 'ADMIN' && req.query.view === 'archived';
     const students = await prisma.student.findMany({
+      relationLoadStrategy: 'join',
       where: {
         archivedAt: archived ? { not: null } : null,
         ...(batchId ? { batchId } : {}),
         ...(req.auth!.role === 'FACULTY' ? { batch: { mentorId: req.auth!.sub, lifecycle: { not: 'ARCHIVED' } } } : {}),
       },
-      include: { batch: true },
+      select: {
+        id: true, name: true, rollNo: true, regNo: true, email: true, isActive: true, archivedAt: true, batchId: true,
+        batch: { select: { name: true } },
+      },
       orderBy: { rollNo: 'asc' },
     });
 

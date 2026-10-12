@@ -56,7 +56,7 @@ export default function AddFacultyPage() {
     try {
       await setFacultyActive(faculty.id, false);
       setSuccess(`${faculty.name} deactivated.`);
-      await loadFaculties();
+      setFaculties((list) => list.map((item) => (item.id === faculty.id ? { ...item, isActive: false } : item)));
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to remove faculty');
     }
@@ -67,7 +67,7 @@ export default function AddFacultyPage() {
     try {
       await setFacultyActive(faculty.id, true);
       setSuccess(`${faculty.name} reactivated.`);
-      await loadFaculties();
+      setFaculties((list) => list.map((item) => (item.id === faculty.id ? { ...item, isActive: true } : item)));
     } catch (err) {
       setError(err.message || 'Failed to reactivate faculty');
     }
