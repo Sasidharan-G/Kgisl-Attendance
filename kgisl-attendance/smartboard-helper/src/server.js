@@ -39,6 +39,12 @@ export function createHelperServer(config, transport) {
     const corsOrigin = origin && allowedOrigins.includes(origin) ? origin : undefined;
     if (origin && !corsOrigin) return json(response, 403, { success: false, code: 'ORIGIN_DENIED' });
     if (request.method === 'OPTIONS') return json(response, 204, {}, corsOrigin);
+    // One-time automatic pairing: the attendance website (an allowed origin; browsers will not show the answer to
+    // any other site) asks for the key instead of the teacher typing it. Direct non-browser callers get nothing.
+    if (request.method === 'GET' && request.url === '/api/v1/pair') {
+      if (config.pairing === false || !corsOrigin) return json(response, 403, { success: false, code: 'PAIRING_DENIED' }, corsOrigin);
+      return json(response, 200, { success: true, data: { key: config.apiKey } }, corsOrigin);
+    }
     if (!helperKeyMatches(config.apiKey, request.headers['x-helper-key'])) {
       return json(response, 401, { success: false, code: 'HELPER_AUTH_REQUIRED' }, corsOrigin);
     }

@@ -30,7 +30,7 @@ export function loadConfig(env = process.env, args = process.argv.slice(2)) {
     port: integer(env.HELPER_PORT, 43821, 0, 65535),
     apiKey,
     // Comma-separated list, e.g. "https://app.example.com,http://localhost:5173".
-    allowedOrigins: parseOrigins(env.HELPER_ALLOWED_ORIGIN ?? 'http://localhost:5173'),
+    allowedOrigins: parseOrigins(env.HELPER_ALLOWED_ORIGIN ?? 'https://kgisl-attendance.onrender.com,http://localhost:5173'),
     transport,
     // "auto" (or empty) detects the ESP32 USB-serial adapter by itself.
     serialPort: (env.ESP32_SERIAL_PORT ?? '').trim() || 'auto',

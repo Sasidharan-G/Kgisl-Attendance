@@ -5,6 +5,7 @@ import {
   getHelperStatus,
   issueBeaconPacket,
   listBeacons,
+  pairWithHelper,
   revokeBeaconPacket,
   sendPacketToHelper,
   type BeaconPacketIssue,
@@ -26,6 +27,13 @@ const AUTOSTART_STORAGE = 'kgisl_beacon_autostart';
 // While the class is running a refresh that fails (Wi-Fi blip, ESP32 re-enumerating) keeps being retried, because the
 // board goes silent 35 s after its last packet. Only an answer that can never succeed (session over, wrong room...) stops it.
 const REFRESH_RETRY_MS = 2_000;
+// Start-up never gives up on its own: while the helper is not running yet or the ESP32 is not plugged in, it keeps
+// checking, so "start session, then plug the board in" just works in any order.
+const START_RETRY_MS = 2_000;
+const WAITING_MESSAGES: Record<string, string> = {
+  HELPER_UNREACHABLE: 'Waiting for the classroom helper on this computer… If Chrome asks to allow access to local devices, choose Allow.',
+  ESP32_UNAVAILABLE: 'Plug the ESP32 into a USB port of this computer. It is detected automatically and starts broadcasting.',
+};
 const FATAL_REFRESH_CODES = new Set(['SESSION_NOT_ACTIVE', 'SESSION_NOT_FOUND', 'SESSION_ACCESS_DENIED', 'BEACON_NOT_FOUND', 'BEACON_ROOM_MISMATCH', 'SESSION_EXPIRED']);
 const STEP_LABELS = ['Classroom helper connected', 'ESP32 beacon ready', 'Signed packet broadcasting'] as const;
 
@@ -46,6 +54,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
   const [state, setState] = useState<BroadcastState>('idle');
   const [step, setStep] = useState(0); // 0..3: how many of the three start-up steps are finished
   const [error, setError] = useState('');
+  const [waiting, setWaiting] = useState('');
   const [helperKey, setHelperKey] = useState(readHelperKey);
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [autoStart, setAutoStart] = useState(readAutoStart);
@@ -87,6 +96,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
     clearRefreshTimer();
     setLastIssue(null);
     setSecondsLeft(0);
+    setWaiting('');
     setStep(0);
     setState('idle');
   }, [clearRefreshTimer, sessionId]);
@@ -100,6 +110,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
       if (runIdRef.current !== runId) return;
       setLastIssue(issue);
       setError('');
+      setWaiting('');
       setStep(3);
       setState('broadcasting');
       const latestSafeRefresh = Math.max(1_000, issue.expiresAt - Date.now() - 4_000);
@@ -132,22 +143,49 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
     runIdRef.current = runId;
     setState('starting');
     setError('');
+    setWaiting('');
     setStep(0);
-    const key = helperKey.trim();
-    try {
-      await getHelperStatus(key); // step 1: helper reachable + key accepted
-      if (runIdRef.current !== runId) return;
-      saveHelperKey(key);
-      setShowKeyInput(false);
-      setStep(1);
-      await connectHelper(key); // step 2: helper opens the ESP32 (rejects with a clear reason if unplugged)
-      if (runIdRef.current !== runId) return;
-      setStep(2);
-      await pushPacket(runId, key, beaconId); // step 3 completes inside pushPacket
-    } catch (startError) {
-      if (runIdRef.current !== runId) return;
-      setError(startError instanceof Error ? startError.message : 'Unable to start the BLE beacon.');
-      setState('error');
+    let key = helperKey.trim();
+    let repaired = false;
+    while (runIdRef.current === runId) {
+      try {
+        // No key yet (first use on this browser): the helper hands it to this site by itself.
+        if (key.length < 32) {
+          const paired = await pairWithHelper();
+          if (runIdRef.current !== runId) return;
+          if (paired) { key = paired; saveHelperKey(paired); setHelperKey(paired); }
+        }
+        await getHelperStatus(key); // step 1: helper reachable + key accepted
+        if (runIdRef.current !== runId) return;
+        saveHelperKey(key);
+        setShowKeyInput(false);
+        setWaiting('');
+        setStep(1);
+        await connectHelper(key); // step 2: helper opens the ESP32 (503 while it is unplugged: keep waiting)
+        if (runIdRef.current !== runId) return;
+        setStep(2);
+        await pushPacket(runId, key, beaconId); // step 3 completes inside pushPacket
+        return;
+      } catch (startError) {
+        if (runIdRef.current !== runId) return;
+        const code = (startError as { code?: string })?.code;
+        const message = startError instanceof Error ? startError.message : (startError as { message?: string })?.message ?? 'Unable to start the BLE beacon.';
+        if (code === 'HELPER_AUTH') {
+          // The helper's key changed (re-installed PC): forget the stale one and pair again once, automatically.
+          if (!repaired) { repaired = true; key = ''; continue; }
+          setError('The helper key does not match. Enter the key from the helper window (smartboard-helper\\.env).');
+          setShowKeyInput(true);
+          setState('error');
+          return;
+        }
+        if (code && FATAL_REFRESH_CODES.has(code)) {
+          setError(message);
+          setState('error');
+          return;
+        }
+        setWaiting(WAITING_MESSAGES[code ?? ''] ?? `${message} Retrying…`);
+        await new Promise<void>((resolve) => { window.setTimeout(resolve, START_RETRY_MS); });
+      }
     }
   }, [beaconId, clearRefreshTimer, helperKey, pushPacket, sessionActive, sessionId, sessionPaused]);
 
@@ -157,12 +195,12 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
 
   // One-click flow: when a session goes live and the helper is paired, start the beacon by itself.
   useEffect(() => {
-    if (!autoStart || !hasKey || state !== 'idle') return;
+    if (!autoStart || state !== 'idle') return;
     if (!sessionActive || sessionPaused || !sessionId || beaconId === null) return;
     if (autoStartedForRef.current === sessionId) return;
     autoStartedForRef.current = sessionId;
     void startBroadcast();
-  }, [autoStart, beaconId, hasKey, sessionActive, sessionId, sessionPaused, startBroadcast, state]);
+  }, [autoStart, beaconId, sessionActive, sessionId, sessionPaused, startBroadcast, state]);
 
   useEffect(() => {
     if (!lastIssue?.expiresAt) return undefined;
@@ -184,8 +222,9 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
 
   const broadcasting = state === 'broadcasting';
   const starting = state === 'starting';
-  const needsKey = !hasKey || showKeyInput;
-  const disabled = !sessionActive || sessionPaused || !sessionId || beaconId === null || !hasKey;
+  // The key is normally fetched from the helper automatically; typing it is only the fallback after a mismatch.
+  const needsKey = showKeyInput || (state === 'error' && !hasKey);
+  const disabled = !sessionActive || sessionPaused || !sessionId || beaconId === null;
   const stepState = (index: number): StepState => (step > index ? 'done' : starting && step === index ? 'active' : 'pending');
 
   return (
@@ -196,7 +235,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
             <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-sky-200">Alpha</span>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-300">BLE Classroom Beacon</h3>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">One click starts everything. Students mark attendance from this site in Chrome (Alpha · BLE).</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">Starts by itself with the session. Just plug the ESP32 into this computer; students are marked automatically.</p>
         </div>
         <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] ${broadcasting ? 'border-sky-300/40 bg-sky-400/10 text-sky-200' : 'border-ink-border bg-ink-900 text-slate-500'}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${broadcasting ? 'animate-pulse bg-sky-300' : 'bg-slate-600'}`} />
@@ -216,6 +255,10 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
             <li key={label} className="flex items-center gap-2"><StepIcon state={stepState(index)} />{label}</li>
           ))}
         </ul>
+      )}
+
+      {starting && waiting && (
+        <p className="mb-4 rounded-lg border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-center text-[11px] leading-relaxed text-amber-200" aria-live="polite">{waiting}</p>
       )}
 
       {broadcasting && (
@@ -250,7 +293,7 @@ export default function BeaconBroadcastPanel({ sessionId, roomId, sessionActive,
             autoComplete="off"
             className="rounded-lg border border-ink-border bg-ink-900 px-3 py-2 text-xs normal-case text-slate-200 placeholder:text-slate-600"
           />
-          <span className="text-[10px] normal-case text-slate-600">Tip: opening the site with start-classroom.bat pairs it automatically.</span>
+          <span className="text-[10px] normal-case text-slate-600">Normally this is automatic. Only needed if the helper was re-installed.</span>
         </label>
       )}
 

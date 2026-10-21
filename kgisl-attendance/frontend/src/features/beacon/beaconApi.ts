@@ -48,6 +48,17 @@ export async function issueBeaconPacket(sessionId: string, beaconId: number): Pr
   return { ...data, issuedAt: toEpochMs(data.issuedAt), expiresAt: toEpochMs(data.expiresAt) };
 }
 
+/** Helper problems carry a stable `code` so the start-up flow can tell "keep waiting" from "give up". */
+export class HelperError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'HelperError';
+    this.code = code;
+  }
+}
+
 async function helperRequest<T>(path: string, helperKey: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -56,12 +67,28 @@ async function helperRequest<T>(path: string, helperKey: string, init?: RequestI
       headers: { 'content-type': 'application/json', 'x-helper-key': helperKey },
     });
   } catch {
-    throw new Error('Smart-board helper is not running on this computer. Double-click start-classroom.bat (or run npm start in smartboard-helper) and try again.');
+    throw new HelperError('HELPER_UNREACHABLE', 'Waiting for the classroom helper on this computer. If Chrome asks to allow access to local devices, choose Allow.');
   }
   const body = await response.json().catch(() => ({}));
-  if (response.status === 401) throw new Error('Helper key is incorrect. Open the site with the classroom launcher, or enter the key shown in the helper window.');
-  if (!response.ok) throw new Error(body?.message || body?.code || `Helper error ${response.status}`);
+  if (response.status === 401) throw new HelperError('HELPER_AUTH', 'Helper key is incorrect.');
+  if (!response.ok) throw new HelperError(body?.code || 'HELPER_ERROR', body?.message || body?.code || `Helper error ${response.status}`);
   return body as T;
+}
+
+/**
+ * Asks the helper for its key. The helper only answers pages served from its allowed origins, so this pairs the
+ * browser with the classroom PC without anyone typing a key. Returns null when the helper is not reachable (yet).
+ */
+export async function pairWithHelper(): Promise<string | null> {
+  try {
+    const response = await fetch(`${HELPER_URL}/api/v1/pair`);
+    if (!response.ok) return null;
+    const body = await response.json();
+    const key = body?.data?.key;
+    return typeof key === 'string' && key.length >= 32 ? key : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getHelperStatus(helperKey: string): Promise<HelperStatus> {

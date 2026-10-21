@@ -66,6 +66,9 @@ class MarkFragment : Fragment(R.layout.fragment_mark) {
       }
     }
     render()
+    // Effortless flow: start listening for the classroom beacon as soon as the tab opens (the system asks for the
+    // Bluetooth/location permissions the first time). The student never has to press anything.
+    if (mode == Mode.ALPHA && !scanning) withPermissions(blePermissions()) { startBeaconScan() }
   }
 
   private fun render(clearStatus: Boolean = true) {

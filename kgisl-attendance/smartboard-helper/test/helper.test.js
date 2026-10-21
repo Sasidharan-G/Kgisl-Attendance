@@ -53,6 +53,17 @@ test('multiple origins are allowed and unknown origins are rejected', async (t) 
   assert.equal((await ask('https://evil.example')).status, 403);
 });
 
+test('pairing hands the key only to an allowed browser origin', async (t) => {
+  const { server, baseUrl } = await fixture();
+  t.after(() => server.close());
+  const allowed = await fetch(`${baseUrl}/api/v1/pair`, { headers: { origin: 'http://localhost:5173' } });
+  assert.equal(allowed.status, 200);
+  assert.equal((await allowed.json()).data.key, key);
+  assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+  assert.equal((await fetch(`${baseUrl}/api/v1/pair`)).status, 403); // no Origin header: not a browser page
+  assert.equal((await fetch(`${baseUrl}/api/v1/pair`, { headers: { origin: 'https://evil.example' } })).status, 403);
+});
+
 test('an unplugged ESP32 returns 503 instead of a packet error', async (t) => {
   const transport = { writePacket: async () => { throw new Error('No USB serial device found.'); }, status: () => ({ connected: false }) };
   const server = createHelperServer({ apiKey: key, allowedOrigins: [] }, transport);
