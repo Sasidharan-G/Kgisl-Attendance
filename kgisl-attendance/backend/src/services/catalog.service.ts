@@ -61,8 +61,21 @@ export function createBatch(data: BatchInput) {
   return prisma.batch.create({ data });
 }
 
-export function updateBatch(id: string, data: BatchInput) {
-  return prisma.batch.update({ where: { id }, data });
+export async function updateBatch(id: string, data: BatchInput) {
+  return prisma.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({ where: { id }, select: { lifecycle: true } });
+    const shouldReactivate = batch?.lifecycle === 'ARCHIVE_PENDING'
+      && data.completionDate !== undefined
+      && (data.completionDate === null || data.completionDate > new Date());
+
+    return tx.batch.update({
+      where: { id },
+      data: {
+        ...data,
+        ...(shouldReactivate ? { lifecycle: 'ACTIVE', archiveRequestedAt: null } : {}),
+      },
+    });
+  });
 }
 
 interface SubjectInput { name: string; code: string }
