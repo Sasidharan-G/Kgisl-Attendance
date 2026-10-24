@@ -20,10 +20,26 @@ $localOrigin = 'http://localhost:5173'
 
 function Write-Step($text) { Write-Host "  $text" -ForegroundColor Cyan }
 
+function Show-UsbDriverStatus {
+  $devices = @(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue |
+    Where-Object { $_.FriendlyName -match 'CP210|USB to UART Bridge' })
+  foreach ($device in $devices) {
+    $problem = Get-PnpDeviceProperty -InstanceId $device.InstanceId -KeyName 'DEVPKEY_Device_ProblemCode' -ErrorAction SilentlyContinue
+    if ($problem.Data -eq 28) {
+      Write-Host '  ESP32 USB adapter detected, but its Windows driver is missing (Device Manager Code 28).' -ForegroundColor Red
+      Write-Host '  Install the official Silicon Labs CP210x VCP driver:' -ForegroundColor Yellow
+      Write-Host '  https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers' -ForegroundColor Cyan
+      Write-Host '  Then unplug/reconnect the ESP32 and check Device Manager > Ports (COM & LPT).' -ForegroundColor Yellow
+    }
+  }
+}
+
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Write-Host 'Node.js is required. Install it from https://nodejs.org and run this again.' -ForegroundColor Red
   exit 1
 }
+
+Show-UsbDriverStatus
 
 # ---- 1. helper configuration ---------------------------------------------------------------
 if (-not (Test-Path (Join-Path $helperDir 'node_modules'))) {
